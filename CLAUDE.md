@@ -60,11 +60,12 @@ Adiado para depois da demo (não implemente nem prepare): "Vácuo como atalho es
 
 ## Estrutura atual (`res://`, tudo na raiz)
 
-- Scripts: `Player.cs`, `WallSensitive.cs`, `LightDamageArea.cs`, `FractalEnemy.cs`, `TerminalModo.cs`, `SalaEntrada.cs`, `SalaDesfiladeiro.cs`
+- Scripts: `Player.cs`, `WallSensitive.cs`, `LightDamageArea.cs`, `FractalEnemy.cs`, `TerminalModo.cs`, `SalaEntrada.cs`, `SalaDesfiladeiro.cs`, `NinhoSpawner.cs`, `NinhoSpawnerPooled.cs`
+- Spawners de inimigos: `NinhoSpawner.cs` cria com `Instantiate` e destrói com `QueueFree`. `NinhoSpawnerPooled.cs` é a versão de teste com object pooling (reaproveita inimigos via `ActivateAt`/`DeactivateToPool` e o callback `OnDied` do `FractalEnemy`). A `sala_ninho.tscn` usa a versão com pool.
 - Cenas: `player.tscn`, `fractal_enemy.tscn`, `wall_block.tscn`, `wall_segment.tscn`, `paredes_reativas.tscn`, `sala_entrada.tscn`, `sala_desfiladeiro.tscn`, `sala_ninho.tscn`, `arena.tscn`, `sala_desfiladeiro_TESTE_estrelas.tscn`
 - Assets: `lanterna.png`, `lanterna_reta.png`, `lanterna_torta.png`, `light.png`, `icon.svg`, pasta `shaders/`
 - Citados no handoff, mas não encontrados no projeto (confirmar antes de assumir): `sala_nucleo.tscn`, `MazeGenerator.cs` (gerador procedural de labirintos) e `DoorTrigger.cs` (transição de cena com `ChangeSceneToFile`).
-- Não documentados no handoff (ler o código antes de assumir o que fazem): `arena.tscn`, `SalaEntrada.cs`, `SalaDesfiladeiro.cs`, `sala_desfiladeiro_TESTE_estrelas.tscn`.
+- Não documentados no handoff (ler o código antes de assumir o que fazem): `arena.tscn`, `SalaEntrada.cs`, `SalaDesfiladeiro.cs`, `sala_desfiladeiro_TESTE_estrelas.tscn`, `NinhoSpawner.cs`, `NinhoSpawnerPooled.cs`.
 
 ## Referências
 
