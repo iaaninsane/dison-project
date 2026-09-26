@@ -1,0 +1,18 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Play",
+            "type": "corecrl",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "D:\\gamedev\\tools\\Godot_v4.7.2-stable_mono_win64",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false
+        }   
+    ]
+}

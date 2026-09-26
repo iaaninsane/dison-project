@@ -1,0 +1,21 @@
+[gd_scene format=3 uid="uid://dtejjhgcr4pvg"]
+
+[ext_resource type="Script" uid="uid://d33prsf1jl1e5" path="res://WallSensitive.cs" id="1_dcxpi"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1tabr"]
+size = Vector2(100, 40)
+
+[node name="WallSegment" type="StaticBody2D" unique_id=1859212837 groups=["Walls"]]
+script = ExtResource("1_dcxpi")
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=1383355961]
+offset_left = -50.0
+offset_top = -20.0
+offset_right = 50.0
+offset_bottom = 20.0
+color = Color(0.5372549, 0.23921569, 0.8627451, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=2128473149]
+position = Vector2(-7.6293945e-06, -1.1920929e-07)
+shape = SubResource("RectangleShape2D_1tabr")

@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://csfp7qmdo263i"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_0ordj"]
+size = Vector2(90, 90)
+
+[node name="Pilar" type="StaticBody2D" unique_id=1723410963]
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=228312627]
+offset_left = -45.0
+offset_top = -45.0
+offset_right = 45.0
+offset_bottom = 45.0
+color = Color(0.3529412, 0.38431373, 0.43137255, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1303672968]
+shape = SubResource("RectangleShape2D_0ordj")

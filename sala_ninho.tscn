@@ -1,0 +1,72 @@
+[gd_scene format=3 uid="uid://dvtu8hh1tbf2j"]
+
+[ext_resource type="PackedScene" uid="uid://bcx3ot12h3nkr" path="res://wall_segment.tscn" id="1_qd78b"]
+[ext_resource type="PackedScene" uid="uid://cgy8y45ghbrod" path="res://player.tscn" id="2_uhorl"]
+[ext_resource type="PackedScene" uid="uid://csfp7qmdo263i" path="res://cover_pillar.tscn" id="3_h1nul"]
+[ext_resource type="Script" uid="uid://2jsumpk8uqii" path="res://NinhoSpawnerPooled.cs" id="4_yathq"]
+[ext_resource type="PackedScene" uid="uid://bnsfigjjn7eed" path="res://fractal_enemy.tscn" id="5_yathq"]
+
+[node name="SalaNinho" type="Node2D" unique_id=1370461526]
+
+[node name="Background" type="ColorRect" parent="." unique_id=708581767]
+offset_right = 1920.0
+offset_bottom = 1080.0
+
+[node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=1326125108]
+visible = false
+color = Color(0, 0, 0, 1)
+
+[node name="WallSegment1" parent="." unique_id=1859212837 instance=ExtResource("1_qd78b")]
+position = Vector2(1301.5, 881.5)
+rotation = 2.3561945
+
+[node name="WallSegment2" parent="." unique_id=1014508006 instance=ExtResource("1_qd78b")]
+position = Vector2(960, 1022.8)
+rotation = 3.1415927
+
+[node name="WallSegment3" parent="." unique_id=1983894254 instance=ExtResource("1_qd78b")]
+position = Vector2(618.5, 881.5)
+rotation = 3.9269907
+
+[node name="WallSegment4" parent="." unique_id=1616386683 instance=ExtResource("1_qd78b")]
+position = Vector2(618.5, 198.5)
+rotation = 5.497787
+
+[node name="WallSegment5" parent="." unique_id=898997130 instance=ExtResource("1_qd78b")]
+position = Vector2(960, 57.2)
+
+[node name="WallSegment6" parent="." unique_id=1512893898 instance=ExtResource("1_qd78b")]
+position = Vector2(1301.5, 198.5)
+rotation = 0.7853982
+
+[node name="Player" parent="." unique_id=2016198778 instance=ExtResource("2_uhorl")]
+position = Vector2(551, 539)
+
+[node name="Pilar" parent="." unique_id=1723410963 instance=ExtResource("3_h1nul")]
+visible = false
+
+[node name="Pilar1" parent="." unique_id=1848390051 instance=ExtResource("3_h1nul")]
+position = Vector2(960, 340)
+
+[node name="Pilar2" parent="." unique_id=147477745 instance=ExtResource("3_h1nul")]
+position = Vector2(960, 740)
+
+[node name="NinhoSpawn1" type="Marker2D" parent="." unique_id=542046653]
+position = Vector2(1172.1, 752.1)
+
+[node name="NinhoSpawn2" type="Marker2D" parent="." unique_id=1231673613]
+position = Vector2(747.9, 752.1)
+
+[node name="NinhoSpawn3" type="Marker2D" parent="." unique_id=519584825]
+position = Vector2(747.9, 327.9)
+
+[node name="NinhoSpawn4" type="Marker2D" parent="." unique_id=641263619]
+position = Vector2(1172.1, 327.9)
+
+[node name="NinhoSpawner" type="Node2D" parent="." unique_id=668881793 node_paths=PackedStringArray("SpawnPoints")]
+script = ExtResource("4_yathq")
+FractalEnemyScene = ExtResource("5_yathq")
+SpawnPoints = [NodePath("../NinhoSpawn1"), NodePath("../NinhoSpawn2"), NodePath("../NinhoSpawn3"), NodePath("../NinhoSpawn4")]
+SpawnInterval = 0.25
+MaxConcurrentEnemies = 300
+PoolSize = 300

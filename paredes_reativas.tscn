@@ -1,0 +1,37 @@
+[gd_scene format=3 uid="uid://dnml0ikmsh6m7"]
+
+[ext_resource type="Script" uid="uid://d33prsf1jl1e5" path="res://WallSensitive.cs" id="1_8tlbx"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1tabr"]
+size = Vector2(40, 317)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_0ordj"]
+size = Vector2(491, 45)
+
+[node name="ParedesReativas" type="Node2D" unique_id=1249560392 groups=["Walls"]]
+position = Vector2(107, 104)
+
+[node name="WallSensitive1" type="StaticBody2D" parent="." unique_id=1057528032 groups=["Walls"]]
+script = ExtResource("1_8tlbx")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WallSensitive1" unique_id=1056903635 groups=["Walls"]]
+position = Vector2(20, 158.5)
+shape = SubResource("RectangleShape2D_1tabr")
+
+[node name="ColorRect" type="ColorRect" parent="WallSensitive1" unique_id=1427047034 groups=["Walls"]]
+offset_right = 40.0
+offset_bottom = 316.0
+color = Color(0.1764706, 1, 1, 1)
+
+[node name="WallSensitive2" type="StaticBody2D" parent="." unique_id=610661142 groups=["Walls"]]
+position = Vector2(41, 1)
+script = ExtResource("1_8tlbx")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="WallSensitive2" unique_id=592996048 groups=["Walls"]]
+position = Vector2(245.5, 22.5)
+shape = SubResource("RectangleShape2D_0ordj")
+
+[node name="ColorRect" type="ColorRect" parent="WallSensitive2" unique_id=765545120 groups=["Walls"]]
+offset_right = 489.0
+offset_bottom = 44.0
+color = Color(0.1764706, 1, 1, 1)

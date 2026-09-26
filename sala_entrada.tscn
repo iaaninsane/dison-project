@@ -1,0 +1,113 @@
+[gd_scene format=3 uid="uid://qkdv3hvlc3qt"]
+
+[ext_resource type="Script" uid="uid://jq2xu1wi4h8n" path="res://SalaEntrada.cs" id="1_gyyka"]
+[ext_resource type="Script" uid="uid://dk2htimxcqhfo" path="res://TerminalModo.cs" id="1_w7ei0"]
+[ext_resource type="PackedScene" uid="uid://cgy8y45ghbrod" path="res://player.tscn" id="3_ao6y7"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1tabr"]
+size = Vector2(1920, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_q6eh1"]
+size = Vector2(1920, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_0ordj"]
+size = Vector2(40, 1080)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_igrrh"]
+size = Vector2(40, 449)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_vkl83"]
+size = Vector2(40, 381)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_1tabr"]
+radius = 71.00704
+
+[node name="SalaEntrada" type="Node2D" unique_id=1377689184]
+script = ExtResource("1_gyyka")
+
+[node name="background" type="ColorRect" parent="." unique_id=966100322]
+offset_right = 1920.0
+offset_bottom = 1080.0
+color = Color(0.101960786, 0.101960786, 0.1254902, 1)
+
+[node name="ParedesSeguras" type="Node2D" parent="." unique_id=1439145995]
+
+[node name="WallTop" type="StaticBody2D" parent="ParedesSeguras" unique_id=1046988800]
+position = Vector2(0, -40)
+
+[node name="ColorRect" type="ColorRect" parent="ParedesSeguras/WallTop" unique_id=1676702550]
+offset_right = 1920.0
+offset_bottom = 40.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="ParedesSeguras/WallTop" unique_id=279982508]
+position = Vector2(960, 20)
+shape = SubResource("RectangleShape2D_1tabr")
+
+[node name="WallBottom" type="StaticBody2D" parent="ParedesSeguras" unique_id=1416016561]
+position = Vector2(0, 1080)
+
+[node name="ColorRect" type="ColorRect" parent="ParedesSeguras/WallBottom" unique_id=341889694]
+offset_right = 1920.0
+offset_bottom = 40.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="ParedesSeguras/WallBottom" unique_id=1800768729]
+position = Vector2(960, 20)
+shape = SubResource("RectangleShape2D_q6eh1")
+
+[node name="WallLeft" type="StaticBody2D" parent="ParedesSeguras" unique_id=1333916052]
+position = Vector2(-40, 0)
+
+[node name="ColorRect" type="ColorRect" parent="ParedesSeguras/WallLeft" unique_id=728337060]
+offset_right = 40.0
+offset_bottom = 1080.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="ParedesSeguras/WallLeft" unique_id=953005550]
+position = Vector2(20, 540)
+shape = SubResource("RectangleShape2D_0ordj")
+
+[node name="WallRightTop" type="StaticBody2D" parent="ParedesSeguras" unique_id=515721648]
+position = Vector2(1920, 0)
+
+[node name="ColorRect" type="ColorRect" parent="ParedesSeguras/WallRightTop" unique_id=432599869]
+offset_right = 40.0
+offset_bottom = 449.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="ParedesSeguras/WallRightTop" unique_id=1772621534]
+position = Vector2(20, 224.5)
+shape = SubResource("RectangleShape2D_igrrh")
+
+[node name="WallRightBottom" type="StaticBody2D" parent="ParedesSeguras" unique_id=1422258983]
+
+[node name="ColorRect" type="ColorRect" parent="ParedesSeguras/WallRightBottom" unique_id=495667126]
+offset_left = 1920.0
+offset_top = 699.0
+offset_right = 1960.0
+offset_bottom = 1080.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="ParedesSeguras/WallRightBottom" unique_id=1907955246]
+position = Vector2(1940, 889.5)
+shape = SubResource("RectangleShape2D_vkl83")
+
+[node name="SpawnPoint" type="Marker2D" parent="." unique_id=423966773]
+position = Vector2(300, 540)
+
+[node name="TerminalModo" type="Area2D" parent="." unique_id=2008335468]
+script = ExtResource("1_w7ei0")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="TerminalModo" unique_id=1923186155]
+position = Vector2(600, 540)
+shape = SubResource("CircleShape2D_1tabr")
+
+[node name="ColorRect" type="ColorRect" parent="TerminalModo" unique_id=1872897083]
+offset_left = 558.0
+offset_top = 501.0
+offset_right = 643.0
+offset_bottom = 581.0
+
+[node name="PortaSaida" type="Area2D" parent="." unique_id=1899580598]
+
+[node name="Player" parent="." unique_id=2016198778 instance=ExtResource("3_ao6y7")]
+position = Vector2(207.66016, 678.82544)
+
+[node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=1763470985]
+color = Color(0, 0, 0, 1)

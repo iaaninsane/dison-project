@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://bnsfigjjn7eed"]
+
+[ext_resource type="Script" uid="uid://dohpeqg8qoqvq" path="res://FractalEnemy.cs" id="1_v7gp7"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_1tabr"]
+radius = 30.066593
+
+[node name="FractalEnemy" type="CharacterBody2D" unique_id=1233821980 groups=["Enimies"]]
+script = ExtResource("1_v7gp7")
+Speed = 60.0
+RecursionDepth = 4
+BaseBranchLength = 10.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1625980597 groups=["Enimies"]]
+scale = Vector2(0.2, 0.2)
+shape = SubResource("CircleShape2D_1tabr")

@@ -1,0 +1,126 @@
+[gd_scene format=3 uid="uid://c22bkl1vy8fnu"]
+
+[ext_resource type="PackedScene" uid="uid://cgy8y45ghbrod" path="res://player.tscn" id="1_ubfh8"]
+[ext_resource type="PackedScene" uid="uid://bnsfigjjn7eed" path="res://fractal_enemy.tscn" id="2_444vf"]
+[ext_resource type="PackedScene" uid="uid://dnml0ikmsh6m7" path="res://paredes_reativas.tscn" id="3_27ga2"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1tabr"]
+size = Vector2(40, 607)
+
+[sub_resource type="Environment" id="Environment_1tabr"]
+glow_enabled = true
+glow_intensity = 1.22
+
+[node name="Arena" type="Node2D" unique_id=1676385635]
+position = Vector2(-270.99997, -130.99998)
+scale = Vector2(1.7287916, 1.713394)
+
+[node name="Wall" type="StaticBody2D" parent="." unique_id=1580963806]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Wall" unique_id=783354225]
+position = Vector2(15, 298.5)
+shape = SubResource("RectangleShape2D_1tabr")
+
+[node name="ColorRect" type="ColorRect" parent="Wall" unique_id=1181269306]
+offset_left = -3.0
+offset_top = -3.0
+offset_right = 37.0
+offset_bottom = 37.0
+scale = Vector2(0.92, 15.120001)
+metadata/_edit_use_anchors_ = true
+
+[node name="Wall2" type="StaticBody2D" parent="." unique_id=246731988]
+position = Vector2(971, 0)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Wall2" unique_id=550040634]
+position = Vector2(15, 298.5)
+shape = SubResource("RectangleShape2D_1tabr")
+
+[node name="ColorRect" type="ColorRect" parent="Wall2" unique_id=227941180]
+offset_left = -3.0
+offset_top = -3.0
+offset_right = 37.0
+offset_bottom = 37.0
+scale = Vector2(0.92, 15.120001)
+metadata/_edit_use_anchors_ = true
+
+[node name="Wall3" type="StaticBody2D" parent="." unique_id=1869515625]
+position = Vector2(5, 640.00006)
+rotation = -1.5755507
+scale = Vector2(1.1152623, 1.6581672)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Wall3" unique_id=1416935927]
+position = Vector2(15, 298.5)
+shape = SubResource("RectangleShape2D_1tabr")
+
+[node name="ColorRect" type="ColorRect" parent="Wall3" unique_id=319077817]
+offset_left = -3.0
+offset_top = -3.0
+offset_right = 37.0
+offset_bottom = 37.0
+scale = Vector2(0.92, 15.120001)
+metadata/_edit_use_anchors_ = true
+
+[node name="Wall4" type="StaticBody2D" parent="." unique_id=1062721637]
+position = Vector2(1001, -39)
+rotation = 1.5716978
+scale = Vector2(1.0010129, 1.6800122)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Wall4" unique_id=320571801]
+position = Vector2(15, 298.5)
+shape = SubResource("RectangleShape2D_1tabr")
+
+[node name="ColorRect" type="ColorRect" parent="Wall4" unique_id=1589978442]
+offset_left = -3.0
+offset_top = -3.0
+offset_right = 37.0
+offset_bottom = 37.0
+scale = Vector2(0.92, 15.120001)
+metadata/_edit_use_anchors_ = true
+
+[node name="Player" parent="." unique_id=2016198778 instance=ExtResource("1_ubfh8")]
+position = Vector2(525, 307)
+
+[node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=1629723844]
+color = Color(0, 0, 0, 1)
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=1721038898]
+offset_left = 16.774717
+offset_top = -3.501821
+offset_right = 953.7747
+offset_bottom = 613.49817
+scale = Vector2(1.0408543, 0.99415445)
+metadata/_edit_use_anchors_ = true
+
+[node name="FractalEnemy" parent="." unique_id=1233821980 instance=ExtResource("2_444vf")]
+position = Vector2(790.7257, 329.1712)
+
+[node name="FractalEnemy2" parent="." unique_id=418310309 instance=ExtResource("2_444vf")]
+position = Vector2(831.79486, 234.62204)
+
+[node name="FractalEnemy3" parent="." unique_id=890822872 instance=ExtResource("2_444vf")]
+position = Vector2(664.6261, 416.71674)
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1007775404]
+environment = SubResource("Environment_1tabr")
+
+[node name="FractalEnemy4" parent="." unique_id=159602141 instance=ExtResource("2_444vf")]
+position = Vector2(750.235, 416.1331)
+
+[node name="FractalEnemy5" parent="." unique_id=1614918870 instance=ExtResource("2_444vf")]
+position = Vector2(539.68335, 209.52563)
+
+[node name="FractalEnemy6" parent="." unique_id=188002962 instance=ExtResource("2_444vf")]
+position = Vector2(740.98, 220.0311)
+
+[node name="FractalEnemy7" parent="." unique_id=330211008 instance=ExtResource("2_444vf")]
+position = Vector2(754.86255, 267.30566)
+
+[node name="FractalEnemy8" parent="." unique_id=233077035 instance=ExtResource("2_444vf")]
+position = Vector2(846.8343, 199.60382)
+
+[node name="FractalEnemy9" parent="." unique_id=1323974001 instance=ExtResource("2_444vf")]
+position = Vector2(745.0291, 322.16757)
+
+[node name="ParedesReativas" parent="." unique_id=1249560392 instance=ExtResource("3_27ga2")]
+position = Vector2(253.93457, 143.57466)
