@@ -55,7 +55,9 @@ Todos os valores abaixo estão **em teste** e não são definitivos (veja o avis
 | `RedrawsPerSecond` | 20 | (padrão) | `FractalEnemy.cs` | `[Export]`. Otimização do redesenho |
 | `NeonColor` | (0, 1, 0.5) | (padrão) | `FractalEnemy.cs` | `[Export]` |
 | `Speed` | 80 | 60 | `FractalEnemy.cs` | `[Export]`. Movimento fora do escopo desta spec |
-| Pulsação do ângulo | base 0.4 rad, ±0.15 rad, `Sin(_time × 4.0)` (~0,64 ciclo/s) | — | `FractalEnemy.cs` | **Fixo no código, ainda não é `[Export]`** |
+| `BaseBranchAngle` (ângulo médio dos ramos) | 0.4 rad | (padrão) | `FractalEnemy.cs` | `[Export]`. Centro da pulsação |
+| `PulseAmplitude` (oscilação do ângulo) | 0.15 rad | (padrão) | `FractalEnemy.cs` | `[Export]`. Quanto o ângulo varia para cada lado |
+| `PulseFrequency` (frequência da pulsação) | 0.6366 Hz | (padrão) | `FractalEnemy.cs` | `[Export]`. Pulsos completos por segundo; equivale ao antigo `Sin(_time × 4.0)` |
 | Duração do flash de dano | 0.1 s | — | `FractalEnemy.cs` | Fixo no código |
 
 ### Fase 2 (adiados, ainda não existem no código)
@@ -73,7 +75,7 @@ Todos os valores abaixo estão **em teste** e não são definitivos (veja o avis
 - O feixe sobrepõe vários inimigos ao mesmo tempo: cada um recebe dano de forma independente. (Coberto: `LightDamageArea` mantém uma lista de inimigos no feixe.)
 - O inimigo é removido da cena (troca de sala, `QueueFree`) enquanto está no feixe: não pode gerar erro nem deixar referência a um nó já liberado. (Coberto: `IsInstanceValid` antes de aplicar dano.)
 - O jogador troca entre modo manual e automático da lanterna: o dano continua dependendo só da sobreposição com o feixe. (Coberto: o feixe é filho de `FlashlightAnchor`.)
-- **A verificar:** um inimigo devolvido ao pool pode ficar um frame a mais na lista do feixe e receber `TakeDamage` com vida ≤ 0. Nesse caso `Die()` rodaria de novo e, com `OnDied` já zerado, chamaria `QueueFree()` num inimigo que o pool ainda guarda. Suspeita tirada da leitura do código, não reproduzida.
+- Um inimigo devolvido ao pool pode ficar um frame a mais na lista do feixe e receber `TakeDamage` com vida ≤ 0. Sem proteção, `Die()` rodaria de novo e, com `OnDied` já zerado, chamaria `QueueFree()` num inimigo que o pool ainda guarda. (Protegido pela trava `_isDead`; falta testar na `sala_ninho`.)
 - Fase 2: fragmentos recém-nascidos dentro do feixe ficam invulneráveis por um curto tempo.
 
 ## 6. Arquivos e cenas
@@ -94,7 +96,7 @@ Todos os valores abaixo estão **em teste** e não são definitivos (veja o avis
 - [ ] `dotnet build` sem erros
 - [ ] O inimigo aparece com a árvore fractal desenhada e com o ângulo dos ramos pulsando
 - [ ] Sob o feixe a vida cai na taxa configurada; fora do feixe não muda
-- [ ] Os atributos `[Export]` da seção 4 podem ser ajustados no Inspector sem mexer no código (a pulsação ainda é fixa no código)
+- [ ] Os atributos `[Export]` da seção 4 podem ser ajustados no Inspector sem mexer no código
 - [ ] Nenhum erro no painel Output/Debugger (Saída/Depurador) ao matar 10 inimigos seguidos e trocar de sala
 
 ### Fase 2 (adiada)
@@ -118,14 +120,13 @@ Todos os valores abaixo estão **em teste** e não são definitivos (veja o avis
 - Dano da luz: mantém o valor atual do código (35), ainda em teste.
 - Flash de dano: não mexer agora.
 - Divisão em fragmentos: adiada. Quando for feita, o próprio inimigo cria os fragmentos.
+- Pulsação configurável: ângulo base, amplitude e frequência viraram `[Export]`, com a frequência em Hz (ciclos por segundo).
 
 ### Em aberto
 
-- Transformar a frequência e a amplitude da pulsação em `[Export]`.
 - Limite de inimigos vivos ao mesmo tempo por sala, por desempenho (decidir na spec da `sala_ninho`).
 - O dano por tiros entra numa spec própria ou nesta?
 
 ### Observações do código (sem ação por enquanto)
 
 - `TakeDamage` é chamado a cada frame sob o feixe e soma `_time += 0.2f` a cada chamada. Com isso a pulsação acelera muito enquanto o inimigo está na luz, e o flash branco fica ligado o tempo todo. Registrado para revisar junto com o flash.
-- Há um `GD.Print` de depuração ativo em `LightDamageArea.OnBodyEntered`.

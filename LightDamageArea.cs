@@ -56,9 +56,8 @@ public partial class LightDamageArea : Area2D
         }
     }
 
-    private void OnBodyEntered(Node2D body) {
-
-        GD.Print("Objeto entrou na luz: " + body.Name + " (Grupo Walls: " + body.IsInGroup("Walls") + ")");
+    private void OnBodyEntered(Node2D body)
+    {
         // Detecta se o objeto que entrou é um inimigo fractal
         if (body is FractalEnemy enemy)
         {

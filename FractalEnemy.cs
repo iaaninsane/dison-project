@@ -8,10 +8,16 @@ public partial class FractalEnemy : CharacterBody2D
     [Export] public float BaseBranchLength = 25f; // Tamanho das ramificações principais
     [Export] public Color NeonColor = new Color(0f, 1f, 0.5f); // Verde bio-luminescente neon
 
+    // --- PULSAÇÃO DO ÂNGULO DOS RAMOS ---
+    [Export] public float BaseBranchAngle = 0.4f;    // Ângulo médio de abertura dos ramos (radianos)
+    [Export] public float PulseAmplitude = 0.15f;    // Quanto o ângulo oscila para cada lado (radianos)
+    [Export] public float PulseFrequency = 0.6366f;  // Pulsos completos por segundo (Hz)
+
        // --- NOVOS ATRIBUTOS DE SISTEMA DE COMBATE ---
     [Export] public float MaxHealth = 100f;
     private float _currentHealth;
     private float _damageFlashTimer = 0f;
+    private bool _isDead = false; // Garante que a morte aconteça uma única vez (ver Die)
 
     // Guardamos a cor original do neon para o efeito de piscar
     private Color _originalColor;
@@ -54,7 +60,7 @@ public partial class FractalEnemy : CharacterBody2D
         }
 
         // 2. Animação Orgânica (Pulsação Trigonométrica)
-        _currentBranchAngle = 0.4f + Mathf.Sin(_time * 4.0f) * 0.15f;
+        UpdateBranchPulse();
 
         // 3. Redesenha só na taxa configurada, não a cada tick de física
         _redrawTimer -= dt;
@@ -63,6 +69,12 @@ public partial class FractalEnemy : CharacterBody2D
             _redrawTimer = 1f / Mathf.Max(RedrawsPerSecond, 1f);
             QueueRedraw();
         }
+    }
+
+    private void UpdateBranchPulse()
+    {
+        // Mathf.Tau (2π) converte ciclos por segundo em radianos por segundo para o seno
+        _currentBranchAngle = BaseBranchAngle + Mathf.Sin(_time * PulseFrequency * Mathf.Tau) * PulseAmplitude;
     }
 
     public override void _Draw()
@@ -90,6 +102,8 @@ public partial class FractalEnemy : CharacterBody2D
 
     public void TakeDamage(float amount)
     {
+        if (_isDead) return; // Morto (ou guardado no pool) ignora dano
+
         _currentHealth -= amount;
 
         NeonColor = new Color(2f, 2f, 2f);
@@ -118,6 +132,8 @@ public partial class FractalEnemy : CharacterBody2D
 
     private void Die()
     {
+        _isDead = true;
+
         if (OnDied != null)
         {
             // Tem um pool "escutando" — devolve o inimigo pro estoque em vez de destruir
@@ -137,6 +153,7 @@ public partial class FractalEnemy : CharacterBody2D
     public void ActivateAt(Vector2 position)
     {
         GlobalPosition = position;
+        _isDead = false; // Inimigo reaproveitado do pool volta a estar vivo
         _currentHealth = MaxHealth;
         _damageFlashTimer = 0f;
         NeonColor = _originalColor;

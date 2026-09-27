@@ -24,16 +24,13 @@ texture = ExtResource("1_4flbx")
 shape = SubResource("RectangleShape2D_igrrh")
 
 [node name="FlashlightAnchor" type="Marker2D" parent="." unique_id=14750877]
-visible = false
 
 [node name="PointLight2D" type="PointLight2D" parent="FlashlightAnchor" unique_id=1957807818]
-visible = false
 position = Vector2(242.04297, 0)
 scale = Vector2(0.12867187, 0.18825)
 texture = ExtResource("3_i3pqv")
 
 [node name="LightDamageArea" type="Area2D" parent="FlashlightAnchor" unique_id=2125953411]
-visible = false
 script = ExtResource("4_hqtel")
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="FlashlightAnchor/LightDamageArea" unique_id=592234802]
