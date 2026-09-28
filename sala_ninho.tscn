@@ -68,5 +68,5 @@ script = ExtResource("4_yathq")
 FractalEnemyScene = ExtResource("5_yathq")
 SpawnPoints = [NodePath("../NinhoSpawn1"), NodePath("../NinhoSpawn2"), NodePath("../NinhoSpawn3"), NodePath("../NinhoSpawn4")]
 SpawnInterval = 0.25
-MaxConcurrentEnemies = 300
-PoolSize = 300
+MaxConcurrentEnemies = 400
+PoolSize = 400

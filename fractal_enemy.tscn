@@ -6,6 +6,7 @@
 radius = 30.066593
 
 [node name="FractalEnemy" type="CharacterBody2D" unique_id=1233821980 groups=["Enimies"]]
+motion_mode = 1
 script = ExtResource("1_v7gp7")
 Speed = 10.0
 RecursionDepth = 4
