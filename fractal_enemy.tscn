@@ -6,11 +6,13 @@
 radius = 30.066593
 
 [node name="FractalEnemy" type="CharacterBody2D" unique_id=1233821980 groups=["Enimies"]]
+collision_layer = 2
 motion_mode = 1
 script = ExtResource("1_v7gp7")
 Speed = 10.0
 RecursionDepth = 4
 BaseBranchLength = 8.0
+SeparationRadius = 20.0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1625980597 groups=["Enimies"]]
 scale = Vector2(0.2, 0.2)

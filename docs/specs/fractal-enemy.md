@@ -109,7 +109,7 @@ Todos os valores abaixo estão **em teste** e não são definitivos (veja o avis
 
 ## 9. Como testar (roteiro manual no editor)
 
-1. Abra `arena.tscn` (tem jogador, `CanvasModulate`, fundo e 9 inimigos) e rode a cena com F6.
+1. Abra `arena.tscn` (cena de protótipo, fora da demo; tem jogador, `CanvasModulate`, fundo e 9 inimigos) e rode a cena com F6.
 2. Confirme que os inimigos aparecem desenhados e com os ramos pulsando.
 3. Aponte a lanterna para um inimigo e confirme que ele morre depois de alguns segundos de luz contínua. Tire o feixe no meio do caminho e confirme que a vida não regenera.
 4. Mude `DamagePerSecond` da `LightDamageArea` (em `player.tscn`) no Inspector e confirme que o tempo para matar muda.
@@ -126,10 +126,10 @@ Todos os valores abaixo estão **em teste** e não são definitivos (veja o avis
 - Pulsação configurável: ângulo base, amplitude e frequência viraram `[Export]`, com a frequência em Hz (ciclos por segundo).
 - Motion Mode Floating no inimigo (seção 11).
 - Renderização em lote (R1–R3) adiada: o desenho não é o gargalo hoje (seção 11).
+- Movimento e colisão da horda: separação (B) e descanso de inimigos travados (A) implementados em `docs/specs/fractal-enemy-movement.md`. Os inimigos agora ficam na camada 2 (máscara 1).
 
 ### Em aberto
 
-- Spec própria de movimento e colisão dos inimigos, partindo do diagnóstico da seção 11 (direções A–D).
 - Limite de inimigos vivos ao mesmo tempo por sala, por desempenho (decidir na spec da `sala_ninho`).
 - O dano por tiros entra numa spec própria ou nesta?
 

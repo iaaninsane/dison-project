@@ -65,7 +65,8 @@ Adiado para depois da demo (não implemente nem prepare): "Vácuo como atalho es
 - Cenas: `player.tscn`, `fractal_enemy.tscn`, `wall_block.tscn`, `wall_segment.tscn`, `paredes_reativas.tscn`, `sala_entrada.tscn`, `sala_desfiladeiro.tscn`, `sala_ninho.tscn`, `arena.tscn`, `sala_desfiladeiro_TESTE_estrelas.tscn`
 - Assets: `lanterna.png`, `lanterna_reta.png`, `lanterna_torta.png`, `light.png`, `icon.svg`, pasta `shaders/`
 - Citados no handoff, mas não encontrados no projeto (confirmar antes de assumir): `sala_nucleo.tscn`, `MazeGenerator.cs` (gerador procedural de labirintos) e `DoorTrigger.cs` (transição de cena com `ChangeSceneToFile`).
-- Não documentados no handoff (ler o código antes de assumir o que fazem): `arena.tscn`, `SalaEntrada.cs`, `SalaDesfiladeiro.cs`, `sala_desfiladeiro_TESTE_estrelas.tscn`, `NinhoSpawner.cs`, `NinhoSpawnerPooled.cs`.
+- `arena.tscn`: cena de protótipo do início do projeto, usada só para validar ideias e mecânicas. Não será usada na demo (pode servir de bancada de teste, ex.: inimigos colocados à mão na cena).
+- Não documentados no handoff (ler o código antes de assumir o que fazem): `SalaEntrada.cs`, `SalaDesfiladeiro.cs`, `sala_desfiladeiro_TESTE_estrelas.tscn`, `NinhoSpawner.cs`, `NinhoSpawnerPooled.cs`.
 
 ## Referências
 

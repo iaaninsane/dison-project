@@ -12,6 +12,7 @@ light_mode = 1
 size = Vector2(10, 10)
 
 [node name="Player" type="CharacterBody2D" unique_id=2016198778 groups=["Player"]]
+collision_mask = 3
 script = ExtResource("1_onrkg")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=1046218862]
@@ -31,6 +32,7 @@ scale = Vector2(0.12867187, 0.18825)
 texture = ExtResource("3_i3pqv")
 
 [node name="LightDamageArea" type="Area2D" parent="FlashlightAnchor" unique_id=2125953411]
+collision_mask = 3
 script = ExtResource("4_hqtel")
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="FlashlightAnchor/LightDamageArea" unique_id=592234802]

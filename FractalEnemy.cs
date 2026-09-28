@@ -13,6 +13,18 @@ public partial class FractalEnemy : CharacterBody2D
     [Export] public float PulseAmplitude = 0.15f;    // Quanto o ângulo oscila para cada lado (radianos)
     [Export] public float PulseFrequency = 0.6366f;  // Pulsos completos por segundo (Hz)
 
+    // --- SEPARAÇÃO (horda sem colisão física entre inimigos) ---
+    [Export] public float SeparationRadius = 16f;    // Distância em que vizinhos se empurram (px)
+    [Export] public float SeparationStrength = 10f;  // Velocidade máxima de afastamento (px/s)
+    private Vector2 _tieBreakDirection;              // Direção única deste inimigo, para desempate
+
+    // --- BLOQUEIO (inimigo travado para de empurrar) ---
+    [Export] public float RestSpeedThreshold = 2f;   // Abaixo disso (px/s): nada a mover, ou conta como travado
+    [Export] public float BlockedRestTime = 0.25f;   // Tempo parado depois de travar, antes de tentar de novo (s)
+    [Export] public float WakeAngleDegrees = 30f;    // Se a direção desejada girar mais que isso, acorda antes
+    private float _restTimer = 0f;
+    private Vector2 _blockedDirection = Vector2.Zero;
+
        // --- NOVOS ATRIBUTOS DE SISTEMA DE COMBATE ---
     [Export] public float MaxHealth = 100f;
     private float _currentHealth;
@@ -36,6 +48,17 @@ public partial class FractalEnemy : CharacterBody2D
     public Action<FractalEnemy> OnDied;
     private CollisionShape2D _collisionShape;
 
+    // Par simétrico: entrou na árvore de cena → inscreve; saiu → remove
+    public override void _EnterTree()
+    {
+        FractalSwarm.Register(this);
+    }
+
+    public override void _ExitTree()
+    {
+        FractalSwarm.Unregister(this);
+    }
+
     public override void _Ready()
     {
         // Busca segura pelo Player na árvore de nós da cena principal
@@ -43,6 +66,7 @@ public partial class FractalEnemy : CharacterBody2D
         _currentHealth = MaxHealth;
         _originalColor = NeonColor;
         _collisionShape = GetNodeOrNull<CollisionShape2D>("CollisionShape2D");
+        _tieBreakDirection = ComputeTieBreakDirection();
     }
 
     public override void _PhysicsProcess(double delta)
@@ -51,13 +75,8 @@ public partial class FractalEnemy : CharacterBody2D
         _time += dt;
         UpdateDamageFlash(dt);
 
-        // 1. IA de Perseguição Simples
-        if (_player != null)
-        {
-            Vector2 direction = (_player.GlobalPosition - GlobalPosition).Normalized();
-            Velocity = direction * Speed;
-            MoveAndSlide();
-        }
+        // 1. Movimento
+        UpdateMovement(dt);
 
         // 2. Animação Orgânica (Pulsação Trigonométrica)
         UpdateBranchPulse();
@@ -69,6 +88,68 @@ public partial class FractalEnemy : CharacterBody2D
             _redrawTimer = 1f / Mathf.Max(RedrawsPerSecond, 1f);
             QueueRedraw();
         }
+    }
+
+    private void UpdateMovement(float dt)
+    {
+        if (_player == null) return;
+
+        Vector2 desired = ComputeChaseVelocity() + ComputeSeparationVelocity(); // Decidir: perseguir + afastar dos vizinhos
+        if (ShouldRest(desired, dt))                                            // Parado: sem MoveAndSlide
+        {
+            Velocity = Vector2.Zero;
+            return;
+        }
+
+        Velocity = desired;
+        MoveAndSlide();          // Executar o movimento
+        CheckIfBlocked(desired); // Travou? Começa a descansar
+    }
+
+    // Decide se fica parado neste passo (e avança o tempo de descanso)
+    private bool ShouldRest(Vector2 desired, float dt)
+    {
+        if (desired.Length() < RestSpeedThreshold) return true; // nada a mover
+        if (_restTimer <= 0f) return false;                      // não está descansando
+
+        _restTimer -= dt;
+        float wakeDot = Mathf.Cos(Mathf.DegToRad(WakeAngleDegrees));
+        if (desired.Normalized().Dot(_blockedDirection) < wakeDot)
+        {
+            _restTimer = 0f; // a direção mudou: acorda antes do tempo
+            return false;
+        }
+        return true;
+    }
+
+    // Queria andar, mas quase não saiu do lugar? Então está travado
+    private void CheckIfBlocked(Vector2 desired)
+    {
+        if (GetRealVelocity().Length() >= RestSpeedThreshold) return; // conseguiu andar
+
+        _restTimer = BlockedRestTime;
+        _blockedDirection = desired.Normalized();
+    }
+
+    private Vector2 ComputeChaseVelocity()
+    {
+        Vector2 direction = (_player.GlobalPosition - GlobalPosition).Normalized();
+        return direction * Speed;
+    }
+
+    private Vector2 ComputeSeparationVelocity()
+    {
+        Vector2 push = FractalSwarm.ComputeSeparation(this, GlobalPosition, SeparationRadius, _tieBreakDirection);
+        return push * SeparationStrength;
+    }
+
+    // Direção fixa derivada do ID, usada quando dois inimigos ocupam o mesmo ponto
+    private Vector2 ComputeTieBreakDirection()
+    {
+        // Hash multiplicativo de Knuth: espalha IDs próximos em ângulos bem diferentes
+        ulong hash = GetInstanceId() * 2654435761UL;
+        float angle = (hash % 3600) / 3600f * Mathf.Tau;
+        return Vector2.Right.Rotated(angle);
     }
 
     private void UpdateBranchPulse()
@@ -133,6 +214,7 @@ public partial class FractalEnemy : CharacterBody2D
     private void Die()
     {
         _isDead = true;
+        FractalSwarm.Unregister(this); // Sai do registro na hora, sem esperar o fim do frame
 
         if (OnDied != null)
         {
@@ -159,6 +241,10 @@ public partial class FractalEnemy : CharacterBody2D
         NeonColor = _originalColor;
         _time = 0f;
         Velocity = Vector2.Zero;
+        _restTimer = 0f;                     // Reaproveitado do pool começa acordado
+        _blockedDirection = Vector2.Zero;
+
+        FractalSwarm.Register(this);
 
         Visible = true;
         SetPhysicsProcess(true);
@@ -170,6 +256,8 @@ public partial class FractalEnemy : CharacterBody2D
 
     public void DeactivateToPool()
     {
+        FractalSwarm.Unregister(this);
+
         Visible = false;
         SetPhysicsProcess(false);
         Velocity = Vector2.Zero;
