@@ -29,6 +29,10 @@ O anticorpo fractal é o inimigo da demo. Ele é desenhado por código como uma 
 - Fragmentos recém-nascidos ficam invulneráveis por um curto tempo, para não haver morte em cascata no mesmo instante.
 - Ao ser reaproveitado pelo pool (`ActivateAt`), o inimigo volta para a geração 0.
 - Quem cria os fragmentos: decidido que será o próprio inimigo. Os fragmentos ficam fora do pool e do `MaxConcurrentEnemies`.
+- Quantidade de fragmentos: `[Export]` `FragmentCount` (padrão 2), distribuídos em ângulos iguais (com 2, opostos).
+- Direção da divisão: ângulo aleatório a cada morte.
+- Velocidade (`Speed`) e raio de separação (`SeparationRadius`) dos fragmentos: iguais aos do pai por enquanto. **A testar no futuro:** outras possibilidades (ex.: proporcionais à geração, "menor = mais rápido").
+- Testes da fase 2 na `sala_ninho`: baixar o `MaxConcurrentEnemies` (ex.: 100) para medir com calma, já que os fragmentos podem levar o total de inimigos vivos bem acima do limite.
 
 ## 3. Fora do escopo
 

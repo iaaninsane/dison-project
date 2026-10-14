@@ -98,29 +98,8 @@ position = Vector2(790.7257, 329.1712)
 [node name="FractalEnemy2" parent="." unique_id=418310309 instance=ExtResource("2_444vf")]
 position = Vector2(831.79486, 234.62204)
 
-[node name="FractalEnemy3" parent="." unique_id=890822872 instance=ExtResource("2_444vf")]
-position = Vector2(664.6261, 416.71674)
-
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1007775404]
 environment = SubResource("Environment_1tabr")
-
-[node name="FractalEnemy4" parent="." unique_id=159602141 instance=ExtResource("2_444vf")]
-position = Vector2(750.235, 416.1331)
-
-[node name="FractalEnemy5" parent="." unique_id=1614918870 instance=ExtResource("2_444vf")]
-position = Vector2(539.68335, 209.52563)
-
-[node name="FractalEnemy6" parent="." unique_id=188002962 instance=ExtResource("2_444vf")]
-position = Vector2(740.98, 220.0311)
-
-[node name="FractalEnemy7" parent="." unique_id=330211008 instance=ExtResource("2_444vf")]
-position = Vector2(754.86255, 267.30566)
-
-[node name="FractalEnemy8" parent="." unique_id=233077035 instance=ExtResource("2_444vf")]
-position = Vector2(846.8343, 199.60382)
-
-[node name="FractalEnemy9" parent="." unique_id=1323974001 instance=ExtResource("2_444vf")]
-position = Vector2(745.0291, 322.16757)
 
 [node name="ParedesReativas" parent="." unique_id=1249560392 instance=ExtResource("3_27ga2")]
 position = Vector2(253.93457, 143.57466)

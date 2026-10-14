@@ -9,11 +9,11 @@
 [node name="SalaNinho" type="Node2D" unique_id=1370461526]
 
 [node name="Background" type="ColorRect" parent="." unique_id=708581767]
+visible = false
 offset_right = 1920.0
 offset_bottom = 1080.0
 
 [node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=1326125108]
-visible = false
 color = Color(0, 0, 0, 1)
 
 [node name="WallSegment1" parent="." unique_id=1859212837 instance=ExtResource("1_qd78b")]
@@ -68,5 +68,5 @@ script = ExtResource("4_yathq")
 FractalEnemyScene = ExtResource("5_yathq")
 SpawnPoints = [NodePath("../NinhoSpawn1"), NodePath("../NinhoSpawn2"), NodePath("../NinhoSpawn3"), NodePath("../NinhoSpawn4")]
 SpawnInterval = 0.25
-MaxConcurrentEnemies = 400
-PoolSize = 400
+MaxConcurrentEnemies = 200
+PoolSize = 200

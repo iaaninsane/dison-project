@@ -25,6 +25,20 @@ public partial class FractalEnemy : CharacterBody2D
     private float _restTimer = 0f;
     private Vector2 _blockedDirection = Vector2.Zero;
 
+    // --- GERAÇÕES (divisão celular) ---
+    [Export] public int Generation = 0;                     // 0 = original; fragmentos são 1, 2...
+    [Export] public float HealthFactorPerGeneration = 0.5f; // Vida multiplicada a cada geração
+    [Export] public float ScaleFactorPerGeneration = 0.6f;  // Tamanho multiplicado a cada geração
+    [Export] public int DepthLossPerGeneration = 1;         // Níveis da árvore perdidos a cada geração
+    [Export] public int MaxGeneration = 2;                  // Geração que morre sem se dividir
+    [Export] public int FragmentCount = 2;                  // Fragmentos gerados em cada divisão
+    [Export] public float FragmentSpawnOffset = 8f;         // Distância do centro em que cada fragmento nasce (px)
+    [Export] public float SpawnInvulnerability = 0.3f;      // Tempo imune a dano ao nascer como fragmento (s)
+    private float _invulnerableTimer = 0f;
+    private int _drawDepth;                                 // Profundidade da árvore desta geração
+    private float _drawBranchLength;                        // Ramo principal desta geração
+    private Vector2 _baseCollisionScale;                    // Escala original do nó de colisão (da cena)
+
        // --- NOVOS ATRIBUTOS DE SISTEMA DE COMBATE ---
     [Export] public float MaxHealth = 100f;
     private float _currentHealth;
@@ -63,10 +77,25 @@ public partial class FractalEnemy : CharacterBody2D
     {
         // Busca segura pelo Player na árvore de nós da cena principal
         _player = GetTree().GetFirstNodeInGroup("Player") as Node2D;
-        _currentHealth = MaxHealth;
         _originalColor = NeonColor;
         _collisionShape = GetNodeOrNull<CollisionShape2D>("CollisionShape2D");
+        _baseCollisionScale = _collisionShape?.Scale ?? Vector2.One;
         _tieBreakDirection = ComputeTieBreakDirection();
+        ApplyGeneration();
+    }
+
+    // Calcula os valores desta geração a partir da configuração base (os [Export] não são alterados)
+    private void ApplyGeneration()
+    {
+        float scale = Mathf.Pow(ScaleFactorPerGeneration, Generation);
+
+        _currentHealth = MaxHealth * Mathf.Pow(HealthFactorPerGeneration, Generation);
+        _drawDepth = Mathf.Max(1, RecursionDepth - DepthLossPerGeneration * Generation);
+        _drawBranchLength = BaseBranchLength * scale;
+        _invulnerableTimer = Generation > 0 ? SpawnInvulnerability : 0f; // só fragmentos nascem imunes
+
+        if (_collisionShape == null) return;
+        _collisionShape.Scale = _baseCollisionScale * scale;
     }
 
     public override void _PhysicsProcess(double delta)
@@ -74,6 +103,7 @@ public partial class FractalEnemy : CharacterBody2D
         float dt = (float)delta;
         _time += dt;
         UpdateDamageFlash(dt);
+        UpdateInvulnerability(dt);
 
         // 1. Movimento
         UpdateMovement(dt);
@@ -160,10 +190,10 @@ public partial class FractalEnemy : CharacterBody2D
 
     public override void _Draw()
     {
-        DrawFractalBranch(Vector2.Zero, Vector2.Up * BaseBranchLength, RecursionDepth);
-        DrawFractalBranch(Vector2.Zero, Vector2.Down * BaseBranchLength, RecursionDepth);
-        DrawFractalBranch(Vector2.Zero, Vector2.Left * BaseBranchLength, RecursionDepth);
-        DrawFractalBranch(Vector2.Zero, Vector2.Right * BaseBranchLength, RecursionDepth);
+        DrawFractalBranch(Vector2.Zero, Vector2.Up * _drawBranchLength, _drawDepth);
+        DrawFractalBranch(Vector2.Zero, Vector2.Down * _drawBranchLength, _drawDepth);
+        DrawFractalBranch(Vector2.Zero, Vector2.Left * _drawBranchLength, _drawDepth);
+        DrawFractalBranch(Vector2.Zero, Vector2.Right * _drawBranchLength, _drawDepth);
     }
 
     private void DrawFractalBranch(Vector2 start, Vector2 direction, int depth)
@@ -184,6 +214,7 @@ public partial class FractalEnemy : CharacterBody2D
     public void TakeDamage(float amount)
     {
         if (_isDead) return; // Morto (ou guardado no pool) ignora dano
+        if (_invulnerableTimer > 0f) return; // Recém-nascido: imune por um instante
 
         _currentHealth -= amount;
 
@@ -197,6 +228,12 @@ public partial class FractalEnemy : CharacterBody2D
         {
             Die();
         }
+    }
+
+    private void UpdateInvulnerability(float dt)
+    {
+        if (_invulnerableTimer <= 0f) return;
+        _invulnerableTimer -= dt;
     }
 
     private void UpdateDamageFlash(float delta)
@@ -215,6 +252,7 @@ public partial class FractalEnemy : CharacterBody2D
     {
         _isDead = true;
         FractalSwarm.Unregister(this); // Sai do registro na hora, sem esperar o fim do frame
+        SpawnFragments();              // Divisão celular (se ainda não for a última geração)
 
         if (OnDied != null)
         {
@@ -230,13 +268,39 @@ public partial class FractalEnemy : CharacterBody2D
         }
     }
 
+    // Divisão celular: cria os fragmentos da próxima geração em volta da posição atual
+    private void SpawnFragments()
+    {
+        if (Generation >= MaxGeneration) return; // última geração: morre sem se dividir
+        if (FragmentCount <= 0) return;
+
+        Node parent = GetParent();
+        if (parent == null) return;
+
+        var scene = GD.Load<PackedScene>(SceneFilePath); // a própria cena (a Godot guarda em cache)
+        if (scene == null) return;
+
+        float startAngle = GD.Randf() * Mathf.Tau;  // ângulo aleatório a cada morte
+        float angleStep = Mathf.Tau / FragmentCount; // ângulos iguais (2 → opostos)
+
+        for (int i = 0; i < FragmentCount; i++)
+        {
+            var fragment = scene.Instantiate<FractalEnemy>();
+            fragment.Generation = Generation + 1;    // definido ANTES de entrar na árvore
+            Vector2 offset = Vector2.Right.Rotated(startAngle + angleStep * i) * FragmentSpawnOffset;
+            fragment.Position = Position + offset;   // mesmo pai → mesmo espaço de coordenadas
+            parent.CallDeferred(Node.MethodName.AddChild, fragment);
+        }
+    }
+
     // --- MÉTODOS NOVOS, USADOS SÓ PELO SPAWNER COM POOLING ---
 
     public void ActivateAt(Vector2 position)
     {
         GlobalPosition = position;
         _isDead = false; // Inimigo reaproveitado do pool volta a estar vivo
-        _currentHealth = MaxHealth;
+        Generation = 0;  // Do pool sempre sai um inimigo original
+        ApplyGeneration();
         _damageFlashTimer = 0f;
         NeonColor = _originalColor;
         _time = 0f;
