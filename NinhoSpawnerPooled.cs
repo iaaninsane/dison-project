@@ -13,6 +13,7 @@ public partial class NinhoSpawnerPooled : Node2D
     [Export] public float SpawnInterval = 2.5f;
     [Export] public int MaxConcurrentEnemies = 8;
     [Export] public int PoolSize = 100; // Deixe igual ou um pouco acima do MaxConcurrentEnemies que for testar
+    [Export] public int MaxTotalEnemies = 350; // Teto de inimigos vivos na cena (ninho + fragmentos)
 
     private readonly List<FractalEnemy> _pool = new();
     private readonly List<FractalEnemy> _activeEnemies = new();
@@ -61,6 +62,8 @@ public partial class NinhoSpawnerPooled : Node2D
         {
             return;
         }
+
+        if (FractalSwarm.Count >= MaxTotalEnemies) return; // Orçamento total atingido: o ninho espera
 
         if (_pool.Count == 0)
         {

@@ -60,9 +60,10 @@ Adiado para depois da demo (não implemente nem prepare): "Vácuo como atalho es
 
 ## Estrutura atual (`res://`, tudo na raiz)
 
-- Scripts: `Player.cs`, `WallSensitive.cs`, `LightDamageArea.cs`, `FractalEnemy.cs`, `TerminalModo.cs`, `SalaEntrada.cs`, `SalaDesfiladeiro.cs`, `NinhoSpawner.cs`, `NinhoSpawnerPooled.cs`
-- Spawners de inimigos: `NinhoSpawner.cs` cria com `Instantiate` e destrói com `QueueFree`. `NinhoSpawnerPooled.cs` é a versão de teste com object pooling (reaproveita inimigos via `ActivateAt`/`DeactivateToPool` e o callback `OnDied` do `FractalEnemy`). A `sala_ninho.tscn` usa a versão com pool.
-- Cenas: `player.tscn`, `fractal_enemy.tscn`, `wall_block.tscn`, `wall_segment.tscn`, `paredes_reativas.tscn`, `sala_entrada.tscn`, `sala_desfiladeiro.tscn`, `sala_ninho.tscn`, `arena.tscn`, `sala_desfiladeiro_TESTE_estrelas.tscn`
+- Scripts: `Player.cs`, `WallSensitive.cs`, `LightDamageArea.cs`, `FractalEnemy.cs`, `FractalSwarm.cs`, `TerminalModo.cs`, `SalaEntrada.cs`, `SalaDesfiladeiro.cs`, `NinhoSpawner.cs`, `NinhoSpawnerPooled.cs`
+- Spawners de inimigos: `NinhoSpawner.cs` cria com `Instantiate` e destrói com `QueueFree`. `NinhoSpawnerPooled.cs` é a versão de teste com object pooling (reaproveita inimigos via `ActivateAt`/`DeactivateToPool` e o callback `OnDied` do `FractalEnemy`). A `sala_ninho.tscn` usa a versão com pool. Os dois têm `MaxConcurrentEnemies` (inimigos do ninho, game design) e `MaxTotalEnemies` (teto de vivos na cena contando fragmentos, via `FractalSwarm.Count`; orçamento de física).
+- Registro da horda: `FractalSwarm.cs` (classe estática) guarda os inimigos ativos e calcula a separação entre eles. Inimigos ficam na camada de colisão 2; `Player` e `LightDamageArea` na camada 1 com máscara 1 e 2.
+- Cenas: `player.tscn`, `fractal_enemy.tscn`, `wall_block.tscn`, `wall_segment.tscn`, `paredes_reativas.tscn`, `sala_entrada.tscn`, `sala_desfiladeiro.tscn`, `sala_ninho.tscn`, `arena.tscn`, `sala_desfiladeiro_TESTE_estrelas.tscn`, `cover_pillar.tscn` (pilar de cobertura usado na `sala_ninho`)
 - Assets: `lanterna.png`, `lanterna_reta.png`, `lanterna_torta.png`, `light.png`, `icon.svg`, pasta `shaders/`
 - Citados no handoff, mas não encontrados no projeto (confirmar antes de assumir): `sala_nucleo.tscn`, `MazeGenerator.cs` (gerador procedural de labirintos) e `DoorTrigger.cs` (transição de cena com `ChangeSceneToFile`).
 - `arena.tscn`: cena de protótipo do início do projeto, usada só para validar ideias e mecânicas. Não será usada na demo (pode servir de bancada de teste, ex.: inimigos colocados à mão na cena).
@@ -70,5 +71,5 @@ Adiado para depois da demo (não implemente nem prepare): "Vácuo como atalho es
 
 ## Referências
 
-- Specs das mecânicas: `docs/specs/` (modelo em `_TEMPLATE.md`).
+- Specs das mecânicas: `docs/specs/` (modelo em `docs/specs/_TEMPLATE.md`).
 - Contexto de design e decisões: `docs/HANDOFF.md` (pode estar desatualizado onde divergir do código).

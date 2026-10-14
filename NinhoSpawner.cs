@@ -9,6 +9,7 @@ public partial class NinhoSpawner : Node2D
     [Export] public Marker2D[] SpawnPoints;           // Arraste os 4 NinhoSpawn aqui no Inspector
     [Export] public float SpawnInterval = 2.5f;       // Intervalo entre tentativas de spawn (segundos)
     [Export] public int MaxConcurrentEnemies = 8;     // Teto de inimigos vivos ao mesmo tempo
+    [Export] public int MaxTotalEnemies = 350;        // Teto de inimigos vivos na cena (ninho + fragmentos)
  
     // Mesma estratégia de lista + IsInstanceValid já usada no LightDamageArea.cs,
     // pra não depender do grupo gravado na cena (evita repetir o problema do "Walls"/"Enimies").
@@ -47,6 +48,8 @@ public partial class NinhoSpawner : Node2D
         {
             return; // Teto atingido, espera algum morrer pra abrir vaga
         }
+
+        if (FractalSwarm.Count >= MaxTotalEnemies) return; // Orçamento total atingido: o ninho espera
  
         // Escolhe um dos ninhos aleatoriamente
         int index = _rng.Next(SpawnPoints.Length);

@@ -2,7 +2,7 @@
 
 - **Status:** proposta. Não implementar antes de concluir a etapa 1.
 - **Etapa:** 2 (arte e shaders)
-- **Depende de:** `docs/specs/fractal-enimy.md` (fase 1 concluída). Se a fase 2 da divisão celular já existir, esta spec precisa cobrir os fragmentos (seção 5).
+- **Depende de:** `docs/specs/fractal-enemy.md` (fases 1 e 2 implementadas). Como a divisão celular (fase 2) já existe, esta spec precisa cobrir os fragmentos (seção 5): profundidade e tamanho variam por geração (`_drawDepth`, `_drawBranchLength` em `FractalEnemy.cs`).
 
 > **Valores em teste:** como nas demais specs da demo, os `[Export]` e os números desta spec são pontos de partida, não valores definitivos.
 
@@ -27,7 +27,7 @@ Duas técnicas combinadas:
 
 ## 3. Fora do escopo
 
-- Mecânica de dano, vida, morte e pool (spec `fractal-enimy.md`).
+- Mecânica de dano, vida, morte e pool (spec `fractal-enemy.md`).
 - Movimento e colisão da horda (spec `fractal-enemy-movement.md`).
 - Divisão celular (fase 2 da spec original), exceto o suporte visual a profundidades menores.
 - Partículas e iluminação na morte (spec própria).
