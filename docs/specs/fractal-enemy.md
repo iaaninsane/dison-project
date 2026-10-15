@@ -1,6 +1,6 @@
 # Spec: Inimigo fractal (dano por luz e divisão celular)
 
-- **Status:** implementada (fases 1 e 2), valores em teste. Falta concluir o roteiro de teste da seção 9 para marcar a seção 8.
+- **Status:** validada (fase 2) e implementada (fase 1), valores em teste. Pendências na seção 8: dois itens da fase 1 e o teste de troca de sala, que só pode ser feito quando existir transição entre salas.
 - **Etapa:** 1 (mecânica)
 - **Depende de:** lanterna e `LightDamageArea.cs` (dano por luz). Nenhuma outra spec.
 
@@ -93,7 +93,7 @@ Com os valores atuais da cena (`RecursionDepth` 4, `BaseBranchLength` 8, `MaxHea
 - O feixe sobrepõe vários inimigos ao mesmo tempo: cada um recebe dano de forma independente. (Coberto: `LightDamageArea` mantém uma lista de inimigos no feixe.)
 - O inimigo é removido da cena (troca de sala, `QueueFree`) enquanto está no feixe: não pode gerar erro nem deixar referência a um nó já liberado. (Coberto: `IsInstanceValid` antes de aplicar dano.)
 - O jogador troca entre modo manual e automático da lanterna: o dano continua dependendo só da sobreposição com o feixe. (Coberto: o feixe é filho de `FlashlightAnchor`.)
-- Um inimigo devolvido ao pool pode ficar um frame a mais na lista do feixe e receber `TakeDamage` com vida ≤ 0. Sem proteção, `Die()` rodaria de novo e, com `OnDied` já zerado, chamaria `QueueFree()` num inimigo que o pool ainda guarda. (Protegido pela trava `_isDead`; falta testar na `sala_ninho`.)
+- Um inimigo devolvido ao pool pode ficar um frame a mais na lista do feixe e receber `TakeDamage` com vida ≤ 0. Sem proteção, `Die()` rodaria de novo e, com `OnDied` já zerado, chamaria `QueueFree()` num inimigo que o pool ainda guarda. (Protegido pela trava `_isDead`; testado na `sala_ninho` em out/2026: massacre sem erros e inimigo reaproveitado do pool renasce vivo e vulnerável.)
 - Fragmentos que nascem dentro do feixe: imunes por `SpawnInvulnerability`; continuam na lista do feixe (a detecção funciona durante a imunidade) e passam a tomar dano depois.
 - Recurso de colisão compartilhado: o `CircleShape2D` da cena é o mesmo objeto para todas as instâncias. O tamanho por geração escala o **nó** `CollisionShape2D` (individual), nunca o raio do recurso.
 - Troca de sala no mesmo frame de uma divisão: o `AddChild` adiado pode não executar e os fragmentos ficam como nós órfãos (monitor "Nós Órfãos"). Improvável; observar nos testes.
@@ -123,19 +123,19 @@ Com os valores atuais da cena (`RecursionDepth` 4, `BaseBranchLength` 8, `MaxHea
 ### Fase 1
 
 - [x] `dotnet build` sem erros
-- [ ] O inimigo aparece com a árvore fractal desenhada e com o ângulo dos ramos pulsando
-- [ ] Sob o feixe a vida cai na taxa configurada; fora do feixe não muda
-- [ ] Os atributos `[Export]` da seção 4 podem ser ajustados no Inspector sem mexer no código
-- [ ] Nenhum erro no painel Output/Debugger (Saída/Depurador) ao matar 10 inimigos seguidos e trocar de sala
+- [x] O inimigo aparece com a árvore fractal desenhada e com o ângulo dos ramos pulsando
+- [ ] Sob o feixe a vida cai na taxa configurada; fora do feixe não muda (a morte sob o feixe foi confirmada; falta o passo 3 da seção 9: tirar o feixe no meio e confirmar que a vida não regenera)
+- [x] Os atributos `[Export]` da seção 4 podem ser ajustados no Inspector sem mexer no código
+- [ ] Nenhum erro no painel Output/Debugger (Saída/Depurador) ao matar 10 inimigos seguidos e trocar de sala (sem erros ao matar, confirmado; a troca de sala ainda não existe no jogo)
 
 ### Fase 2
 
 - [x] `dotnet build` sem erros
-- [ ] Ao morrer, a geração 0 e a geração 1 geram 2 fragmentos menores; a geração 2 não gera nada (divisão observada indiretamente nos testes de desempenho; falta o roteiro da seção 9)
-- [ ] Fragmentos nascidos dentro do feixe ficam imunes por `SpawnInvulnerability` antes de perder vida
-- [ ] Inimigo reaproveitado do pool volta como geração 0
-- [ ] Os parâmetros de geração podem ser ajustados no Inspector
-- [ ] "Nós Órfãos" = 0 depois de matar a horda e trocar de sala
+- [x] Ao morrer, a geração 0 e a geração 1 geram 2 fragmentos menores; a geração 2 não gera nada
+- [x] Fragmentos nascidos dentro do feixe ficam imunes por `SpawnInvulnerability` antes de perder vida
+- [x] Inimigo reaproveitado do pool volta como geração 0 (teste com `MaxConcurrentEnemies` = `PoolSize` = 3: renasce com tamanho normal, vida cheia, vulnerável e se divide de novo)
+- [x] Os parâmetros de geração podem ser ajustados no Inspector
+- [x] "Nós Órfãos" = 0 depois de matar a horda (testado em massacre e fechando o jogo no meio dele, sem aviso de vazamento na Saída). **Refazer com troca de sala** quando existir transição entre salas.
 - [x] Com 200 no ninho e teto total de 350, o FPS não cai abaixo de 100 (V-Sync desligado) mesmo em massacre (pico de 380 inimigos ativos)
 
 ## 9. Como testar (roteiro manual no editor)
@@ -166,6 +166,8 @@ Com os valores atuais da cena (`RecursionDepth` 4, `BaseBranchLength` 8, `MaxHea
 
 ### Em aberto
 
+- Quando a transição entre salas existir: refazer os testes de "trocar de sala" da seção 8 (erros no Output e "Nós Órfãos" = 0, inclusive trocando de sala no meio de uma divisão).
+
 - Valores definitivos de `MaxConcurrentEnemies` e `MaxTotalEnemies` por sala (decidir na spec da `sala_ninho`).
 - O dano por tiros entra numa spec própria ou nesta?
 
@@ -174,7 +176,7 @@ Com os valores atuais da cena (`RecursionDepth` 4, `BaseBranchLength` 8, `MaxHea
 - `TakeDamage` é chamado a cada frame sob o feixe e soma `_time += 0.2f` a cada chamada. Com isso a pulsação acelera muito enquanto o inimigo está na luz, e o flash branco fica ligado o tempo todo. Registrado para revisar junto com o flash.
 - O `CollisionShape2D` do inimigo tem um círculo de raio 30 com o nó escalado para 0.2 (raio efetivo de ~6 px). A recomendação da Godot é ajustar o raio da forma em vez de escalar o nó de colisão.
 - O `Player` também usa Motion Mode Grounded (padrão). Avaliar Floating na spec do jogador; afeta como ele desliza nas paredes (game feel).
-- `sala_ninho.tscn`: o `Background` (`ColorRect` de fundo) está **oculto por decisão temporária do dev** (out/2026), contrariando a regra do CLAUDE.md. Será revertido depois; não "corrigir" sem combinar.
+- `sala_ninho.tscn`: a iluminação está **em teste pelo dev** (out/2026). A visibilidade do `Background` e do `CanvasModulate` pode estar alterada de propósito (o dev está avaliando não usar escuridão total nessa sala), contrariando a regra do CLAUDE.md. Nada definitivo; não "corrigir" sem combinar. Testes que dependem de escuridão devem usar a `arena.tscn`.
 
 ## 11. Diagnóstico de desempenho (set/2026)
 

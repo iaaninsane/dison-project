@@ -39,6 +39,12 @@ public partial class FractalEnemy : CharacterBody2D
     private float _drawBranchLength;                        // Ramo principal desta geração
     private Vector2 _baseCollisionScale;                    // Escala original do nó de colisão (da cena)
 
+    // --- BIOMASSA (recompensa de quem morre sem se dividir) ---
+    [Export] public int BiomassPerKill = 1;                 // Biomassa do orbe solto na morte
+    [Export] public float BiomassDropScatter = 6f;          // Deslocamento aleatório do orbe ao nascer (px)
+    [Export] public float BiomassOrbLifetime = 30f;         // Tempo até um orbe não coletado sumir (s)
+    [Export] public int MaxBiomassOrbs = 300;               // Teto de orbes na cena; o mais antigo some primeiro
+
        // --- NOVOS ATRIBUTOS DE SISTEMA DE COMBATE ---
     [Export] public float MaxHealth = 100f;
     private float _currentHealth;
@@ -252,7 +258,8 @@ public partial class FractalEnemy : CharacterBody2D
     {
         _isDead = true;
         FractalSwarm.Unregister(this); // Sai do registro na hora, sem esperar o fim do frame
-        SpawnFragments();              // Divisão celular (se ainda não for a última geração)
+        bool divided = SpawnFragments(); // Divisão celular (se ainda não for a última geração)
+        if (!divided) DropBiomass();     // Quem não se divide solta biomassa
 
         if (OnDied != null)
         {
@@ -268,17 +275,18 @@ public partial class FractalEnemy : CharacterBody2D
         }
     }
 
-    // Divisão celular: cria os fragmentos da próxima geração em volta da posição atual
-    private void SpawnFragments()
+    // Divisão celular: cria os fragmentos da próxima geração em volta da posição atual.
+    // Devolve true se dividiu (quem não se divide solta biomassa no Die)
+    private bool SpawnFragments()
     {
-        if (Generation >= MaxGeneration) return; // última geração: morre sem se dividir
-        if (FragmentCount <= 0) return;
+        if (Generation >= MaxGeneration) return false; // última geração: morre sem se dividir
+        if (FragmentCount <= 0) return false;
 
         Node parent = GetParent();
-        if (parent == null) return;
+        if (parent == null) return false;
 
         var scene = GD.Load<PackedScene>(SceneFilePath); // a própria cena (a Godot guarda em cache)
-        if (scene == null) return;
+        if (scene == null) return false;
 
         float startAngle = GD.Randf() * Mathf.Tau;  // ângulo aleatório a cada morte
         float angleStep = Mathf.Tau / FragmentCount; // ângulos iguais (2 → opostos)
@@ -291,6 +299,14 @@ public partial class FractalEnemy : CharacterBody2D
             fragment.Position = Position + offset;   // mesmo pai → mesmo espaço de coordenadas
             parent.CallDeferred(Node.MethodName.AddChild, fragment);
         }
+        return true;
+    }
+
+    // Recompensa: quem morre sem se dividir (a última geração) solta um orbe de biomassa
+    private void DropBiomass()
+    {
+        Vector2 scatter = Vector2.Right.Rotated(GD.Randf() * Mathf.Tau) * GD.Randf() * BiomassDropScatter;
+        BiomassField.Drop(GetParent(), Position + scatter, BiomassPerKill, BiomassOrbLifetime, MaxBiomassOrbs);
     }
 
     // --- MÉTODOS NOVOS, USADOS SÓ PELO SPAWNER COM POOLING ---

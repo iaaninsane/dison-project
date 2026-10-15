@@ -4,6 +4,8 @@
 [ext_resource type="Script" uid="uid://cimy6v8ix5uub" path="res://Player.cs" id="1_onrkg"]
 [ext_resource type="Texture2D" uid="uid://dhvfp5kmwpswq" path="res://lanterna_reta.png" id="3_i3pqv"]
 [ext_resource type="Script" uid="uid://x0c521uv85m7" path="res://LightDamageArea.cs" id="4_hqtel"]
+[ext_resource type="Script" uid="uid://8rm5vq4k7ptu" path="res://BiomassCollector.cs" id="5_sweqy"]
+[ext_resource type="Script" uid="uid://ckjrcb2nw4vhp" path="res://BiomassHud.cs" id="6_2hs0m"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_i3pqv"]
 light_mode = 1
@@ -46,3 +48,18 @@ texture_scale = 0.2
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1851807241]
 position_smoothing_enabled = true
 position_smoothing_speed = 6.0
+
+[node name="BiomassCollector" type="Node2D" parent="." unique_id=1027256679]
+script = ExtResource("5_sweqy")
+
+[node name="Hud" type="CanvasLayer" parent="." unique_id=1852008773]
+
+[node name="BiomassLabel" type="Label" parent="Hud" unique_id=1749379778]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 56.0
+offset_bottom = 39.0
+theme_override_font_sizes/font_size = 24
+script = ExtResource("6_2hs0m")
+
+[connection signal="BiomassChanged" from="BiomassCollector" to="Hud/BiomassLabel" method="OnBiomassChanged"]
