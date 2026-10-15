@@ -1,6 +1,6 @@
 # Spec: Inimigo fractal (dano por luz e divisão celular)
 
-- **Status:** validada (fase 2) e implementada (fase 1), valores em teste. Pendências na seção 8: dois itens da fase 1 e o teste de troca de sala, que só pode ser feito quando existir transição entre salas.
+- **Status:** validada (fase 2) e implementada (fase 1), valores em teste. Pendência na seção 8: um item da fase 1 (a vida não regenera fora do feixe).
 - **Etapa:** 1 (mecânica)
 - **Depende de:** lanterna e `LightDamageArea.cs` (dano por luz). Nenhuma outra spec.
 
@@ -106,6 +106,7 @@ Com os valores atuais da cena (`RecursionDepth` 4, `BaseBranchLength` 8, `MaxHea
 - Somente leitura: `Player.cs` (como a lanterna e o feixe são criados), `player.tscn` (o nó `FlashlightAnchor/LightDamageArea` com `CollisionPolygon2D`).
 - Alterados pela fase 2: `NinhoSpawner.cs` e `NinhoSpawnerPooled.cs` (teto total `MaxTotalEnemies`; a `sala_ninho.tscn` usa a versão com pool).
 - Usado: `FractalSwarm.cs` (registro de inimigos ativos; `FractalSwarm.Count` inclui fragmentos e exclui inimigos guardados no pool).
+- Leitura externa: `FractalEnemy.IsDead` (público) é usado pelo `PlayerHurtbox` (spec `player-health-death.md`) para ignorar inimigos mortos ou guardados no pool.
 - Novos a criar: nenhum previsto.
 
 ## 7. Passos no editor (feitos pelo dev)
@@ -126,7 +127,7 @@ Com os valores atuais da cena (`RecursionDepth` 4, `BaseBranchLength` 8, `MaxHea
 - [x] O inimigo aparece com a árvore fractal desenhada e com o ângulo dos ramos pulsando
 - [ ] Sob o feixe a vida cai na taxa configurada; fora do feixe não muda (a morte sob o feixe foi confirmada; falta o passo 3 da seção 9: tirar o feixe no meio e confirmar que a vida não regenera)
 - [x] Os atributos `[Export]` da seção 4 podem ser ajustados no Inspector sem mexer no código
-- [ ] Nenhum erro no painel Output/Debugger (Saída/Depurador) ao matar 10 inimigos seguidos e trocar de sala (sem erros ao matar, confirmado; a troca de sala ainda não existe no jogo)
+- [x] Nenhum erro no painel Output/Debugger (Saída/Depurador) ao matar 10 inimigos seguidos e trocar de sala (troca testada pelo recarregamento da sala na morte do jogador, em out/2026; a transição entre salas diferentes ainda não existe)
 
 ### Fase 2
 
@@ -135,7 +136,7 @@ Com os valores atuais da cena (`RecursionDepth` 4, `BaseBranchLength` 8, `MaxHea
 - [x] Fragmentos nascidos dentro do feixe ficam imunes por `SpawnInvulnerability` antes de perder vida
 - [x] Inimigo reaproveitado do pool volta como geração 0 (teste com `MaxConcurrentEnemies` = `PoolSize` = 3: renasce com tamanho normal, vida cheia, vulnerável e se divide de novo)
 - [x] Os parâmetros de geração podem ser ajustados no Inspector
-- [x] "Nós Órfãos" = 0 depois de matar a horda (testado em massacre e fechando o jogo no meio dele, sem aviso de vazamento na Saída). **Refazer com troca de sala** quando existir transição entre salas.
+- [x] "Nós Órfãos" = 0 depois de matar a horda (testado em massacre, fechando o jogo no meio dele e recarregando a sala pela morte do jogador no meio de um massacre, com mortes seguidas). Refazer quando existir transição entre salas diferentes.
 - [x] Com 200 no ninho e teto total de 350, o FPS não cai abaixo de 100 (V-Sync desligado) mesmo em massacre (pico de 380 inimigos ativos)
 
 ## 9. Como testar (roteiro manual no editor)
@@ -166,7 +167,7 @@ Com os valores atuais da cena (`RecursionDepth` 4, `BaseBranchLength` 8, `MaxHea
 
 ### Em aberto
 
-- Quando a transição entre salas existir: refazer os testes de "trocar de sala" da seção 8 (erros no Output e "Nós Órfãos" = 0, inclusive trocando de sala no meio de uma divisão).
+- Quando a transição entre salas diferentes existir: repetir os testes de "trocar de sala" da seção 8 (erros no Output e "Nós Órfãos" = 0, inclusive trocando de sala no meio de uma divisão). O recarregamento da mesma sala, pela morte do jogador, já passou nesses testes.
 
 - Valores definitivos de `MaxConcurrentEnemies` e `MaxTotalEnemies` por sala (decidir na spec da `sala_ninho`).
 - O dano por tiros entra numa spec própria ou nesta?

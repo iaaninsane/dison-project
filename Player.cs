@@ -18,6 +18,9 @@ public partial class Player : CharacterBody2D
 
     // --- ATRIBUTOS DE EJEÇÃO ---
     public bool IsEjected { get; private set; } = false;
+
+    // --- MORTE ---
+    public bool IsDead { get; private set; } = false;
     private float _ejectionTimer = 0f;
     private float _ejectionDuration = 0.8f; // Tempo de perda de controle (em segundos)
 
@@ -47,8 +50,13 @@ public partial class Player : CharacterBody2D
         float dt = (float)delta;
         Vector2 currentVelocity = Velocity;
 
-        // 1. GERENCIAMENTO DE ESTADO: EJEÇÃO VS. MOVIMENTAÇÃO NORMAL
-        if (IsEjected)
+        // 1. GERENCIAMENTO DE ESTADO: MORTO, EJEÇÃO OU MOVIMENTAÇÃO NORMAL
+        if (IsDead)
+        {
+            // Morto: sem controle, só desliza com a inércia até parar
+            currentVelocity = currentVelocity.MoveToward(Vector2.Zero, Friction * ThrustForce * dt);
+        }
+        else if (IsEjected)
         {
             // Reduz o temporizador de atordoamento/ejeção
             _ejectionTimer -= dt;
@@ -91,7 +99,7 @@ public partial class Player : CharacterBody2D
 
         // 2. CONTROLE DA LANTERNA (Analógico Direito ou Mouse)
         // Deixamos isso fora do bloco condicional para que o jogador ainda possa mirar e iluminar o pânico ao redor enquanto é ejetado!
-        if (_flashlightAnchor != null)
+        if (_flashlightAnchor != null && !IsDead)
         {
             if (IsManualFire)
             {
@@ -133,6 +141,27 @@ public partial class Player : CharacterBody2D
                 }
             }
         }
+    }
+
+    // Conectado pelo editor ao sinal Died do SuitIntegrity
+    public void OnDied()
+    {
+        IsDead = true;
+        TurnOffFlashlight();
+    }
+
+    // Apaga a luz e tira o feixe de dano da física (todos os filhos do FlashlightAnchor)
+    private void TurnOffFlashlight()
+    {
+        if (_flashlightAnchor == null) return;
+        _flashlightAnchor.Visible = false;
+        _flashlightAnchor.SetDeferred(Node.PropertyName.ProcessMode, Variant.From(ProcessModeEnum.Disabled));
+    }
+
+    // Empurrão de um golpe: soma à velocidade atual, sem tirar o controle (diferente da ejeção)
+    public void ApplyKnockback(Vector2 impulse)
+    {
+        Velocity += impulse;
     }
 
     public void ApplyEjection(Vector2 impulse)

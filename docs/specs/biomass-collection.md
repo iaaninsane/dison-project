@@ -1,6 +1,6 @@
 # Spec: Coleta de biomassa neon
 
-- **Status:** validada (out/2026). Valores em teste. Pendente: teste de troca de sala, quando existir transição entre salas.
+- **Status:** validada (out/2026). Valores em teste.
 - **Etapa:** 1 (mecânica)
 - **Depende de:** `docs/specs/fractal-enemy.md` (morte do inimigo e divisão celular). A spec de evolução (gastar a biomassa) ainda não existe.
 
@@ -35,7 +35,7 @@ Todo anticorpo destruído pela luz libera biomassa neon, que o jogador recolhe n
 ## 3. Fora do escopo
 
 - Gastar a biomassa (melhorias do traje): spec de evolução.
-- Perder a biomassa ao morrer: depende da spec de ameaça e morte do jogador.
+- Perder a biomassa ao morrer: definido na spec `player-health-death.md` (a biomassa da sala é perdida, porque a sala é recarregada; guardar parte dela é assunto da spec de evolução).
 - Persistência do contador entre salas ou entre partidas (a transição entre salas ainda não existe) e salvar em disco.
 - Partículas, explosão e iluminação temporária na morte (spec própria).
 - Arte final, animação, áudio e shaders (etapa 2). O orbe é desenhado por código, como forma simples.
@@ -61,7 +61,7 @@ Os pontos de partida foram aceitos pelo dev. A configuração de **quem produz**
 - Morte e divisão no mesmo instante: os fragmentos e o orbe nascem juntos no mesmo ponto; o orbe não pode interferir na separação nem na colisão dos fragmentos.
 - Orbe atraído com uma parede no caminho: atravessa a parede (decidido; sem física).
 - Jogador ejetado pela parede (`TriggerEjection`): continua coletando normalmente.
-- Troca de sala com orbes na cena: não pode deixar erro nem nós órfãos (testar quando a transição existir).
+- Troca de sala com orbes na cena: não pode deixar erro nem nós órfãos (testado pelo recarregamento da sala na morte do jogador; repetir quando existir transição entre salas diferentes).
 - Orbe no escuro: sempre visível (material unshaded).
 - Inimigo de geração intermediária que, por algum motivo, morre sem conseguir se dividir (ex.: `FragmentCount` = 0): conta como "morreu sem se dividir" e solta biomassa, para a recompensa nunca se perder.
 
@@ -97,7 +97,7 @@ Como o coletor e o HUD estão no `player.tscn`, funcionam em toda sala que tiver
 - [x] Na `sala_ninho` (200 no ninho, teto total 350), um massacre com orbes mantém o FPS ≥ 100 com V-Sync desligado (confirmado pelo dev, com tempo de vida dos orbes elevado a 120 s para acumular até o teto e coleta em massa atravessando a nuvem; números não anotados)
 - [x] "Nós Órfãos" = 0 e nenhum erro no Output depois do massacre
 - [x] Todos os valores da seção 4 ajustáveis no Inspector
-- [ ] Troca de sala com orbes na cena sem erros nem nós órfãos (a transição entre salas ainda não existe)
+- [x] Troca de sala com orbes na cena sem erros nem nós órfãos (testado pelo recarregamento da sala na morte do jogador, em out/2026; repetir quando existir transição entre salas diferentes)
 
 ## 9. Como testar (roteiro manual no editor)
 

@@ -50,6 +50,7 @@ public partial class FractalEnemy : CharacterBody2D
     private float _currentHealth;
     private float _damageFlashTimer = 0f;
     private bool _isDead = false; // Garante que a morte aconteça uma única vez (ver Die)
+    public bool IsDead => _isDead; // Leitura para quem precisa ignorar inimigos mortos (ex.: PlayerHurtbox)
 
     // Guardamos a cor original do neon para o efeito de piscar
     private Color _originalColor;
