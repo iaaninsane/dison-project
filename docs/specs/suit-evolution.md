@@ -37,8 +37,8 @@ Fechar o core loop: a biomassa coletada no combate é gasta, na câmara inicial 
 
 - **Integridade do traje:** aumenta `MaxIntegrity` do `SuitIntegrity`.
 - **Ímã de biomassa:** aumenta `MagnetRadius` do `BiomassCollector`.
-- **Potência da lanterna:** aumenta `DamagePerSecond` da `LightDamageArea`.
-- As melhorias são aplicadas por um componente do jogador ao entrar em cada sala, lendo os níveis comprados. Nenhum dos componentes afetados (`SuitIntegrity`, `BiomassCollector`, `LightDamageArea`) precisa saber que melhorias existem.
+- **Potência da lanterna:** **adiada** (out/2026) até ter requisitos bem definidos. Quando for definida, basta criar o recurso e incluí-lo no catálogo.
+- As melhorias são aplicadas por um componente do jogador ao entrar em cada sala, lendo os níveis comprados. Nenhum dos componentes afetados (`SuitIntegrity`, `BiomassCollector`) precisa saber que melhorias existem.
 
 ## 3. Fora do escopo
 
@@ -61,9 +61,9 @@ Pontos de partida aceitos pelo dev, para ajustar depois.
 | Cena de destino da `PortaSaida` | `sala_ninho.tscn` | porta (Inspector) | |
 | Integridade do traje | +20 por nível, 3 níveis, custos 20 / 40 / 80 | definição da melhoria | 100 → 160 |
 | Ímã de biomassa | +30 px por nível, 3 níveis, custos 15 / 30 / 60 | definição da melhoria | 80 → 170 px |
-| Potência da lanterna | +10 por nível, 3 níveis, custos 25 / 50 / 100 | definição da melhoria | 35 → 65 de dano por segundo |
+| Potência da lanterna (adiada) | proposta: +10 por nível, 3 níveis, custos 25 / 50 / 100 | — | Fora do catálogo até ter requisitos definidos |
 
-Estimativa de ritmo (só para referência): cada ancestral rende 4 de biomassa. Uma incursão de ~2 minutos na `sala_ninho` matando ~30 ancestrais coleta ~120; morrendo, ~60 vão para o banco. Comprar tudo custa 420, ou seja, ~7 incursões.
+Estimativa de ritmo (só para referência): cada ancestral rende 4 de biomassa. Uma incursão de ~2 minutos na `sala_ninho` matando ~30 ancestrais coleta ~120; morrendo, ~60 vão para o banco. Comprar as 2 melhorias atuais custa 245, ou seja, ~4 incursões (420 e ~7 incursões quando a da lanterna entrar).
 
 ## 5. Casos de borda
 
@@ -90,15 +90,15 @@ Estimativa de ritmo (só para referência): cada ancestral rende 4 de biomassa. 
 
 ## 7. Passos no editor (feitos pelo dev)
 
-O agente escreve o passo a passo depois do plano aprovado. Previsto: terminal e painel na `sala_entrada.tscn`, script e destino da `PortaSaida`, criação dos recursos das 3 melhorias no Inspector, componente de melhorias no `player.tscn`, destino da morte no `RestartOnDeath` e, se aprovado, o autoload em Projeto > Configurações do Projeto > Globais.
+O agente escreve o passo a passo depois do plano aprovado. Previsto: terminal e painel na `sala_entrada.tscn`, script e destino da `PortaSaida`, criação dos recursos das melhorias no Inspector (pasta `upgrades/`), componente de melhorias no `player.tscn`, destino da morte no `RestartOnDeath` e, se aprovado, o autoload em Projeto > Configurações do Projeto > Globais.
 
 ## 8. Pronto quando
 
 - [ ] `dotnet build` sem erros
 - [ ] Da câmara, a `PortaSaida` leva à `sala_ninho`; a biomassa carregada continua no HUD depois da troca de sala
 - [ ] Ao morrer, o jogador volta à câmara e `DeathKeepFraction` da biomassa carregada (para baixo) vai para o banco
-- [ ] O terminal de evolução abre o painel com o saldo do banco e as 3 melhorias (nível, máximo, custo)
-- [ ] Comprar desconta do banco, sobe o nível e o efeito vale na hora e nas salas seguintes (integridade no HUD, ímã maior, inimigos morrendo mais rápido sob o feixe)
+- [ ] O terminal de evolução abre o painel com o saldo do banco e as melhorias do catálogo (nível, máximo, custo)
+- [ ] Comprar desconta do banco, sobe o nível e o efeito vale na hora e nas salas seguintes (integridade no HUD, ímã maior)
 - [ ] Compra sem saldo ou no nível máximo é recusada
 - [ ] Banco e níveis sobrevivem a várias mortes seguidas, sem duplicar nem perder valores
 - [ ] Trocas de cena repetidas sem erros no Output e com "Nós Órfãos" = 0
@@ -119,7 +119,7 @@ O agente escreve o passo a passo depois do plano aprovado. Previsto: terminal e 
 1. Estado da partida: **autoload** (opção a).
 2. Persistência: só enquanto o jogo estiver aberto, **mas a implementação deve facilitar salvar em disco depois**: os dados da partida ficam numa classe de dados separada do nó, identificados por chaves estáveis (o `Id` de cada melhoria, não a posição na lista).
 3. Biomassa na morte: **guardar metade** (`DeathKeepFraction` = 0,5), confirmado pelo dev. Modelo: a morte cobra a "taxa" (perde `1 − DeathKeepFraction` da biomassa carregada) e a câmara inicial deposita no banco tudo o que estiver carregado.
-4. Melhorias iniciais: as 3 propostas; outras entram conforme surgir a necessidade.
+4. Melhorias iniciais: integridade do traje e ímã de biomassa. A potência da lanterna foi **adiada** pelo dev (out/2026) até ter requisitos bem definidos. Outras entram conforme surgir a necessidade. O valor `LightDamagePerSecond` do enum `SuitUpgrade.TargetStat` existe no código, mas nenhum recurso o usa (o que fazer com ele está em aberto: manter sem efeito ou remover).
 5. Painel de compra: painel com botões, pausando o jogo enquanto aberto.
 6. Integridade cheia ao entrar em cada sala.
 7. Melhorias como recurso (`Resource`) editável no Inspector, numa pasta própria.
