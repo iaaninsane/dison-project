@@ -4,4 +4,8 @@
 
 [resource]
 script = ExtResource("1_1lhb2")
+Id = "suit_integrity"
+DisplayName = "Integridade do traje"
+ValuePerLevel = 20.0
+Costs = PackedInt32Array(20, 40, 80)
 metadata/_custom_type_script = "uid://duqih0vanj7vr"
