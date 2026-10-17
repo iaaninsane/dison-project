@@ -1,6 +1,6 @@
 # Spec: Evolução do traje (gastar biomassa na câmara inicial)
 
-- **Status:** aprovada (out/2026). Valores em teste.
+- **Status:** validada (out/2026). Valores em teste. A melhoria da lanterna está adiada (seção 10).
 - **Etapa:** 1 (mecânica)
 - **Depende de:** `docs/specs/biomass-collection.md` (contador de biomassa), `docs/specs/player-health-death.md` (morte e fluxo provisório de recarregar a sala).
 
@@ -79,30 +79,48 @@ Estimativa de ritmo (só para referência): cada ancestral rende 4 de biomassa. 
 
 ## 6. Arquivos e cenas
 
-- Existentes a alterar: `BiomassCollector.cs` (ler e gravar a biomassa carregada no estado da partida), `RestartOnDeath.cs` (cena de destino configurável), `sala_entrada.tscn` (terminal de evolução, painel, porta configurada — passos no editor), `project.godot` (registro do autoload, feito pelo dev no editor; decisão 1).
-- Novos a criar (proposto; o plano confirma nomes e pede autorização):
-  - estado da partida (banco, biomassa carregada, níveis das melhorias);
-  - definição de melhoria como recurso editável no Inspector (nome, propriedade afetada, valor por nível, custos);
-  - componente do jogador que aplica as melhorias ao entrar na sala;
-  - terminal de evolução (área + interação) e o painel de compra;
-  - porta de saída (`DoorTrigger.cs`, já citado no handoff mas inexistente).
-- Somente leitura: `SuitIntegrity.cs`, `LightDamageArea.cs`, `TerminalModo.cs`, `SalaEntrada.cs`.
+- Novos:
+  - `RunData.cs` (classe C# comum): só dados da partida — banco, biomassa carregada e níveis das melhorias por `Id`. Separada do nó para facilitar salvar em disco no futuro.
+  - `GameState.cs` (**autoload** `GameState`): dono do `RunData`, vivo entre as cenas. `AddCarried`, `ApplyDeathPenalty`, `DepositCarried`, `CanBuy`, `TryBuyUpgrade`; sinais `BankChanged` e `UpgradeLevelChanged`; atalho `GameState.Instance`.
+  - `DoorTrigger.cs` (`Area2D`): troca para a cena do Inspector quando o jogador entra (troca adiada, com trava contra troca dupla).
+  - `SuitUpgrade.cs` (`Resource`, `[GlobalClass]`): definição de uma melhoria (`Id`, `DisplayName`, `Target`, `ValuePerLevel`, `Costs`; o nível máximo é o tamanho de `Costs`).
+  - `UpgradeCatalog.cs` (`Resource`, `[GlobalClass]`): lista única de melhorias, usada pelo painel e pelo aplicador.
+  - `EvolutionTerminal.cs` (`Area2D`): abre o painel com a ação `interact`, reagindo ao **evento** em `_UnhandledInput` (não por polling), para o aperto que a interface já usou não reabrir o painel.
+  - `UpgradePanel.cs` (`PanelContainer`): cria um botão por melhoria a partir do catálogo, mostra o banco, pausa o jogo enquanto aberto (`ProcessMode = Always`), fecha com o botão "Fechar" ou `ui_cancel`; conecta e desconecta os sinais do `GameState`.
+  - `SuitUpgradeApplier.cs` (`Node`, filho do `Player`): recalcula do zero `base + nível × valor` ao nascer e a cada compra (idempotente), somando os bônus por alvo.
+  - Dados: pasta `upgrades/` com `upgrade_suit_integrity.tres`, `upgrade_magnet.tres` e `upgrade_catalog.tres`.
+- Alterados:
+  - `BiomassCollector.cs`: o total passa a ser a biomassa carregada do `GameState` (sobrevive à troca de sala); o aviso inicial ao HUD é adiado.
+  - `RestartOnDeath.cs`: `ReturnScenePath` (vazio = recarregar a sala) e `DeathKeepFraction`; cobra a taxa na hora da morte.
+  - `SalaEntrada.cs` (desvio aprovado): deposita a biomassa carregada no banco ao entrar na câmara.
+  - `SuitIntegrity.cs` (desvio aprovado): `SetMaxIntegrity(int)` preserva o dano já sofrido e avisa o HUD.
+  - `project.godot`: autoload `GameState`; `ui_accept` com o botão 0 do controle (A) e `ui_cancel` com o botão 1 (B).
+- Somente leitura: `LightDamageArea.cs`, `TerminalModo.cs`.
 
 ## 7. Passos no editor (feitos pelo dev)
 
-O agente escreve o passo a passo depois do plano aprovado. Previsto: terminal e painel na `sala_entrada.tscn`, script e destino da `PortaSaida`, criação dos recursos das melhorias no Inspector (pasta `upgrades/`), componente de melhorias no `player.tscn`, destino da morte no `RestartOnDeath` e, se aprovado, o autoload em Projeto > Configurações do Projeto > Globais.
+Feitos em out/2026:
+
+1. **Autoload:** Projeto > Configurações do Projeto > Globais > Autoload: `res://GameState.cs` com o nome `GameState`.
+2. **Mapa de Entrada** (com "Mostrar Ações Integradas"): `ui_accept` + botão 0 do controle; `ui_cancel` + botão 1 do controle. Na Godot 4.7 essas ações não têm botões de controle por padrão.
+3. **`player.tscn`:** `RestartOnDeath` com `Return Scene Path` = `res://sala_entrada.tscn` e `Death Keep Fraction` = 0.5; nó `SuitUpgradeApplier` (script `SuitUpgradeApplier.cs`) com `Catalog`, `Integrity` e `Collector` ligados.
+4. **`sala_entrada.tscn`:**
+   - `PortaSaida` com `DoorTrigger.cs`, `Target Scene Path` = `res://sala_ninho.tscn` e um `CollisionShape2D` (retângulo 60×250 em (1930, 574)) cobrindo a abertura da parede direita.
+   - `EvolutionTerminal` (`Area2D` em (600, 250), círculo de raio 60, `ColorRect` magenta), com `Panel` ligado ao `UpgradePanel`.
+   - `EvolutionUi` (`CanvasLayer`, `Layer` = 2) > `UpgradePanel` (âncora no centro, tamanho mínimo 700×300) > `Content` (`VBoxContainer`) > `BankLabel`, `UpgradeList` (vazio; os botões são criados pelo código) e `CloseButton` ("Fechar"). `UpgradePanel` com `Catalog`, `BankLabel`, `UpgradeList` e `CloseButton` ligados.
+5. **Recursos:** pasta `upgrades/` com as 2 melhorias e o catálogo (salvos pelo disquete do Inspector; o Ctrl+S salva a cena, não o recurso).
 
 ## 8. Pronto quando
 
-- [ ] `dotnet build` sem erros
-- [ ] Da câmara, a `PortaSaida` leva à `sala_ninho`; a biomassa carregada continua no HUD depois da troca de sala
-- [ ] Ao morrer, o jogador volta à câmara e `DeathKeepFraction` da biomassa carregada (para baixo) vai para o banco
-- [ ] O terminal de evolução abre o painel com o saldo do banco e as melhorias do catálogo (nível, máximo, custo)
-- [ ] Comprar desconta do banco, sobe o nível e o efeito vale na hora e nas salas seguintes (integridade no HUD, ímã maior)
-- [ ] Compra sem saldo ou no nível máximo é recusada
-- [ ] Banco e níveis sobrevivem a várias mortes seguidas, sem duplicar nem perder valores
-- [ ] Trocas de cena repetidas sem erros no Output e com "Nós Órfãos" = 0
-- [ ] Custos e efeitos das melhorias ajustáveis no Inspector
+- [x] `dotnet build` sem erros
+- [x] Da câmara, a `PortaSaida` leva à `sala_ninho`; a biomassa carregada continua no HUD depois da troca de sala
+- [x] Ao morrer, o jogador volta à câmara e `DeathKeepFraction` da biomassa carregada (para baixo) vai para o banco
+- [x] O terminal de evolução abre o painel com o saldo do banco e as melhorias do catálogo (nível, máximo, custo), com mouse, teclado e controle
+- [x] Comprar desconta do banco, sobe o nível e o efeito vale na hora e nas salas seguintes (integridade no HUD, ímã maior)
+- [x] Compra sem saldo ou no nível máximo é recusada
+- [x] Banco e níveis sobrevivem a várias mortes seguidas, sem duplicar nem perder valores
+- [x] Trocas de cena repetidas sem erros no Output e com "Nós Órfãos" = 0
+- [x] Custos e efeitos das melhorias ajustáveis no Inspector
 
 ## 9. Como testar (roteiro manual no editor)
 
@@ -119,12 +137,19 @@ O agente escreve o passo a passo depois do plano aprovado. Previsto: terminal e 
 1. Estado da partida: **autoload** (opção a).
 2. Persistência: só enquanto o jogo estiver aberto, **mas a implementação deve facilitar salvar em disco depois**: os dados da partida ficam numa classe de dados separada do nó, identificados por chaves estáveis (o `Id` de cada melhoria, não a posição na lista).
 3. Biomassa na morte: **guardar metade** (`DeathKeepFraction` = 0,5), confirmado pelo dev. Modelo: a morte cobra a "taxa" (perde `1 − DeathKeepFraction` da biomassa carregada) e a câmara inicial deposita no banco tudo o que estiver carregado.
-4. Melhorias iniciais: integridade do traje e ímã de biomassa. A potência da lanterna foi **adiada** pelo dev (out/2026) até ter requisitos bem definidos. Outras entram conforme surgir a necessidade. O valor `LightDamagePerSecond` do enum `SuitUpgrade.TargetStat` existe no código, mas nenhum recurso o usa (o que fazer com ele está em aberto: manter sem efeito ou remover).
+4. Melhorias iniciais: integridade do traje e ímã de biomassa. A potência da lanterna foi **adiada** pelo dev (out/2026) até ter requisitos bem definidos. Outras entram conforme surgir a necessidade. O valor `LightDamagePerSecond` foi removido do enum `SuitUpgrade.TargetStat` (decisão do dev: não deixar no Inspector uma opção sem efeito); volta junto com a melhoria da lanterna.
 5. Painel de compra: painel com botões, pausando o jogo enquanto aberto.
 6. Integridade cheia ao entrar em cada sala.
 7. Melhorias como recurso (`Resource`) editável no Inspector, numa pasta própria.
 8. Criar o `DoorTrigger.cs` mínimo agora.
 9. Valores da seção 4: pontos de partida, ajustar depois.
+
+### Notas de implementação (out/2026)
+
+- **Controle na interface:** na Godot 4.7, `ui_accept` e `ui_cancel` não têm botões de controle por padrão (verificado direto no motor); foram mapeados no projeto. Com isso, o botão A passa a ser `ui_accept` e `interact` ao mesmo tempo: por isso o terminal reage ao evento em `_UnhandledInput` (a interface consome o aperto que usou) em vez de ler a tecla por polling.
+- **Ordem do `_Ready`:** filhos ficam prontos antes dos pais. O coletor lê a biomassa do `GameState` só no fim do frame (depois do depósito feito pela `SalaEntrada`), e o aplicador aplica as melhorias de forma adiada (depois do `SuitIntegrity` ficar pronto).
+- **Para salvar em disco no futuro:** converter só o `RunData` (banco, carregada e níveis por `Id`); os `Id` das melhorias não devem mudar depois de lançados.
+- **Possível evolução do aplicador:** hoje um `switch` com 2 alvos. Se os alvos crescerem ou ganharem regras próprias, trocar por uma interface por alvo (padrão Strategy).
 
 ### Alternativas registradas na proposta original
 

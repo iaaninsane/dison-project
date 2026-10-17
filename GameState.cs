@@ -29,9 +29,7 @@ public partial class GameState : Node
     // Morte: a biomassa carregada perde a parte que não é guardada ("taxa")
     public void ApplyDeathPenalty(float keepFraction)
     {
-        int before = Data.CarriedBiomass;
-        Data.CarriedBiomass = Mathf.FloorToInt(before * Mathf.Clamp(keepFraction, 0f, 1f));
-        GD.Print($"[GameState] Morte: carregada {before} -> {Data.CarriedBiomass}"); // TEMPORÁRIO (sai no passo 5)
+        Data.CarriedBiomass = Mathf.FloorToInt(Data.CarriedBiomass * Mathf.Clamp(keepFraction, 0f, 1f));
     }
 
     // Câmara inicial: deposita no banco tudo o que está carregado
@@ -39,7 +37,6 @@ public partial class GameState : Node
     {
         Data.BankedBiomass += Data.CarriedBiomass;
         Data.CarriedBiomass = 0;
-        GD.Print($"[GameState] Depósito: banco = {Data.BankedBiomass}"); // TEMPORÁRIO (sai no passo 5)
         EmitSignal(SignalName.BankChanged, Data.BankedBiomass);
     }
 

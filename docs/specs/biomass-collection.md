@@ -35,8 +35,8 @@ Todo anticorpo destruído pela luz libera biomassa neon, que o jogador recolhe n
 ## 3. Fora do escopo
 
 - Gastar a biomassa (melhorias do traje): spec de evolução.
-- Perder a biomassa ao morrer: definido na spec `player-health-death.md` (a biomassa da sala é perdida, porque a sala é recarregada; guardar parte dela é assunto da spec de evolução).
-- Persistência do contador entre salas ou entre partidas (a transição entre salas ainda não existe) e salvar em disco.
+- Perder a biomassa ao morrer: definido na spec `suit-evolution.md` (a morte guarda metade da biomassa carregada; a câmara inicial deposita no banco).
+- Persistência entre salas e o banco: definidos na spec `suit-evolution.md` (o total vive no autoload `GameState`). Salvar em disco continua fora do escopo.
 - Partículas, explosão e iluminação temporária na morte (spec própria).
 - Arte final, animação, áudio e shaders (etapa 2). O orbe é desenhado por código, como forma simples.
 
@@ -116,7 +116,7 @@ Como o coletor e o HUD estão no `player.tscn`, funcionam em toda sala que tiver
 3. **Visibilidade:** sempre visível, com material "unshaded" (opção a). Mesma técnica já usada no `Sprite2D` do jogador.
 4. **Ímã:** sim, com `MagnetRadius`.
 5. **Paredes:** o orbe atraído atravessa paredes.
-6. **Contador:** componente no jogador, valendo para a sala ou partida atual. Persistência entre salas e o que acontece ao morrer ficam para as specs de evolução e de morte do jogador.
+6. **Contador:** componente no jogador. Atualizado pela spec `suit-evolution.md`: o `BiomassCollector` continua recolhendo e emitindo `BiomassChanged`, mas o total passou a ser a **biomassa carregada** do `GameState`, que sobrevive à troca de sala.
 7. **Valores:** os pontos de partida da seção 4 foram aceitos.
 
 ### A testar no futuro

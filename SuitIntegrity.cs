@@ -26,6 +26,17 @@ public partial class SuitIntegrity : Node
         Callable.From(NotifyIntegrity).CallDeferred(); // Estado inicial, depois que todos ficaram prontos
     }
 
+    // Muda o máximo (melhoria do traje) mantendo o dano já sofrido; avisa o HUD
+    public void SetMaxIntegrity(int value)
+    {
+        if (value <= 0) return;
+
+        int damageTaken = MaxIntegrity - Current; // Quanto já foi perdido
+        MaxIntegrity = value;
+        if (Current > 0) Current = Mathf.Max(1, value - damageTaken); // Vivo continua vivo
+        NotifyIntegrity();
+    }
+
     public override void _PhysicsProcess(double delta)
     {
         UpdateInvulnerability((float)delta);

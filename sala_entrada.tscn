@@ -4,6 +4,9 @@
 [ext_resource type="Script" uid="uid://dk2htimxcqhfo" path="res://TerminalModo.cs" id="1_w7ei0"]
 [ext_resource type="PackedScene" uid="uid://cgy8y45ghbrod" path="res://player.tscn" id="3_ao6y7"]
 [ext_resource type="Script" uid="uid://b0m6vfdsu2g4q" path="res://DoorTrigger.cs" id="3_m0at7"]
+[ext_resource type="Script" uid="uid://b01ffb8wlgby" path="res://EvolutionTerminal.cs" id="5_c2ffe"]
+[ext_resource type="Script" uid="uid://xnkl64yqg5qb" path="res://UpgradePanel.cs" id="6_wt67p"]
+[ext_resource type="Resource" uid="uid://ckk8tfaxyiisu" path="res://upgrades/upgrade_catalog.tres" id="7_eq3ho"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_1tabr"]
 size = Vector2(1920, 40)
@@ -25,6 +28,9 @@ radius = 71.00704
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_l7jd5"]
 size = Vector2(60, 250)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_0ordj"]
+radius = 60.0
 
 [node name="SalaEntrada" type="Node2D" unique_id=1377689184]
 script = ExtResource("1_gyyka")
@@ -121,3 +127,53 @@ position = Vector2(207.66016, 678.82544)
 
 [node name="CanvasModulate" type="CanvasModulate" parent="." unique_id=1763470985]
 color = Color(0, 0, 0, 1)
+
+[node name="EvolutionTerminal" type="Area2D" parent="." unique_id=1848203792 node_paths=PackedStringArray("Panel")]
+position = Vector2(600, 250)
+script = ExtResource("5_c2ffe")
+Panel = NodePath("../EvolutionUi/UpgradePanel")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="EvolutionTerminal" unique_id=1028206558]
+shape = SubResource("CircleShape2D_0ordj")
+
+[node name="ColorRect" type="ColorRect" parent="EvolutionTerminal" unique_id=846615906]
+offset_left = -40.0
+offset_top = -40.0
+offset_right = 40.0
+offset_bottom = 40.0
+color = Color(0.5372549, 0.23921569, 0.8627451, 1)
+
+[node name="EvolutionUi" type="CanvasLayer" parent="." unique_id=1439433925]
+layer = 2
+
+[node name="UpgradePanel" type="PanelContainer" parent="EvolutionUi" unique_id=1240856047 node_paths=PackedStringArray("BankLabel", "UpgradeList", "CloseButton")]
+custom_minimum_size = Vector2(700, 300)
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("6_wt67p")
+Catalog = ExtResource("7_eq3ho")
+BankLabel = NodePath("Content/BankLabel")
+UpgradeList = NodePath("Content/UpgradeList")
+CloseButton = NodePath("Content/CloseButton")
+
+[node name="Content" type="VBoxContainer" parent="EvolutionUi/UpgradePanel" unique_id=232361948]
+layout_mode = 2
+
+[node name="BankLabel" type="Label" parent="EvolutionUi/UpgradePanel/Content" unique_id=1840069196]
+layout_mode = 2
+
+[node name="UpgradeList" type="VBoxContainer" parent="EvolutionUi/UpgradePanel/Content" unique_id=495583910]
+layout_mode = 2
+
+[node name="CloseButton" type="Button" parent="EvolutionUi/UpgradePanel/Content" unique_id=1310856340]
+layout_mode = 2
+text = "FECHAR"

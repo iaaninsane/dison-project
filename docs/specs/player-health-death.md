@@ -1,6 +1,6 @@
 # Spec: Integridade do traje e morte do jogador
 
-- **Status:** validada (out/2026). Valores em teste. O fluxo depois da morte (recarregar a sala) é provisório até a spec de evolução.
+- **Status:** validada (out/2026). Valores em teste. O fluxo depois da morte foi definido pela spec `suit-evolution.md`: voltar à câmara inicial.
 - **Etapa:** 1 (mecânica)
 - **Depende de:** `docs/specs/fractal-enemy.md` (inimigos, camadas de colisão), `docs/specs/fractal-enemy-movement.md` (inimigos travados descansam encostados no jogador), `docs/specs/biomass-collection.md` (o que acontece com a biomassa na morte).
 
@@ -26,8 +26,9 @@ O anticorpo fractal passa a ser uma ameaça: encostar na horda danifica o traje 
 ### Morte
 
 - Quando a integridade chega a zero, então o jogador morre: emite o sinal `Died`, perde o controle do movimento e da lanterna e para de receber dano.
-- Depois de `DeathRestartDelay` segundos, a sala atual é recarregada do zero (provisório; ver decisão 5).
-- Como a sala é recarregada, o jogador, os inimigos, os orbes e o contador de biomassa da sala recomeçam do zero (a biomassa da sala é perdida; ver decisão 6).
+- Na morte, a biomassa carregada perde a parte que não é guardada (`DeathKeepFraction`, 0,5: guarda metade, arredondado para baixo).
+- Depois de `DeathRestartDelay` segundos, o jogo vai para a cena `ReturnScenePath` do `RestartOnDeath` (hoje, a câmara inicial `sala_entrada.tscn`), que deposita no banco o que sobrou. Com `ReturnScenePath` vazio, a sala atual é recarregada (o comportamento original, ainda disponível).
+- A sala de destino recomeça do zero: integridade cheia, inimigos e orbes novos. Banco e níveis das melhorias ficam no `GameState` (spec `suit-evolution.md`).
 
 ## 3. Fora do escopo
 
@@ -70,7 +71,7 @@ O anticorpo fractal passa a ser uma ameaça: encostar na horda danifica o traje 
 - Novos:
   - `PlayerHurtbox.cs` (`Area2D`, filha do `Player`): lista os inimigos encostados (entrou/saiu), limpa a cada passo os mortos e liberados, e responde qual é o inimigo encostado mais próximo.
   - `SuitIntegrity.cs` (`Node`, filho do `Player`): integridade, golpe com imunidade, piscar, empurrão; sinais `IntegrityChanged(int)` e `Died()`. Recebe a área de contato e o sprite por `[Export]`; o estado inicial é emitido de forma adiada.
-  - `RestartOnDeath.cs` (`Node`, filho do `Player`): ouvinte do `Died`; recarrega a sala depois de `DeathRestartDelay` com um `SceneTreeTimer`. Isolado para ser trocado pela spec de evolução.
+  - `RestartOnDeath.cs` (`Node`, filho do `Player`): ouvinte do `Died`; cobra a taxa da biomassa e, depois de `DeathRestartDelay` (`SceneTreeTimer`), troca para `ReturnScenePath` ou recarrega a sala se o campo estiver vazio. Alterado pela spec `suit-evolution.md`.
   - `IntegrityHud.cs` (`Label`): HUD de teste "Traje: N".
 - Somente leitura: `FractalSwarm.cs`, `BiomassField.cs`, `WallSensitive.cs`, `LightDamageArea.cs`.
 
@@ -114,7 +115,7 @@ Todas as propostas abaixo foram **aceitas pelo dev** (out/2026). As alternativas
 2. **Modelo de dano.** (a) golpe + janela de imunidade (proposto: legível, a horda não mata instantaneamente); (b) dano contínuo por segundo para cada inimigo encostado (a horda fica muito mais perigosa, risco de morte instantânea); (c) misto: golpe + imunidade, com o dano do golpe crescendo com o número de inimigos encostados.
 3. **Dano por geração.** (a) igual para todas (proposto: simples); (b) proporcional ao tamanho (fragmentos causam menos dano). Se (b), o `ContactDamage` fica no `FractalEnemy`.
 4. **Empurrão no golpe.** Proposto sim, pequeno, aproveitando a inércia da gravidade zero. Alternativa: sem empurrão.
-5. **O que acontece na morte.** (a) recarregar a sala atual depois de um atraso (proposto, provisório: simples de testar e não depende de transição entre salas); (b) voltar à câmara inicial (`sala_entrada.tscn`), mais fiel ao roguelike, mas sem biomassa guardada ainda não muda muito. A forma final se decide com a spec de evolução.
-6. **Biomassa na morte.** Proposto: perdida (consequência natural de recarregar a sala). Guardar parte dela é assunto da spec de evolução.
+5. **O que acontece na morte.** Primeiro, recarregar a sala atual (provisório). **Definido depois pela spec `suit-evolution.md`: voltar à câmara inicial** (`ReturnScenePath`).
+6. **Biomassa na morte.** Primeiro, perdida (recarregar a sala). **Definido depois pela spec `suit-evolution.md`: guarda metade** (`DeathKeepFraction` = 0,5), depositada no banco ao chegar à câmara.
 7. **Ejeção pela parede causa dano?** O high concept do handoff fala em "risco constante de ser ejetado para o vácuo". Proposto: **não** nesta spec (a ejeção continua só como empurrão e perda de controle); fica anotado como candidato para quando o vácuo tiver papel no jogo.
 8. **Piscar o sprite no golpe.** Proposto sim, como feedback mínimo de mecânica (o jogador precisa saber que foi atingido). Alternativa: nenhum feedback visual até a etapa 2.

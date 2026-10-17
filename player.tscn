@@ -10,6 +10,8 @@
 [ext_resource type="Script" uid="uid://pvnjg7q7a2ug" path="res://IntegrityHud.cs" id="7_b26j0"]
 [ext_resource type="Script" uid="uid://c0crd0ftaq7q5" path="res://SuitIntegrity.cs" id="9_n7ghd"]
 [ext_resource type="Script" uid="uid://4xxrewgc1csd" path="res://RestartOnDeath.cs" id="10_n7ghd"]
+[ext_resource type="Script" uid="uid://cvtu88k6g38w3" path="res://SuitUpgradeApplier.cs" id="11_ivps1"]
+[ext_resource type="Resource" uid="uid://ckk8tfaxyiisu" path="res://upgrades/upgrade_catalog.tres" id="12_urp6f"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_i3pqv"]
 light_mode = 1
@@ -93,6 +95,12 @@ BlinkTarget = NodePath("../Sprite2D")
 [node name="RestartOnDeath" type="Node" parent="." unique_id=924423182]
 script = ExtResource("10_n7ghd")
 ReturnScenePath = "uid://qkdv3hvlc3qt"
+
+[node name="SuitUpgradeApplier" type="Node" parent="." unique_id=102462073 node_paths=PackedStringArray("Integrity", "Collector")]
+script = ExtResource("11_ivps1")
+Catalog = ExtResource("12_urp6f")
+Integrity = NodePath("../SuitIntegrity")
+Collector = NodePath("../BiomassCollector")
 
 [connection signal="BiomassChanged" from="BiomassCollector" to="Hud/BiomassLabel" method="OnBiomassChanged"]
 [connection signal="Died" from="SuitIntegrity" to="." method="OnDied"]

@@ -4,7 +4,7 @@ using Godot;
 [GlobalClass]
 public partial class SuitUpgrade : Resource
 {
-    public enum TargetStat { SuitMaxIntegrity, MagnetRadius, LightDamagePerSecond } // Valores do jogador que podem melhorar
+    public enum TargetStat { SuitMaxIntegrity, MagnetRadius } // Valores do jogador que podem melhorar
 
     [Export] public string Id = "";             // Chave estável usada no save (ex.: "suit_integrity"); não mudar depois
     [Export] public string DisplayName = "";    // Nome mostrado no painel
