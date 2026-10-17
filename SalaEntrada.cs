@@ -7,6 +7,8 @@ public partial class SalaEntrada : Node2D
 
     public override void _Ready()
     {
+        GameState.Instance?.DepositCarried(); // Câmara inicial: deposita no banco a biomassa carregada
+
         _spawnPoint = GetNodeOrNull<Marker2D>("SpawnPoint");
 
         // Encontra o Player ativo e o posiciona no SpawnPoint

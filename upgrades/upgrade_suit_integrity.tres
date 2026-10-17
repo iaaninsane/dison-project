@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="SuitUpgrade" format=3 uid="uid://jmiutfd2jr5h"]
+
+[ext_resource type="Script" uid="uid://duqih0vanj7vr" path="res://SuitUpgrade.cs" id="1_1lhb2"]
+
+[resource]
+script = ExtResource("1_1lhb2")
+metadata/_custom_type_script = "uid://duqih0vanj7vr"

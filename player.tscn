@@ -92,6 +92,7 @@ BlinkTarget = NodePath("../Sprite2D")
 
 [node name="RestartOnDeath" type="Node" parent="." unique_id=924423182]
 script = ExtResource("10_n7ghd")
+ReturnScenePath = "uid://qkdv3hvlc3qt"
 
 [connection signal="BiomassChanged" from="BiomassCollector" to="Hud/BiomassLabel" method="OnBiomassChanged"]
 [connection signal="Died" from="SuitIntegrity" to="." method="OnDied"]
