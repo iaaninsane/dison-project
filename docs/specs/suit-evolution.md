@@ -148,8 +148,9 @@ Feitos em out/2026:
 
 - **Controle na interface:** na Godot 4.7, `ui_accept` e `ui_cancel` não têm botões de controle por padrão (verificado direto no motor); foram mapeados no projeto. Com isso, o botão A passa a ser `ui_accept` e `interact` ao mesmo tempo: por isso o terminal reage ao evento em `_UnhandledInput` (a interface consome o aperto que usou) em vez de ler a tecla por polling.
 - **Ordem do `_Ready`:** filhos ficam prontos antes dos pais. O coletor lê a biomassa do `GameState` só no fim do frame (depois do depósito feito pela `SalaEntrada`), e o aplicador aplica as melhorias de forma adiada (depois do `SuitIntegrity` ficar pronto).
-- **Para salvar em disco no futuro:** converter só o `RunData` (banco, carregada e níveis por `Id`); os `Id` das melhorias não devem mudar depois de lançados.
+- **Para salvar em disco no futuro:** converter só o `RunData` (banco, carregada, níveis por `Id` e modo da lanterna); os `Id` das melhorias não devem mudar depois de lançados.
 - **Possível evolução do aplicador:** hoje um `switch` com 2 alvos. Se os alvos crescerem ou ganharem regras próprias, trocar por uma interface por alvo (padrão Strategy).
+- **Modo da lanterna em todas as salas (backlog 1.1, out/2026):** o modo escolhido no `TerminalModo` passou a viver no `RunData` (`IsManualFire`, padrão manual) e só muda por `GameState.ToggleFlashlightMode()`, que emite `FlashlightModeChanged(bool)`. O `Player` lê o modo ao nascer e escuta o sinal (Observer); `IsManualFire` deixou de ser `[Export]` e passou a `private set`. O `TerminalModo` não guarda mais referência ao jogador e, ao carregar a câmara, pinta o quadrado com o modo guardado (ciano = manual, amarelo = automático). Por isso o `TerminalModo.cs` deixou de ser somente leitura (seção 6). Testado pelo dev: troca ao vivo, `sala_ninho` e volta pela morte, sem erros no Output.
 
 ### Alternativas registradas na proposta original
 

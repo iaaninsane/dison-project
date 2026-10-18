@@ -6,6 +6,7 @@ public partial class GameState : Node
 {
     [Signal] public delegate void BankChangedEventHandler(int banked);
     [Signal] public delegate void UpgradeLevelChangedEventHandler(string upgradeId, int level);
+    [Signal] public delegate void FlashlightModeChangedEventHandler(bool isManualFire);
 
     public static GameState Instance { get; private set; } // Atalho tipado para o nó /root/GameState
 
@@ -62,5 +63,12 @@ public partial class GameState : Node
         EmitSignal(SignalName.BankChanged, Data.BankedBiomass);
         EmitSignal(SignalName.UpgradeLevelChanged, upgrade.Id, level + 1);
         return true;
+    }
+
+    // TerminalModo: alterna o modo da lanterna (manual ↔ automático) e avisa quem depende dele
+    public void ToggleFlashlightMode()
+    {
+        Data.IsManualFire = !Data.IsManualFire;
+        EmitSignal(SignalName.FlashlightModeChanged, Data.IsManualFire);
     }
 }

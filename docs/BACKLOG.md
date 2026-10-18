@@ -1,16 +1,10 @@
 # Backlog do projeto
 
-Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atualizada em 2026-10-17.
+Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atualizada em 2026-10-18.
 
 > **Como usar:** cada item aponta para a spec relacionada e traz um "ponto de partida" técnico. O ponto de partida é uma **leitura inicial do código, não uma solução aprovada**: antes de implementar, seguir o fluxo do CLAUDE.md (ler spec e código, propor plano, esperar aprovação). Ao concluir um item, removê-lo daqui e registrar o resultado na spec.
 
 ## 1. Refinamentos do gameplay atual (prioridade do dev)
-
-### 1.1 Modo da lanterna deve valer em todas as salas
-
-- **Problema:** a escolha do modo da lanterna (manual/automático) feita no `TerminalModo` da câmara volta ao padrão ao trocar de sala.
-- **Ponto de partida:** o modo é a propriedade `Player.IsManualFire` (`[Export]`, padrão `true`). O `TerminalModo` altera essa propriedade no jogador da sala atual, e cada sala cria um jogador novo a partir do `player.tscn`, por isso a escolha se perde. O lugar natural para guardar a escolha é o `GameState`/`RunData` (já sobrevive às trocas de cena e já está preparado para salvar em disco), com o jogador lendo o valor ao nascer.
-- **Spec:** nenhuma ainda (é pequeno; pode entrar como nota na spec da lanterna ou da evolução).
 
 ### 1.2 Empuxo das paredes reativas (direção e colisão)
 

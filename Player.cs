@@ -8,7 +8,8 @@ public partial class Player : CharacterBody2D
     [Export] public float Friction = 0.1f;
 
     // --- CONTROLE DE MODO DE TIRO/MIRA ---
-    [Export] public bool IsManualFire { get; set; } = true; // true = Manual (Mouse), false = Automático
+    // Cópia do modo guardado no GameState: lida ao nascer e atualizada pelo sinal FlashlightModeChanged
+    public bool IsManualFire { get; private set; } = true; // true = Manual (Mouse), false = Automático
 
 
     private Marker2D _flashlightAnchor;
@@ -27,6 +28,17 @@ public partial class Player : CharacterBody2D
     public override void _Ready()
     {
         _flashlightAnchor = GetNode<Marker2D>("FlashlightAnchor");
+
+        if (GameState.Instance == null) return;
+        IsManualFire = GameState.Instance.Data.IsManualFire; // O modo escolhido na câmara vale em todas as salas
+        GameState.Instance.FlashlightModeChanged += OnFlashlightModeChanged;
+    }
+
+    // Par simétrico: o jogador é da sala, o GameState é global
+    public override void _ExitTree()
+    {
+        if (GameState.Instance == null) return;
+        GameState.Instance.FlashlightModeChanged -= OnFlashlightModeChanged;
     }
 
     // Listener de Input para alternar o modo de controle dinamicamente
@@ -142,6 +154,9 @@ public partial class Player : CharacterBody2D
             }
         }
     }
+
+    // Conectado por código ao sinal FlashlightModeChanged do GameState
+    private void OnFlashlightModeChanged(bool isManualFire) => IsManualFire = isManualFire;
 
     // Conectado pelo editor ao sinal Died do SuitIntegrity
     public void OnDied()
