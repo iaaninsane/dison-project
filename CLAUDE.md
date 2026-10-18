@@ -79,4 +79,5 @@ Adiado para depois da demo (não implemente nem prepare): "Vácuo como atalho es
 ## Referências
 
 - Specs das mecânicas: `docs/specs/` (modelo em `docs/specs/_TEMPLATE.md`).
+- Tarefas pendentes, decisões em aberto e dívidas técnicas: `docs/BACKLOG.md` (ler no início de uma tarefa nova).
 - Contexto de design e decisões: `docs/HANDOFF.md` (pode estar desatualizado onde divergir do código).
