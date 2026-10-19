@@ -1,11 +1,14 @@
 using Godot;
 using System;
+using System.Collections.Generic;
 
 public partial class WallSensitive : StaticBody2D
 {
     [Export] public float MaxIrritation = 15f;
     [Export] public float RecoveryRate = 15f; // Quão rápido a parede se acalma por segundo
     [Export] public float EjectionForce = 800f; // Força do empurrão físico
+    [Export] public float EjectionPathWidth = 16f;     // Largura do "túnel" do puxão (o jogador tem 10 px; em diagonal ocupa ~14)
+    [Export] public float EjectionPathOvershoot = 60f; // Quanto o túnel passa do centro (saída pela face de trás)
 
     private float _currentIrritation = 0f;
     private ColorRect _visualRect; // Referência ao ColorRect para mudar de cor
@@ -16,15 +19,11 @@ public partial class WallSensitive : StaticBody2D
         // Obtém o retângulo visual da parede para darmos feedback de cor
         _visualRect = GetNodeOrNull<ColorRect>("ColorRect");
 
-                if (_visualRect == null)
+        if (_visualRect == null)
         {
             GD.PrintErr($"[SISTEMA - {Name}]: ERRO CRÍTICO! O script não encontrou o nó 'ColorRect'. " +
                        "Verifique se o nó filho na árvore de cenas está escrito exatamente como 'ColorRect' " +
                        "(confira se não ficou salvo como 'ColorRetc' ou com espaços).");
-        }
-        else
-        {
-            GD.Print($"[SISTEMA - {Name}]: SUCESSO! Nó visual 'ColorRect' encontrado e referenciado.");
         }
     }
 
@@ -41,10 +40,6 @@ public partial class WallSensitive : StaticBody2D
     // Método chamado dinamicamente pela LightDamageArea da lanterna
     public void AddIrritation(float amount, Vector2 playerPosition) {
         _currentIrritation = Mathf.Min(MaxIrritation, _currentIrritation + amount);
-        
-        // 2. DIAGNÓSTICO DO ACÚMULO DE VALOR
-        GD.Print($"[SISTEMA - {Name}]: Acumulando irritação! Valor atual: {_currentIrritation}/{MaxIrritation} (Adicionado: {amount})");
-        
         UpdateVisuals();
 
         if (_currentIrritation >= MaxIrritation) {
@@ -66,20 +61,41 @@ public partial class WallSensitive : StaticBody2D
         var player = GetTree().GetFirstNodeInGroup("Player") as Player;
         if (player != null && !player.IsEjected) {
 
-            // 1. Calcula o centro real da parede (Posição + Metade da dimensão)
-            Vector2 wallCenter = GlobalPosition;
-            if (_visualRect != null) {
-                wallCenter = _visualRect.GlobalPosition + (_visualRect.Size / 2f);
-            }
-                        
-            // Calcula o vetor de expulsão: do centro da parede apontando para o jogador
-            Vector2 pullDirection = (wallCenter - playerPosition).Normalized();
-            
+            // Vetor de sucção: do jogador apontando para o centro da parede (puxa)
+            Vector2 pullDirection = (GetWallCenter() - playerPosition).Normalized();
+
             // Zera a irritação local após o espasmo de ejeção
             _currentIrritation = 0f;
-            
-            // Aplica o empurrão violento no Player
-            player.ApplyEjection(pullDirection * EjectionForce);
+
+            // Aplica o puxão violento no Player: ele atravessa esta parede e as que estão no caminho até ela
+            player.ApplyEjection(pullDirection * EjectionForce, GetWallsOnPath(playerPosition, pullDirection));
         }
+    }
+
+    // Centro geométrico real do retângulo visual, em coordenadas globais.
+    // Size / 2 é o centro no espaço local do ColorRect; a transformação global aplica posição,
+    // rotação e escala dele e de todos os pais (vale para pivô no canto ou no centro).
+    private Vector2 GetWallCenter() {
+        if (_visualRect == null) return GlobalPosition;
+        return _visualRect.GetGlobalTransform() * (_visualRect.Size / 2f);
+    }
+
+    // Paredes reativas que o puxão cruza: um "túnel" do jogador até um pouco depois do centro desta parede.
+    // Consulta ao espaço físico: só é segura durante o passo de física (a ejeção nasce no _PhysicsProcess da LightDamageArea).
+    private List<PhysicsBody2D> GetWallsOnPath(Vector2 from, Vector2 direction) {
+        Vector2 to = GetWallCenter() + direction * EjectionPathOvershoot;
+        var query = new PhysicsShapeQueryParameters2D {
+            Shape = new RectangleShape2D { Size = new Vector2(from.DistanceTo(to), EjectionPathWidth) },
+            Transform = new Transform2D(direction.Angle(), (from + to) / 2f), // Retângulo girado ao longo do caminho
+            CollisionMask = CollisionLayer, // Só a camada das paredes
+        };
+
+        var walls = new List<PhysicsBody2D> { this }; // A parede que disparou sempre entra
+        foreach (var hit in GetWorld2D().DirectSpaceState.IntersectShape(query)) {
+            if (hit["collider"].As<GodotObject>() is PhysicsBody2D body && body != this && body.IsInGroup("Walls")) {
+                walls.Add(body);
+            }
+        }
+        return walls;
     }
 }

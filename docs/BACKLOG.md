@@ -1,22 +1,10 @@
 # Backlog do projeto
 
-Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atualizada em 2026-10-18.
+Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atualizada em 2026-10-19.
 
 > **Como usar:** cada item aponta para a spec relacionada e traz um "ponto de partida" técnico. O ponto de partida é uma **leitura inicial do código, não uma solução aprovada**: antes de implementar, seguir o fluxo do CLAUDE.md (ler spec e código, propor plano, esperar aprovação). Ao concluir um item, removê-lo daqui e registrar o resultado na spec.
 
 ## 1. Refinamentos do gameplay atual (prioridade do dev)
-
-### 1.2 Empuxo das paredes reativas (direção e colisão)
-
-- **Problemas:**
-  1. Alguns blocos empurram em vez de puxar; outros puxam na direção errada.
-  2. Durante o empuxo, o jogador atravessa **todas** as paredes da sala, não só o trecho irritado.
-- **Ponto de partida (`WallSensitive.cs` e `Player.cs`):**
-  - O centro da parede é calculado como `_visualRect.GlobalPosition + _visualRect.Size / 2`. Isso ignora rotação e escala: em paredes **rotacionadas** (ex.: os segmentos diagonais da `sala_ninho`), o ponto calculado não é o centro real, e a direção do empuxo sai errada — candidato forte para o problema 1. Calcular o centro transformando o centro local do `ColorRect` pela transformação global dele resolve rotação e escala. Confirmar testando.
-  - O vetor é `(wallCenter - playerPosition)`, ou seja, puxa o jogador **para** a parede; o comentário no código diz o contrário ("do centro da parede apontando para o jogador"). Confirmar com o dev qual é o comportamento desejado (o handoff fala em força que "puxa o cientista para o seu centro geométrico e o ejeta").
-  - `Player.ApplyEjection` chama `SetCollisionMaskValue(1, false)`: a máscara 1 inteira é desligada por `_ejectionDuration` (0,8 s), e todas as paredes (camada 1) deixam de colidir — causa do problema 2. A Godot permite exceção de colisão com um corpo específico (`AddCollisionExceptionWith` / `RemoveCollisionExceptionWith`), o que limitaria o "atravessar" à parede irritada.
-  - Bônus: `AddIrritation` imprime um `GD.Print` a cada chamada (todo frame sob a luz), poluindo o Output; e o `_Ready` imprime "SUCESSO" para cada parede.
-- **Spec:** nenhuma ainda (mecânica do HANDOFF, seção 3.3). Propor uma spec curta de "paredes reativas" antes de corrigir.
 
 ### 1.3 Transição entre salas suave e nos dois sentidos
 
@@ -44,6 +32,7 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 | Valores definitivos de `MaxConcurrentEnemies` e `MaxTotalEnemies` | `fractal-enemy.md` (seção 10) | Hoje 200 e 350 na `sala_ninho`; variantes A2/A3 do teto anotadas |
 | Iluminação da `sala_ninho` | `fractal-enemy.md` (seção 10) | Em teste pelo dev (Background/CanvasModulate); não "corrigir" sem combinar |
 | Sala final (`sala_nucleo`) e gerador de labirintos | HANDOFF | Nenhum dos dois existe no projeto |
+| O que acontece do outro lado da parede depois da ejeção | `reactive-walls.md` (D5) | Na `sala_ninho`, a ejeção leva o jogador para fora da arena; toca no "vácuo", adiado para depois da demo |
 
 ## 3. Dívidas técnicas
 
@@ -58,7 +47,8 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 | `TerminalModo` lê a tecla por polling | `suit-evolution.md` (notas) | Só importa se ele ganhar interface; usar `_UnhandledInput` como o `EvolutionTerminal` |
 | Pool de fragmentos | `fractal-enemy.md` (seção 5) | Só se matar muitos inimigos de uma vez causar engasgo |
 | `Player._PhysicsProcess` longo, com três estados (normal, ejetado, morto) em `if/else` | código (`Player.cs`) | Se surgirem mais estados, considerar o padrão State |
-| `HANDOFF.md` desatualizado (ex.: `_counterThrustDamping`) | `docs/HANDOFF.md` | O código e o CLAUDE.md valem mais |
+| Paredes da `sala_desfiladeiro` não são instâncias de uma cena de parede | `reactive-walls.md` (seção 4) | Cada uma tem os próprios `[Export]`: ajustar um valor exige mudar parede por parede ou o padrão no código. Prioridade baixa |
+| `HANDOFF.md` desatualizado (ex.: `_counterThrustDamping`; a fórmula do centro da parede na seção 5.1) | `docs/HANDOFF.md` | O código e o CLAUDE.md valem mais |
 
 ## 4. Etapa 2 (não fazer agora)
 

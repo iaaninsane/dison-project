@@ -1,11 +1,13 @@
 using Godot;
 using System;
+using System.Collections.Generic;
 
 public partial class Player : CharacterBody2D
 {
     [Export] public float ThrustForce = 450f; //default 150
     [Export] public float MaxSpeed = 600f;
     [Export] public float Friction = 0.1f;
+    [Export] public float EjectionDuration = 0.8f; // Tempo sem controle depois de uma ejeção (s)
 
     // --- CONTROLE DE MODO DE TIRO/MIRA ---
     // Cópia do modo guardado no GameState: lida ao nascer e atualizada pelo sinal FlashlightModeChanged
@@ -19,11 +21,11 @@ public partial class Player : CharacterBody2D
 
     // --- ATRIBUTOS DE EJEÇÃO ---
     public bool IsEjected { get; private set; } = false;
+    private float _ejectionTimer = 0f;
+    private readonly List<PhysicsBody2D> _passThroughWalls = new(); // Paredes atravessadas na ejeção atual
 
     // --- MORTE ---
     public bool IsDead { get; private set; } = false;
-    private float _ejectionTimer = 0f;
-    private float _ejectionDuration = 0.8f; // Tempo de perda de controle (em segundos)
 
     public override void _Ready()
     {
@@ -74,11 +76,7 @@ public partial class Player : CharacterBody2D
             _ejectionTimer -= dt;
             if (_ejectionTimer <= 0f)
             {
-                IsEjected = false;
-
-                // Reativa a colisão física para que ele volte a colidir normalmente com outras estruturas
-                SetCollisionMaskValue(1, true);
-
+                EndEjection();
             }
 
             // Durante a ejeção, o jogador perde o controle do WASD/Analógico.
@@ -179,16 +177,36 @@ public partial class Player : CharacterBody2D
         Velocity += impulse;
     }
 
-    public void ApplyEjection(Vector2 impulse)
+    // passThroughWalls: paredes que o jogador atravessa (a que disparou e as que estão no caminho até ela)
+    public void ApplyEjection(Vector2 impulse, IReadOnlyList<PhysicsBody2D> passThroughWalls)
     {
+        if (IsEjected) EndEjection(); // Ejeção por cima de outra: desfaz as exceções anteriores antes
+
         IsEjected = true;
-        _ejectionTimer = _ejectionDuration;
+        _ejectionTimer = EjectionDuration;
 
         // Atribui a velocidade de ejeção diretamente à física newtoniana do jogador
         Velocity = impulse;
 
-        // Desativa temporariamente a colisão com as paredes (ex: se as paredes estão na Layer 1)
-        // Isso faz com que o jogador "afunde" no tecido biológico da parede
-        SetCollisionMaskValue(1, false);
+        // Exceção de colisão só com essas paredes: o jogador "afunda" nesse tecido
+        // e continua batendo nas outras paredes, nos pilares e nas paredes de titânio
+        foreach (PhysicsBody2D wall in passThroughWalls)
+        {
+            if (wall == null) continue;
+            AddCollisionExceptionWith(wall);
+            _passThroughWalls.Add(wall);
+        }
+    }
+
+    // Fim da ejeção: devolve o controle, e as paredes atravessadas voltam a ser sólidas
+    private void EndEjection()
+    {
+        IsEjected = false;
+
+        foreach (PhysicsBody2D wall in _passThroughWalls)
+        {
+            if (IsInstanceValid(wall)) RemoveCollisionExceptionWith(wall);
+        }
+        _passThroughWalls.Clear();
     }
 }
