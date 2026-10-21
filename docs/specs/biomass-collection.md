@@ -127,3 +127,5 @@ Como o coletor e o HUD estão no `player.tscn`, funcionam em toda sala que tiver
 ### Notas
 
 - A `arena.tscn` serve só de bancada; nenhuma regra desta spec depende dela.
+- **Sem blecaute total desde out/2026** (rascunho de game design): o material unshaded continua garantindo que o orbe não seja escurecido pelo `CanvasModulate`, qualquer que seja a cor escolhida. A opção de luz própria por orbe passa a ser só estética (etapa 2).
+- **Futuro (spec `dyson-wall.md`, seção 2.6; decidido em out/2026):** os orbes também são sugados pelas fendas da parede de fronteira e se perdem ao cruzá-las. Continua sem física: a sucção entra no mesmo laço do `BiomassField`, somada ao ímã (perto da fenda, a sucção vence).

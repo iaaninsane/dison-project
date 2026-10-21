@@ -169,7 +169,7 @@ Com os valores atuais da cena (`RecursionDepth` 4, `BaseBranchLength` 8, `MaxHea
 
 - Quando a transição entre salas diferentes existir: repetir os testes de "trocar de sala" da seção 8 (erros no Output e "Nós Órfãos" = 0, inclusive trocando de sala no meio de uma divisão). O recarregamento da mesma sala, pela morte do jogador, já passou nesses testes.
 
-- Valores definitivos de `MaxConcurrentEnemies` e `MaxTotalEnemies` por sala (decidir na spec da `sala_ninho`).
+- Valores definitivos de `MaxConcurrentEnemies` e `MaxTotalEnemies`: decidir na spec dos spawners móveis (backlog 1.4). O rascunho de game design (out/2026) troca o ninho fixo por cerca de 10 spawners que circulam pela fase; o `NinhoSpawnerPooled` (pool e tetos) é o ponto de partida.
 - O dano por tiros entra numa spec própria ou nesta?
 
 ### Observações do código (sem ação por enquanto)
@@ -177,7 +177,7 @@ Com os valores atuais da cena (`RecursionDepth` 4, `BaseBranchLength` 8, `MaxHea
 - `TakeDamage` é chamado a cada frame sob o feixe e soma `_time += 0.2f` a cada chamada. Com isso a pulsação acelera muito enquanto o inimigo está na luz, e o flash branco fica ligado o tempo todo. Registrado para revisar junto com o flash.
 - O `CollisionShape2D` do inimigo tem um círculo de raio 30 com o nó escalado para 0.2 (raio efetivo de ~6 px). A recomendação da Godot é ajustar o raio da forma em vez de escalar o nó de colisão.
 - O `Player` também usa Motion Mode Grounded (padrão). Avaliar Floating na spec do jogador; afeta como ele desliza nas paredes (game feel).
-- `sala_ninho.tscn`: a iluminação está **em teste pelo dev** (out/2026). A visibilidade do `Background` e do `CanvasModulate` pode estar alterada de propósito (o dev está avaliando não usar escuridão total nessa sala), contrariando a regra do CLAUDE.md. Nada definitivo; não "corrigir" sem combinar. Testes que dependem de escuridão devem usar a `arena.tscn`.
+- `sala_ninho.tscn`: a iluminação estava em teste pelo dev. **Resolvido (out/2026):** o rascunho de game design retirou o blecaute total (inimigos visíveis em silhueta, contraluz do sol). As cenas ainda estão com o `CanvasModulate` antigo até o dev ajustá-lo (backlog 1.6); não "corrigir" sem combinar.
 
 ## 11. Diagnóstico de desempenho (set/2026)
 

@@ -1,6 +1,7 @@
 # Spec: Paredes reativas (irritação e ejeção)
 
 - **Status:** validada (out/2026). Decisões D1 a D6 aceitas pelo dev; D3 revista depois do teste (seção 10). Valores em teste.
+- **Transitória:** o modelo-alvo das paredes de fronteira com o espaço passou a ser a `docs/specs/dyson-wall.md` (membrana que abre uma fenda e suga o jogador; decisão do dev, out/2026). Esta mecânica continua valendo nas salas atuais até a `DysonWall` existir. Paredes internas entre estruturas serão rígidas (fora do grupo `Walls`).
 - **Etapa:** 1 (mecânica)
 - **Depende de:** nada. Corrige a mecânica descrita no HANDOFF (seção 3.3) e o item 1.2 do backlog.
 
@@ -100,6 +101,7 @@ Confirmado pelo dev no editor (out/2026):
    - **Revista depois do teste (out/2026):** ao iluminar dois blocos vizinhos em diagonal, o caminho até o centro do bloco que disparou cruzava o bloco vizinho, já sólido, e o jogador batia nele (efeito aparente de repulsão). Opções avaliadas: (1) atravessar as paredes do grupo `Walls` no caminho; (2) o segmento inteiro (descartada: "blocos irmãos" não serve como regra, pois na `sala_desfiladeiro` todas as paredes são irmãs, e não cobre a junção entre segmentos); (3) "tecido irritado amolece", toda parede com irritação > 0 (descartada depois de um comparativo: a `LightDamageArea` detecta paredes atrás de outras, então a parede de trás do corredor ficaria mole e o problema 2 voltaria em parte); (4) aceitar o raspão (contraria D1). **Escolhida pelo dev: opção 1**, com o túnel do jogador até `EjectionPathOvershoot` depois do centro.
 4. **D4, logs:** remover o `GD.Print` a cada frame do `AddIrritation` e o "SUCESSO" do `_Ready`; o `PrintErr` de `ColorRect` ausente fica.
 5. **D5, do outro lado da parede:** fora desta spec (ser ejetado da `sala_ninho` leva o jogador para fora da arena, como já acontece hoje). Registrar no backlog como decisão em aberto; toca no "vácuo", adiado para depois da demo.
+   - **Atualizado (out/2026):** o rascunho de game design define que a ejeção leva o jogador para fora da estrutura, no espaço (modelo da `dyson-wall.md`, sinal `PlayerEjected`). O espaço não é navegável (o "vácuo como atalho" continua adiado); a **consequência** (morte, dano, volta ao último nó, perda de biomassa) continua em aberto no backlog.
 6. **D6, `EjectionDuration`:** vira `[Export]` no `Player`.
 
 ### Notas de implementação (out/2026)

@@ -1,6 +1,6 @@
 # Spec: Visual 3D do inimigo fractal (projeção no shader + linhas em tubo)
 
-- **Status:** proposta. Não implementar antes de concluir a etapa 1.
+- **Status:** proposta. Não implementar antes de concluir a etapa 1. Revista em out/2026 para a nova direção de arte (Cocoon, contraluz, sem blecaute): continua aplicável, com os ajustes da seção 10.
 - **Etapa:** 2 (arte e shaders)
 - **Depende de:** `docs/specs/fractal-enemy.md` (fases 1 e 2 implementadas). Como a divisão celular (fase 2) já existe, esta spec precisa cobrir os fragmentos (seção 5): profundidade e tamanho variam por geração (`_drawDepth`, `_drawBranchLength` em `FractalEnemy.cs`).
 
@@ -13,7 +13,7 @@ Dar ao anticorpo fractal a aparência de uma estrutura 3D girando, sem mudar nad
 Duas técnicas combinadas:
 
 1. **Projeção 3D no shader de vértice:** os ramos passam a ter coordenadas 3D. Rotação e perspectiva são calculadas na GPU.
-2. **Linhas em tubo com normais procedurais:** cada ramo é desenhado como uma faixa cujo shader calcula uma normal cilíndrica. Assim, o feixe da lanterna, que já causa dano, também revela o volume do inimigo, reforçando visualmente a mecânica.
+2. **Linhas em tubo com normais procedurais:** cada ramo é desenhado como uma faixa cujo shader calcula uma normal cilíndrica (ou facetada, como um prisma low poly; ver seção 10). Assim, o feixe da lanterna, que já causa dano, também revela o volume do inimigo, reforçando visualmente a mecânica.
 
 ## 2. Comportamento esperado
 
@@ -22,7 +22,7 @@ Duas técnicas combinadas:
 - Enquanto vive, o **ângulo de abertura dos ramos continua pulsando** (decisão da spec original), com `BaseBranchAngle`, `PulseAmplitude` e `PulseFrequency`.
 - Quando o feixe da lanterna ilumina o inimigo, então os tubos mostram lado iluminado e lado em sombra conforme a direção da luz.
 - Ao receber dano, o flash branco continua funcionando, agora como parâmetro do shader.
-- A visibilidade do inimigo fora do feixe (no escuro do `CanvasModulate`) deve ser a mesma de hoje. Esta spec não muda a legibilidade da horda no escuro.
+- Fora do feixe, o inimigo aparece em **silhueta contra o fundo iluminado pelo sol** (não há mais blecaute total, desde out/2026), com contorno de luz no lado voltado para o sol. Dentro do feixe, a lanterna é a luz frontal que revela cor e volume.
 - Colisão, movimento, dano e pool não mudam.
 
 ## 3. Fora do escopo
@@ -87,8 +87,13 @@ Duas técnicas combinadas:
 - A topologia da árvore é a mesma do anticorpo atual (sem trocar por outros tipos de fractal).
 - A pulsação continua sendo de ângulo, não de escala.
 - Esta spec não toca em física nem em colisão, que é o gargalo medido hoje.
+- **Referência visual (out/2026): Cocoon** (low poly, luz e sombra, silhuetas que simulam 3D).
+- **Aplicabilidade (pergunta do dev, out/2026):** a spec continua aplicável. Girar o fractal em 3D com normais por ramo é o que dá volume num mundo em contraluz (contorno do sol atrás, luz frontal da lanterna). Simular só com luz e sombra num desenho 2D é mais barato, mas o fractal não gira e perde a leitura de "objeto 3D alienígena"; como o inimigo é desenhado por código, normal map exigiria gerar texturas antes (R1 da spec original).
 
 ### Em aberto
+
+- **Sombreamento: tubo cilíndrico (liso) × prisma facetado (low poly).** Recomendação (out/2026): **facetado** (cada ramo como prisma triangular, normais por face, sombreamento chapado). É a leitura de low poly do Cocoon, usa a mesma técnica e é mais barato.
+- **Modelo de luz único com a parede de fronteira** (`dyson-wall.md`, seção 2.7): sol atrás = contorno (rim); lanterna = luz frontal. Decidir na spec de arte se é calculado no shader (direção do sol como parâmetro) ou com `Light2D`.
 
 - **Como distribuir a árvore em 3D.**
   - **T1:** manter os 4 troncos no plano e alternar o plano de bifurcação a cada nível (cada nível gira 90° em torno do eixo do ramo pai). A silhueta continua reconhecível, com volume.
@@ -101,4 +106,4 @@ Duas técnicas combinadas:
   - **D1 (começar por aqui):** cada inimigo ganha um nó filho com a malha compartilhada e o material do shader. Mantém a arquitetura atual, sem registro central. Verificar se a Godot permite parâmetros por instância nesse tipo de shader 2D (fase de rotação, tempo da pulsação, flash) sem duplicar o material, porque material duplicado pode quebrar o agrupamento das chamadas de desenho.
   - **D2:** retomar a renderização em lote (R2 da spec original) com `MultiMeshInstance2D`, passando os parâmetros por `INSTANCE_CUSTOM`. Neste caso, o shader 3D substitui o bake de texturas do R1, e os pontos já levantados sobre o registro central continuam válidos. Só ir para D2 se as medições de D1 mostrarem que o desenho virou gargalo.
 - **Blending aditivo e iluminação.** O brilho aditivo dispensa ordenar os ramos por profundidade, mas pode "lavar" o efeito da luz da lanterna. Testar: corpo do tubo com iluminação normal e um brilho aditivo separado e mais fraco, ou só iluminação.
-- **Cor.** O código usa `NeonColor` verde; os mockups de direção de arte usaram magenta para os inimigos. Decidir na spec de arte. Esta spec só lê `NeonColor`.
+- **Cor.** O código usa `NeonColor` verde; os mockups de direção de arte usaram magenta para os inimigos. O rascunho de game design (out/2026) mantém o neon, mas pede teste com tons pastel. Decidir na spec de arte. Esta spec só lê `NeonColor`.

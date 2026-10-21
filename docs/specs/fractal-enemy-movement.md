@@ -69,7 +69,7 @@ O bloqueio é detectado pelo **efeito** (o inimigo tentou andar e não saiu do l
 - Inimigo alinhado com um pilar e com o jogador (bate de frente): descansa em vez de empurrar. Contornar obstáculos exige navegação, fora do escopo.
 - Inimigo reaproveitado do pool: começa acordado (`ActivateAt` zera o descanso).
 - No modo Floating toda colisão conta como "parede", inclusive o jogador e os pilares: o inimigo encostado no jogador também para de empurrá-lo.
-- Ejeção do jogador: o `Player.cs` desliga só a máscara 1 durante a ejeção; com a camada 2 na máscara do jogador, ele continua colidindo com inimigos enquanto ejetado (hoje não colide).
+- Ejeção do jogador: desde o backlog 1.2 (spec `reactive-walls.md`, out/2026), a ejeção não mexe mais na máscara; o jogador ignora só as paredes do caminho (exceção de colisão) e continua colidindo com os inimigos enquanto ejetado.
 
 ## 6. Arquivos e cenas
 
@@ -115,6 +115,7 @@ Opcional (altera o `project.godot`, pedir antes): nomear as camadas em Projeto >
 - Registro central em classe estática (`FractalSwarm`), para cobrir os três fluxos de criação sem mexer em cenas nem no `project.godot`.
 - Bloqueio detectado por progresso (velocidade real × desejada) com descanso e despertar por mudança de direção, em vez de remover a componente da velocidade na direção da normal da parede. Motivo: a abordagem pela normal falha nas quinas (duas normais), onde o inimigo alternaria entre as paredes sem nunca descansar.
 - O descanso não impede navegação futura: um inimigo seguindo um caminho está andando e não trava; e a mudança da direção desejada o acorda.
+- **Futuro (spec `dyson-wall.md`, seção 2.6; decidido em out/2026):** a sucção das fendas da parede de fronteira também afeta os inimigos. Quando for implementada, a velocidade desejada passa a ser perseguição + separação + uma velocidade de sucção acumulada (os inimigos não têm inércia), e a mudança de direção que ela causa acorda quem estiver descansando perto da fenda.
 
 ### Referência de desempenho (antes deste experimento)
 
@@ -142,7 +143,7 @@ Opcional (altera o `project.godot`, pedir antes): nomear as camadas em Projeto >
 
 **Situação:** o jogador está do lado de **fora** de uma parede da sala, e a horda se aglomera do lado de **dentro**, formando um semicírculo denso contra a parede. Nesse cenário o FPS ainda cai abaixo de 60 com 400 inimigos.
 
-**Prioridade:** baixa. Na avaliação do dev, a situação deve ocorrer pouco ou nunca no gameplay normal. Resolver quando voltar a ser relevante (ex.: mais inimigos, fragmentos da fase 2 ou salas com paredes finas entre jogador e horda).
+**Prioridade:** baixa. Na avaliação do dev, a situação deve ocorrer pouco ou nunca no gameplay normal. Resolver quando voltar a ser relevante (ex.: mais inimigos, fragmentos da fase 2 ou salas com paredes finas entre jogador e horda). **Reavaliar na spec dos spawners móveis (backlog 1.4):** o rascunho de game design (out/2026) prevê cerca de 10 spawners gerando inimigos pela fase inteira, o que pode aumentar a carga da horda.
 
 **Hipóteses (não verificadas):**
 - Só a camada da horda encostada na parede trava e descansa. O resto do semicírculo fica em "empurra-empurra" (a perseguição puxa para a parede e a separação empurra para fora), a direção desejada gira e os acorda, e quase todos chamam `MoveAndSlide` em todo passo.

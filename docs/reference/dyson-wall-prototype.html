@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Protótipo: parede da esfera de Dyson</title>
+<!--
+  REFERÊNCIA PARA A SPEC docs/specs/dyson-wall.md
+  Protótipo validado em conversa de direção de arte. Não é código de produção.
+  As funções que importam para a implementação na Godot:
+    build()      geração da geometria (Sierpinski, hexágonos, octógonos)
+    params()     transformação da peça inteira para cada modo de abertura
+    local()      transformação de cada sub-triângulo para cada modo
+    subShrink()  cascata do modo Esmaecer
+    amtAt()      curvas de tempo (fases, easing elástico e suave)
+    prism()      iluminação em contraluz (facetas, laterais, contorno)
+    draw()       ordem de desenho, membrana, feixe de luz da fenda
+  Abra no navegador: segure o clique sobre a parede para irritá-la.
+-->
+<style>
+:root{--text-secondary:#8a8590;--bg-accent:#2c4a66;--text-accent:#cfe6ff;--border-accent:#4a7aa6;--radius:8px}
+body{margin:0;padding:16px;background:#141018;color:#eee;font-family:system-ui,sans-serif;max-width:900px}
+button{font:inherit;color:#eee;background:transparent;border:0.5px solid #555;border-radius:6px;cursor:pointer}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 8px}.row span{font-size:13px;color:var(--text-secondary);min-width:84px}.row button{font-size:13px;padding:4px 10px}.row button.on{background:var(--bg-accent);color:var(--text-accent);border-color:var(--border-accent)}
+</style>
+</head>
+<body>
+<div class="row" id="shapes"><span>Forma</span><button data-v="tri" class="on">Sierpinski</button><button data-v="hex">Hexágonos</button><button data-v="oct">Octógonos</button></div>
+<div class="row" id="levels"><span>Nível</span><button data-v="0">0</button><button data-v="1">1</button><button data-v="2" class="on">2</button><button data-v="3">3</button></div>
+<div class="row mg"><span>Movimento</span><button data-v="slide">Deslizar</button><button data-v="petal">Pétalas</button><button data-v="scatter">Dispersar</button><button data-v="peri">Peristalse</button><button data-v="iris">Íris</button><button data-v="inflar">Inflar</button><button data-v="rasgar">Rasgar</button><button data-v="cilios">Cílios</button></div>
+<div class="row mg"><span>Peça a peça</span><button data-v="girar">Girar</button><button data-v="virar">Virar</button><button data-v="torcer">Torcer</button><button data-v="esticar">Esticar</button><button data-v="gelatina">Gelatina</button><button data-v="murchar">Murchar</button><button data-v="colapsar">Colapsar</button><button data-v="dobrar">Dobrar</button><button data-v="esmaecer" class="on">Esmaecer</button></div>
+<div class="row"><span></span><button id="now">Abrir agora</button></div>
+<canvas id="cv" style="width:100%;height:280px;display:block;border-radius:var(--radius);touch-action:none"></canvas>
+<p id="desc" style="font-size:13px;color:var(--text-secondary);margin:8px 0 0"></p>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),desc=document.getElementById('desc');
+let W=380,H=280,TOP=92,BOT=136,MID=114,SX=190,SY=100,shape='tri',level=2,mode='esmaecer',tiles=[],parts=[],motes=[],time=0;
+let hold=false,px=0,py=0,open={active:false,x:0,t:0};
+const R=64,RE=R*1.15,ORG=['peri','iris','inflar','rasgar','cilios','girar','torcer','esticar','gelatina','murchar','colapsar'];
+const DUR=()=>mode==='esmaecer'?[0.35,1.1,1.2,1.3]:[0.35,0.6,1.4,0.75];
+const TXT={slide:'Peças deslizam e se comprimem, como fibras se contraindo.',petal:'Peças giram nas bases, como válvulas.',scatter:'Peças se soltam e voltam, como escamas.',peri:'Uma onda percorre a parede antes de abrir, como peristalse.',iris:'As peças giram em espiral ao redor da fenda, como um esfíncter.',inflar:'A parede estufa como uma bolha e então se rompe.',rasgar:'A fenda se propaga peça por peça, como tecido rasgando.',cilios:'As peças se curvam e continuam batendo, como cílios.',girar:'Cada peça gira num sentido; os sub-triângulos giram no sentido oposto.',virar:'As peças viram como cartas e revelam a face de trás, iluminada pelo sol.',torcer:'As peças giram e se achatam, como tecido torcido.',esticar:'Os vértices são puxados como borracha.',gelatina:'Cada vértice treme por conta própria, como gelatina.',murchar:'As peças murcham em ritmos diferentes, como células perdendo pressão.',colapsar:'As peças colapsam em pontos, em cascata, e depois renascem.',dobrar:'As peças se dobram como origami e mostram o lado voltado para o sol.',esmaecer:'A figura irritada e as vizinhas encolhem em cascata até sumir, e a luz do sol atravessa a fenda.'};
+const TEAL=[110,240,215],SUN=[255,196,130];
+let pl={x:0,y:0,hx:0,hy:0,vis:true};
+function mixA(A,B,t){t=Math.max(0,Math.min(1,t));return A.map((v,i)=>v+(B[i]-v)*t)}
+function rgb(A,a){const c=A.map(v=>Math.max(0,Math.min(255,Math.round(v))));return a===undefined?'rgb('+c.join(',')+')':'rgba('+c.join(',')+','+a+')'}
+function mid(a,b){return[(a[0]+b[0])/2,(a[1]+b[1])/2]}
+function sier(A,B,C,n,out){if(n===0){out.push([A,B,C]);return}const ab=mid(A,B),bc=mid(B,C),ca=mid(C,A);sier(A,ab,ca,n-1,out);sier(ab,B,bc,n-1,out);sier(ca,bc,C,n-1,out)}
+function mk(pts){let cx=0,cy=0;pts.forEach(p=>{cx+=p[0];cy+=p[1]});return{pts,cx:cx/pts.length,cy:cy/pts.length,rnd:Math.random()}}
+function add(pts,i,sub){const t=mk(pts);t.irr=0;t.sh=i%2;let raw=[];if(sub&&level>0)sier(pts[0],pts[1],pts[2],level,raw);else raw=[pts];t.subs=raw.map(mk);tiles.push(t)}
+function build(){tiles=[];let i=0;const h=BOT-TOP;
+if(shape==='tri'){const s=h*1.155,n=Math.ceil(W/(s/2))+2;for(let k=-1;k<n;k++){const x=k*s/2;if(((k%2)+2)%2===0)add([[x,BOT],[x+s,BOT],[x+s/2,TOP]],i++,true);else add([[x,TOP],[x+s,TOP],[x+s/2,BOT]],i++,true)}}
+if(shape==='hex'){const a=h/Math.sqrt(3);for(let x=0;x<W+3*a;x+=2*a){add([[x-a,MID],[x-a/2,TOP],[x+a/2,TOP],[x+a,MID],[x+a/2,BOT],[x-a/2,BOT]],i++);add([[x+a/2,TOP],[x+1.5*a,TOP],[x+a,MID]],i++);add([[x+a/2,BOT],[x+1.5*a,BOT],[x+a,MID]],i++)}}
+if(shape==='oct'){const w=h,a=w/(1+Math.SQRT2);for(let x=0;x<W+w*2;x+=w){add([[x-a/2,TOP],[x+a/2,TOP],[x+w/2,MID-a/2],[x+w/2,MID+a/2],[x+a/2,BOT],[x-a/2,BOT],[x-w/2,MID+a/2],[x-w/2,MID-a/2]],i++);add([[x+a/2,TOP],[x+w-a/2,TOP],[x+w/2,MID-a/2]],i++);add([[x+a/2,BOT],[x+w-a/2,BOT],[x+w/2,MID+a/2]],i++)}}}
+function resize(){const r=cv.getBoundingClientRect(),d=window.devicePixelRatio||1;W=r.width||380;SX=W/2;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0);motes=[];for(let k=0;k<45;k++)motes.push({x:Math.random()*W,y:Math.random()*H,vx:4+Math.random()*8,vy:-2-Math.random()*4,r:0.6+Math.random()*1.4,ph:Math.random()*6});pl.hx=W/2+80;pl.hy=215;pl.x=pl.hx;pl.y=pl.hy;build()}
+function phaseAt(t){const D=DUR();for(let p=0;p<4;p++){if(t<D[p])return[p,t/D[p]];t-=D[p]}return[4,1]}
+function elastic(u){return u<=0?0:u>=1?1:Math.pow(2,-10*u)*Math.sin((10*u-0.75)*2.0944)+1}
+function smooth(u){return u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2}
+function amtAt(t,el){if(!open.active||t<0)return 0;const[p,u]=phaseAt(t);if(p===0)return 0;if(p===1)return el?elastic(u):(mode==='esmaecer'?smooth(u):1-Math.pow(1-u,3));if(p===2)return 1;if(p===3)return 1-smooth(u);return 0}
+function envAt(){if(!open.active)return 0;const[p,u]=phaseAt(open.t);let e=Math.min(1,open.t/0.3);if(p===3)e*=1-u;if(p===4)e=0;return e}
+function trigger(x){if(open.active)return;open={active:true,x,t:0}}
+function params(t){const T=open.t,ox=open.x,d=t.cx-ox,ad=Math.abs(d),s=Math.sign(d)||1,org=ORG.includes(mode),k=amtAt(T,org),env=envAt(),f=open.active?Math.max(0,1-ad/R):0,g=open.active?Math.max(0,1-ad/(2.5*R)):0;
+let dx=0,dy=0,rot=0,sc=1,sx=1,sy=1,hx=t.cx,hy=t.cy,vf=null,dark=0;const xs=t.pts.map(p=>p[0]),farHinge=()=>{hx=s<0?Math.min(...xs):Math.max(...xs);hy=BOT};
+switch(mode){
+case'slide':if(f>0){dx=s*k*f*34;sc=1-.35*k*f}break;
+case'petal':if(f>0){farHinge();rot=s*k*f*1.3}break;
+case'scatter':if(f>0){dx=s*k*f*30;dy=-k*f*30;rot=s*k*f*1.2;sc=1-.3*k*f}break;
+case'peri':{const w=Math.sin(ad*0.12-T*9)*g*env;dy=w*7;sc=1+w*0.08;if(f>0){dx=s*k*f*30;sc*=1-.3*k*f}}break;
+case'iris':if(f>0){const a=k*f*1.2,vx=t.cx-ox,vy=t.cy-MID,pu=1+k*f*0.9,nx=(vx*Math.cos(a)-vy*Math.sin(a))*pu,ny=(vx*Math.sin(a)+vy*Math.cos(a))*pu;dx=nx-vx+s*k*f*10;dy=ny-vy;rot=a;sc=1-0.5*k*f*f}break;
+case'inflar':{const dome=Math.min(k/0.6,1.2),sp=Math.max(0,(k-0.6)/0.4);if(g>0){dy=-dome*g*22-sp*f*10;dx=d*dome*g*0.25+s*sp*f*24;rot=s*sp*f*0.7;sc=1+0.12*dome*g-0.25*sp*f}}break;
+case'rasgar':{const kl=amtAt(T-(ad/R)*0.35-t.rnd*0.1,true),ff=f*(0.7+t.rnd*0.6);if(ff>0){farHinge();rot=s*kl*ff*1.5;dx=s*kl*ff*10;dy=-kl*ff*6}}break;
+case'cilios':if(g>0){hx=t.cx;hy=BOT;rot=s*k*f*0.9+Math.sin(T*12-ad*0.15)*0.3*env*g;dx=s*k*f*28}break;
+case'girar':if(f>0){rot=(t.sh?1:-1)*k*f*2.8;sc=1-0.55*k*f;dx=s*k*f*8}break;
+case'virar':{const kl=amtAt(T-(ad/R)*0.25,false),a=Math.min(1.5,kl*f*1.6);if(f>0){sx=Math.cos(a);dark=Math.sin(a)*0.6;dx=s*kl*f*6}}break;
+case'torcer':if(f>0){rot=s*k*f*2.4;sy=1-0.55*k*f;sc=1-0.15*k*f;dx=s*k*f*18}break;
+case'esticar':if(g>0){vf=(x,y)=>{const dv=x-ox,fv=Math.max(0,1-Math.abs(dv)/R);return[x+(Math.sign(dv)||s)*k*fv*36,y-k*fv*fv*8]}}break;
+case'gelatina':if(g>0){if(f>0){dx=s*k*f*30;sc=1-.25*k*f}vf=(x,y,i)=>[x+Math.sin(T*16+i*1.7+t.rnd*6)*3.2*env*g,y+Math.cos(T*14+i*2.1+t.rnd*5)*3.2*env*g]}break;
+case'murchar':if(f>0){vf=(x,y,i)=>{const n=0.5+0.5*Math.sin(i*2.3+t.rnd*9),c=Math.max(0.05,1-k*f*(0.45+0.5*n));return[t.cx+(x-t.cx)*c+Math.sin(T*10+i)*1.2*k*f,t.cy+(y-t.cy)*c+Math.cos(T*9+i)*1.2*k*f]}}break;
+case'colapsar':{const kl=amtAt(T-(ad/R)*0.3,true);if(f>0){sc=Math.max(0.03,1-kl*f*0.97);rot=s*kl*f*0.6}}break;
+case'dobrar':if(f>0){const a=Math.min(3.0,k*f*3.0);hy=TOP;sy=Math.cos(a);dark=a>1.5708?0.7:Math.sin(a)*0.4;dx=s*k*f*4}break;
+case'esmaecer':if(t.subs.length===1&&open.active&&ad<RE){const kl=amtAt(T-(ad/R)*0.45-t.rnd*0.06,false);sc=Math.max(0,1-kl)}break;}
+if(org&&open.active)dy+=Math.sin(T*14+d*0.1)*1.4*g*env*(1-f);
+dy+=Math.sin(time*1.6+t.cx*0.04)*0.7;
+let j=(t.irr>0.5?(t.irr-0.5)*3:0);if(open.active&&phaseAt(T)[0]===0)j+=f*2;dx+=(Math.random()-.5)*j;dy+=(Math.random()-.5)*j;
+const c=Math.cos(rot),sn=Math.sin(rot);
+return{dark,P:{k,f,g,s,T,env,ad},map:(x0,y0,i)=>{const[x,y]=vf?vf(x0,y0,i):[x0,y0];const X=(x-hx)*sc*sx,Y=(y-hy)*sc*sy;return[X*c-Y*sn+hx+dx,X*sn+Y*c+hy+dy]}}}
+function subShrink(sb,T){if(!open.active)return 1;const sd=Math.abs(sb.cx-open.x);if(sd>=RE)return 1;const kq=amtAt(T-(sd/R)*0.45-sb.rnd*0.06,false);return Math.max(0,1-kq)}
+function local(t,sb,si,P){if(t.subs.length===1)return{p:sb.pts,dark:0};
+const{k,f,g,s,T,env,ad}=P,q=k*f,vx=sb.cx-t.cx,vy=sb.cy-t.cy,delay=sb.rnd*0.25,xs=sb.pts.map(p=>p[0]),ys=sb.pts.map(p=>p[1]);
+let rot=0,sc=1,sx=1,sy=1,ox=0,oy=0,hx=sb.cx,hy=sb.cy,dark=0;
+switch(mode){
+case'slide':sc=1-0.3*q;ox=s*q*3;break;
+case'petal':hx=s<0?Math.min(...xs):Math.max(...xs);hy=Math.max(...ys);rot=s*q*0.6;break;
+case'scatter':ox=vx*q*0.5;oy=vy*q*0.5;rot=q*(sb.rnd-0.5)*2.4;break;
+case'peri':oy=Math.sin(T*10+si*0.9)*2*env*g;break;
+case'iris':{const a=q*0.9,nx=vx*Math.cos(a)-vy*Math.sin(a),ny=vx*Math.sin(a)+vy*Math.cos(a);ox=nx-vx;oy=ny-vy;rot=a}break;
+case'inflar':ox=vx*q*0.35;oy=vy*q*0.35;sc=1+0.1*q;break;
+case'rasgar':hx=s<0?Math.min(...xs):Math.max(...xs);hy=Math.max(...ys);rot=s*q*sb.rnd*1.4;break;
+case'cilios':hy=Math.max(...ys);rot=Math.sin(T*14+si)*0.35*env*g;break;
+case'girar':rot=-(t.sh?1:-1)*q*3;sc=1-0.3*q;break;
+case'virar':{const a=Math.max(0,Math.min(1.5,amtAt(T-(ad/R)*0.25-delay,false)*f*1.6));sx=Math.cos(a);dark=Math.sin(a)*0.4}break;
+case'torcer':rot=s*q*1.5;sy=1-0.4*q;break;
+case'esticar':ox=vx*q*0.25;oy=vy*q*0.25;break;
+case'murchar':{const nz=0.5+0.5*Math.sin(si*2.7+sb.rnd*7);sc=Math.max(0.05,1-q*(0.3+0.5*nz))}break;
+case'colapsar':{const kq=amtAt(T-(ad/R)*0.3-delay,true)*f;sc=Math.max(0.03,1-kq*0.9)}break;
+case'dobrar':{const a=Math.min(3,q*3*(0.6+0.4*sb.rnd));hy=Math.min(...ys);sy=Math.cos(a);dark=a>1.5708?0.6:Math.sin(a)*0.3}break;
+case'esmaecer':sc=subShrink(sb,T);break;}
+const c=Math.cos(rot),sn=Math.sin(rot);
+return{dark,p:sb.pts.map(([x,y])=>{const X=(x-hx)*sc*sx,Y=(y-hy)*sc*sy;return[X*c-Y*sn+hx+ox,X*sn+Y*c+hy+oy]})}}
+function edgeN(a,b,cx,cy){let nx=b[1]-a[1],ny=-(b[0]-a[0]);const L=Math.hypot(nx,ny)||1;nx/=L;ny/=L;if(nx*((a[0]+b[0])/2-cx)+ny*((a[1]+b[1])/2-cy)<0){nx=-nx;ny=-ny}return[nx,ny]}
+function prism(p,base,back,ds,emis){const n=p.length;let cx=0,cy=0;p.forEach(q=>{cx+=q[0];cy+=q[1]});cx/=n;cy/=n;let size=0;p.forEach(q=>size+=Math.hypot(q[0]-cx,q[1]-cy));size/=n;if(size<0.3)return;
+let vx=SX-cx,vy=SY-cy;const dist=Math.hypot(vx,vy)||1;vx/=dist;vy/=dist;const prox=Math.max(0.25,Math.min(1,1-dist/(W*0.8)));
+const dl=6*ds,ox=vx*dl,oy=vy*dl,em=c=>emis>0?mixA(c,TEAL,emis*0.55):c,bk=c=>back>0?mixA(c,[240,156,104],back):c;
+for(let i=0;i<n;i++){const a=p[i],b=p[(i+1)%n],[nx,ny]=edgeN(a,b,cx,cy),fd=nx*vx+ny*vy;if(fd>0){ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.lineTo(b[0]+ox,b[1]+oy);ctx.lineTo(a[0]+ox,a[1]+oy);ctx.closePath();const col=rgb(em(bk(mixA(base.map(v=>v*0.8),SUN,0.25+0.6*fd*prox))));ctx.fillStyle=col;ctx.strokeStyle=col;ctx.lineWidth=0.6;ctx.fill();ctx.stroke()}}
+const h=size*0.55;
+for(let i=0;i<n;i++){const a=p[i],b=p[(i+1)%n],ux=b[0]-a[0],uy=b[1]-a[1],wx=cx-a[0],wy=cy-a[1];let Nx=uy*h,Ny=-ux*h,Nz=ux*wy-uy*wx;if(Nz<0){Nx=-Nx;Ny=-Ny;Nz=-Nz}const l=Math.hypot(Nx,Ny,Nz)||1;Nx/=l;Ny/=l;Nz/=l;
+const If=Math.max(0,Ny*0.55+Nz*0.83),wrap=Math.max(0,Nx*vx+Ny*vy)*0.45*prox,k=0.34+0.28*If;
+ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.lineTo(cx,cy);ctx.closePath();const col=rgb(em(bk(mixA(base.map(v=>v*k),[255,170,110],wrap))));ctx.fillStyle=col;ctx.strokeStyle=col;ctx.lineWidth=0.6;ctx.fill();ctx.stroke()}
+ctx.globalCompositeOperation='lighter';ctx.lineWidth=1.4;
+for(let i=0;i<n;i++){const a=p[i],b=p[(i+1)%n],[nx,ny]=edgeN(a,b,cx,cy),fd=nx*vx+ny*vy,al=(fd>0?0.8*fd:0)*prox+0.06;ctx.strokeStyle='rgba(255,205,150,'+al.toFixed(2)+')';ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()}
+ctx.globalCompositeOperation='source-over'}
+let last=performance.now();
+function step(now){const dt=Math.min(0.05,(now-last)/1000);last=now;time+=dt;
+const onWall=hold&&!open.active&&py>TOP-25&&py<BOT+25;
+if(onWall)tiles.forEach(t=>{const d=Math.abs(t.cx-px);if(d<30)t.irr=Math.min(1,t.irr+dt*1.1*(1-d/30))});
+let mx=null;tiles.forEach(t=>{if(!onWall)t.irr=Math.max(0,t.irr-dt*0.25);if(t.irr>=1&&(!mx||t.irr>mx.irr))mx=t});if(mx)trigger(mx.cx);
+if(open.active){open.t+=dt;const[p,u]=phaseAt(open.t);if((p===1&&u>.4)||p===2){for(let k=0;k<2;k++)parts.push({x:open.x+(Math.random()-.5)*24,y:BOT-4,vx:(Math.random()-.5)*20,vy:-60-Math.random()*80,l:1})}
+if(p>=1&&p<=2&&pl.vis){const tx=open.x,ty=TOP-60,ddx=tx-pl.x,ddy=ty-pl.y,L=Math.hypot(ddx,ddy)||1,sp=40+open.t*160;pl.x+=ddx/L*sp*dt;pl.y+=ddy/L*sp*dt;if(pl.y<TOP-50)pl.vis=false}
+if(open.t>DUR().reduce((a,b)=>a+b)+0.8){open.active=false;tiles.forEach(t=>{if(Math.abs(t.cx-open.x)<RE)t.irr=0});setTimeout(()=>{pl.x=pl.hx;pl.y=pl.hy;pl.vis=true},300)}}
+parts.forEach(q=>{q.x+=q.vx*dt;q.y+=q.vy*dt;q.l-=dt*0.9});parts=parts.filter(q=>q.l>0);
+motes.forEach(m=>{m.x+=m.vx*dt;m.y+=m.vy*dt+Math.sin(time+m.ph)*0.1;if(m.x>W+5)m.x=-5;if(m.y<-5)m.y=H+5});
+draw(onWall);requestAnimationFrame(step)}
+function poly(p){ctx.beginPath();ctx.moveTo(p[0][0],p[0][1]);for(let k=1;k<p.length;k++)ctx.lineTo(p[k][0],p[k][1]);ctx.closePath()}
+function draw(onWall){
+let g=ctx.createLinearGradient(0,0,0,TOP);g.addColorStop(0,'#1E1428');g.addColorStop(1,'#4A2838');ctx.fillStyle=g;ctx.fillRect(0,0,W,TOP+2);
+ctx.globalCompositeOperation='lighter';
+let rg=ctx.createRadialGradient(SX,SY,0,SX,SY,Math.max(W,H)*0.75);rg.addColorStop(0,'rgba(255,190,120,0.55)');rg.addColorStop(0.35,'rgba(240,130,90,0.2)');rg.addColorStop(1,'rgba(240,130,90,0)');ctx.fillStyle=rg;ctx.fillRect(0,0,W,H);
+ctx.fillStyle='rgba(255,200,140,0.04)';for(let a=-2.7;a<-0.3;a+=0.42){ctx.beginPath();ctx.moveTo(SX,SY);ctx.lineTo(SX+Math.cos(a-0.06)*500,SY+Math.sin(a-0.06)*500);ctx.lineTo(SX+Math.cos(a+0.06)*500,SY+Math.sin(a+0.06)*500);ctx.closePath();ctx.fill()}
+ctx.globalCompositeOperation='source-over';
+ctx.lineWidth=3;ctx.strokeStyle='rgba(255,190,150,0.22)';ctx.beginPath();ctx.ellipse(SX,SY,W*0.85,70,-0.35,0,7);ctx.stroke();ctx.lineWidth=2;ctx.strokeStyle='rgba(255,190,150,0.12)';ctx.beginPath();ctx.ellipse(SX,SY,W*0.8,60,0.4,0,7);ctx.stroke();
+const sg=ctx.createRadialGradient(SX,SY,0,SX,SY,68);sg.addColorStop(0,'#FFF4DE');sg.addColorStop(0.45,'#FFD08C');sg.addColorStop(1,'#F2995A');ctx.fillStyle=sg;ctx.beginPath();ctx.arc(SX,SY,68,0,7);ctx.fill();
+const bg=ctx.createRadialGradient(SX,SY,0,SX,SY,W*0.65);bg.addColorStop(0,'#FFE9C4');bg.addColorStop(0.35,'#F6A86A');bg.addColorStop(1,'#7A3E44');ctx.fillStyle=bg;ctx.fillRect(0,TOP-2,W,BOT-TOP+4);
+g=ctx.createLinearGradient(0,BOT,0,H);g.addColorStop(0,'#3A1E2C');g.addColorStop(1,'#120A12');ctx.fillStyle=g;ctx.fillRect(0,BOT,W,H-BOT);
+ctx.globalCompositeOperation='lighter';g=ctx.createLinearGradient(0,BOT,0,BOT+50);g.addColorStop(0,'rgba(255,170,110,0.18)');g.addColorStop(1,'rgba(255,170,110,0)');ctx.fillStyle=g;ctx.fillRect(0,BOT,W,50);ctx.globalCompositeOperation='source-over';
+const ds=level>=3?0.35:level===2?0.5:level===1?0.7:1;
+tiles.forEach(t=>{const r=params(t),base=t.sh?[92,58,76]:[108,70,88],many=t.subs.length>1;
+if(many){if(mode==='esmaecer'){let m=0;t.subs.forEach(sb=>{m+=subShrink(sb,open.t)});const bs=m/t.subs.length;if(bs>0.02){poly(t.pts.map((q,i)=>{const p=r.map(q[0],q[1],i);return[t.cx+(p[0]-t.cx)*bs,t.cy+(p[1]-t.cy)*bs]}));ctx.fillStyle=rgb([150,74,62]);ctx.fill()}}
+else{const a=Math.max(0,1-r.P.k*r.P.f*1.5);if(a>0){poly(t.pts.map((q,i)=>r.map(q[0],q[1],i)));ctx.fillStyle=rgb([150,74,62],(a*0.95).toFixed(2));ctx.fill()}}}
+t.subs.forEach((sb,si)=>{const L=local(t,sb,si,r.P);prism(L.p.map((q,i)=>r.map(q[0],q[1],si*3+i)),mixA(base,[160,110,120],sb.rnd*0.15),Math.min(0.9,r.dark+L.dark),many?ds:1,t.irr)})});
+ctx.globalCompositeOperation='lighter';
+if(open.active){const e=envAt(),gw=6+e*30,tt=(H-SY)/(MID-SY),x1=SX+(open.x-gw-SX)*tt,x2=SX+(open.x+gw-SX)*tt,lg=ctx.createLinearGradient(0,MID,0,H);lg.addColorStop(0,'rgba(255,210,150,'+(0.5*e).toFixed(2)+')');lg.addColorStop(1,'rgba(255,210,150,0)');ctx.fillStyle=lg;ctx.beginPath();ctx.moveTo(open.x-gw,MID);ctx.lineTo(open.x+gw,MID);ctx.lineTo(x2,H);ctx.lineTo(x1,H);ctx.closePath();ctx.fill();
+const fg=ctx.createRadialGradient(open.x,MID,0,open.x,MID,60);fg.addColorStop(0,'rgba(255,235,200,'+(0.55*e).toFixed(2)+')');fg.addColorStop(1,'rgba(255,235,200,0)');ctx.fillStyle=fg;ctx.fillRect(open.x-60,MID-60,120,120)}
+tiles.forEach(t=>{if(t.irr>0.15){const hg=ctx.createRadialGradient(t.cx,t.cy,0,t.cx,t.cy,28);hg.addColorStop(0,'rgba(120,240,215,'+(t.irr*0.35).toFixed(2)+')');hg.addColorStop(1,'rgba(120,240,215,0)');ctx.fillStyle=hg;ctx.fillRect(t.cx-28,t.cy-28,56,56)}});
+parts.forEach(q=>{ctx.fillStyle='rgba(140,245,220,'+(q.l*0.8).toFixed(2)+')';ctx.beginPath();ctx.arc(q.x,q.y,2,0,7);ctx.fill()});
+motes.forEach(m=>{const pr=Math.max(0.15,1-Math.hypot(m.x-SX,m.y-SY)/(W*0.7)),a=(0.2+0.25*Math.sin(time*2+m.ph))*pr+0.05;ctx.fillStyle='rgba(255,215,170,'+a.toFixed(2)+')';ctx.beginPath();ctx.arc(m.x,m.y,m.r,0,7);ctx.fill()});
+ctx.globalCompositeOperation='source-over';
+if(pl.vis){ctx.fillStyle='#3E3650';ctx.beginPath();ctx.arc(pl.x,pl.y,6.5,0,7);ctx.fill();const an=Math.atan2(SY-pl.y,SX-pl.x);ctx.globalCompositeOperation='lighter';ctx.strokeStyle='rgba(255,215,165,0.95)';ctx.lineWidth=1.8;ctx.beginPath();ctx.arc(pl.x,pl.y,6,an-1.2,an+1.2);ctx.stroke();ctx.globalCompositeOperation='source-over';ctx.fillStyle='#6FDCFF';ctx.beginPath();ctx.ellipse(pl.x+2.5,pl.y-1.5,2.2,1.4,0,0,7);ctx.fill()}
+g=ctx.createLinearGradient(0,H-70,0,H);g.addColorStop(0,'rgba(15,8,15,0)');g.addColorStop(1,'rgba(15,8,15,0.55)');ctx.fillStyle=g;ctx.fillRect(0,H-70,W,70);
+const vg=ctx.createRadialGradient(SX,SY,Math.min(W,H)*0.35,SX,SY,Math.max(W,H)*0.8);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(12,5,12,0.5)');ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+if(onWall){ctx.strokeStyle='rgba(255,220,170,0.75)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(px,py,14,0,7);ctx.stroke()}}
+function pos(e){const r=cv.getBoundingClientRect();px=e.clientX-r.left;py=e.clientY-r.top}
+cv.addEventListener('pointerdown',e=>{hold=true;pos(e)});cv.addEventListener('pointermove',pos);['pointerup','pointerleave','pointercancel'].forEach(n=>cv.addEventListener(n,()=>hold=false));
+function single(sel,cb){const bs=document.querySelectorAll(sel);bs.forEach(b=>b.onclick=()=>{bs.forEach(x=>x.classList.remove('on'));b.classList.add('on');cb(b.dataset.v)})}
+single('#shapes button',v=>{shape=v;open.active=false;build()});
+single('#levels button',v=>{level=+v;open.active=false;build()});
+single('.mg button',v=>{mode=v;open.active=false;desc.textContent=TXT[v]});
+desc.textContent=TXT[mode];
+document.getElementById('now').onclick=()=>trigger(W/2);
+window.addEventListener('resize',resize);resize();requestAnimationFrame(step);
+</script>
+</body>
+</html>

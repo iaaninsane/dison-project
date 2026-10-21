@@ -118,4 +118,9 @@ Todas as propostas abaixo foram **aceitas pelo dev** (out/2026). As alternativas
 5. **O que acontece na morte.** Primeiro, recarregar a sala atual (provisório). **Definido depois pela spec `suit-evolution.md`: voltar à câmara inicial** (`ReturnScenePath`).
 6. **Biomassa na morte.** Primeiro, perdida (recarregar a sala). **Definido depois pela spec `suit-evolution.md`: guarda metade** (`DeathKeepFraction` = 0,5), depositada no banco ao chegar à câmara.
 7. **Ejeção pela parede causa dano?** O high concept do handoff fala em "risco constante de ser ejetado para o vácuo". Proposto: **não** nesta spec (a ejeção continua só como empurrão e perda de controle); fica anotado como candidato para quando o vácuo tiver papel no jogo.
+   - **Atualizado (out/2026):** o vácuo ganhou papel. O rascunho de game design define que a parede de fronteira ejeta o jogador para o espaço (`dyson-wall.md`, sinal `PlayerEjected`). A consequência (dano, morte, volta ao último nó, perda de biomassa) está em aberto no backlog; até ser decidida, a ejeção continua sem dano.
+
+### Impacto do rascunho de game design (out/2026)
+
+- "A sala de destino recomeça do zero" pressupõe salas isoladas. Com a fase hexagonal contínua (backlog 1.3), definir na spec da fase o que reinicia na morte (spawners, inimigos, orbes, a fase inteira) e para onde o jogador volta (câmara inicial ou outro ponto). O componente `RestartOnDeath` (`ReturnScenePath`) continua valendo até lá.
 8. **Piscar o sprite no golpe.** Proposto sim, como feedback mínimo de mecânica (o jogador precisa saber que foi atingido). Alternativa: nenhum feedback visual até a etapa 2.

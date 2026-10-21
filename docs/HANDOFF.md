@@ -1,170 +1,224 @@
 # PROJECT BIO-BREACH (NEON NEXUS)
-## Documento de Handoff, Arquitetura, Design e Decisões Técnicas (v1.0)
+## Documento de Handoff, Arquitetura, Design e Decisões Técnicas (v2.0, out/2026)
 
-Este documento foi gerado para servirem de guia de transição e referência técnica completa para qualquer desenvolvedor, analista ou designer que venha a dar continuidade ao projeto **Project Bio-Breach** (nome de trabalho alternativo: *Neon Nexus*).
+Guia de transição e referência para qualquer desenvolvedor, analista ou designer que venha a dar continuidade ao projeto **Project Bio-Breach** (nome de trabalho alternativo: *Neon Nexus*).
 
----
-
-## 1. Visão Geral do Projeto e Sinopse Narrativa
-
-O **Project Bio-Breach** é um jogo indie de ação, sobrevivência e exploração espacial (*Action Roguelike / Bullet Heaven*) em perspectiva 2D Top-Down, construído em **C# na Godot Engine 4.x (Mono)**.
-
-* **Sinopse Narrativa:** O jogador assume o papel de um cientista isolado explorando o interior de uma estrutura colossal aparentemente inanimada à deriva no espaço sideral (uma *Esfera de Dyson*). Ao adentrar seus corredores biológicos, a estrutura revela ser um organismo bio-mecânico vivo. A nave interpreta a presença do cientista como uma infecção ou corpo estranho, ativando seus anticorpos fractais e defesas teciduais para expurgar o invasor.
-* **High Concept:** Navegação claustrofóbica em gravidade zero dentro de uma estrutura viva, utilizando o feixe de luz de uma lanterna para caçar anticorpos fractais na escuridão total, sob o risco constante de irritar o tecido biológico das paredes e ser ejetado para o vácuo espacial.
-* **Pilar Visual & Atmosférico:** Blecaute total controlado via iluminação 2D (`CanvasModulate`), com paredes e organismos exibindo iluminação bioluminescente em tons neon (ciano, magenta e roxo) por meio de Shaders e efeitos de Bloom/Glow (`WorldEnvironment`).
-* **Eficiência para Dev Solo:** Substituição do trabalho manual massivo de animação por simulações físicas da engine (física *Soft-Body*), geração procedural de labirintos por blocos/chunks e renderização programática de inimigos fractais via código (`_Draw`).
+> **v2.0 (out/2026):** incorpora o rascunho de redefinição de game design e level design do dev (cenário, fase hexagonal, spawners móveis, fim do blecaute total, nova direção de arte) e foi revisado contra o código. Onde este documento divergir do código, **o código vale**. Tarefas e decisões em aberto ficam no `docs/BACKLOG.md`; regras de cada mecânica, nas specs de `docs/specs/`.
 
 ---
 
-## 2. Definição de Escopo e Decisões de Arquitetura
+## 1. Visão geral e sinopse
 
-Uma decisão fundamental de engenharia de software tomada durante o ciclo inicial de desenvolvimento foi a manutenção de uma **fronteira de escopo rígida e enxuta** para a entrega da demonstração jogável (MVP/Demo):
+O **Project Bio-Breach** é um action roguelike 2D em gravidade zero, feito em **C# na Godot 4.7 (Mono)**, para uma demo na Steam.
 
-### Mecânicas Ativas Mantidas no Core Loop:
-1. **Movimentação inercial em gravidade zero (Zero-G)** sem fricção de solo.
-2. **Sistema de iluminação cônica por lanterna** e blecaute ambiente.
-3. **Combate por luz** e dano contínuo contra anticorpos.
-4. **Irritabilidade tecidual das paredes (`SensitiveWall.cs`)** e acúmulo de estresse bioluminescente.
-5. **Mecanismo de contração e ejeção física para o vácuo** ao atingir limite de estresse.
-6. **Troca modular de modos de combate** (Modo Manual vs. Modo Automático).
-
-### Mecânicas Oficialmente Adiadas (Pós-Demo):
-1. **Vácuo como Atalho Estratégico:** A mecânica de arremessar o personagem propositalmente para o vácuo como atalho entre salas foi postergada.
-2. **Foguetes de Mega Propulsão:** O uso de propulsores extras para navegação em alta velocidade no vácuo foi suspenso.
-* **Justificativa de Engenharia:** Evitou-se o acúmulo de complexidade física e matemática antes do polimento do loop básico dentro das salas, priorizando a estabilidade do *game feel*.
-
-### Core Loop Validado:
-`EXPLORAR` (Navegação inercial no escuro) ➔ `ALERTAR` (Luz e disparos estressam a parede) ➔ `COMBATER` (Dano por iluminação e fragmentação) ➔ `COLETAR` (Extração de biomassa neon) ➔ `EVOLUIR / MORRER` (Melhorias no traje na câmara inicial).
+- **Sinopse:** um cientista isolado explora o interior de uma estrutura colossal à deriva no espaço: uma **esfera de Dyson** que envolve uma estrela **laranja puxando para o avermelhado** (estrela de temperatura de superfície média/baixa). Ao entrar, ele descobre que a estrutura é um organismo bio-mecânico vivo, que o trata como infecção e ativa anticorpos fractais e defesas teciduais para expulsá-lo.
+- **High concept:** navegação inercial em gravidade zero pelas estruturas da esfera, vistas em corte, usando o feixe de uma lanterna para destruir anticorpos fractais, sob o risco de irritar o tecido das paredes e ser ejetado para o espaço.
+- **A esfera:** uma malha geodésica de hexágonos formados por triângulos, com nós luminosos nos vértices e no centro de cada hexágono, conectores entre os nós e painéis triangulares (imagem de referência: `docs/reference/dyson-sphere-reference.png`). É com essa estrutura que as fases são construídas (seção 4).
+- **Visual:** sem blecaute total. Os inimigos ficam visíveis em **silhueta**, com muitos efeitos de luz e sombra; a luz principal é a **contraluz** do sol, ao fundo. Referência de arte: **Cocoon** (seção 5).
+- **Eficiência para dev solo:** desenho por código (inimigos fractais em `_Draw`, orbes, paredes geradas), sistemas centrais sem física onde possível (registros estáticos) e cenas pequenas e componentizadas.
 
 ---
 
-## 3. Detalhamento das Mecânicas e Física Implementadas
+## 2. Escopo e decisões de arquitetura
 
-### 3.1 Movimentação em Gravidade Zero (Zero-G)
-* **Física Newtoniana:** O cientista se desloca aplicando impulsos vetoriais (WASD / Joystick). Não há atrito ou atrito padrão do solo; o personagem desliza indefinidamente se nenhum impulso contrário for aplicado.
-* **Amortecimento Inercial (*Damping*):** Implementou-se um controle de desaceleração suave via coeficiente de damping (`_counterThrustDamping ~ 0.98f`), exigindo contra-empuxo do jogador para frenagens de precisão.
-* **Colisão Soft-Body:** Colisões contra as paredes biológicas utilizam respostas elásticas gelatinosas, onde o impacto de alta velocidade deforma a parede e repele o cientista suavemente.
+Fronteira de escopo enxuta para a demo.
 
-### 3.2 Visão e Iluminação por Lanterna
-* **Blecaute Global:** Nó `CanvasModulate` com cor definida em preto absoluto (`#000000`) para apagar a iluminação ambiente por padrão.
-* **Lanterna Cônica:** Estruturada no nó do jogador através de um `PointLight2D` combinado com uma `Area2D` em formato de setor circular para detecção física de área do feixe de luz.
-* **Superfície de Reflexão (Background):** Cada sala necessita de um `ColorRect` (1920x1080) posicionado no topo da árvore de nós (fundo), atuando como superfície `CanvasItem` para refletir a iluminação da lanterna no chão.
+### Mecânicas do core loop
 
-### 3.3 Sistema de Irritabilidade Tecidual e Ejeção (Bio-Reação)
-* **Paredes Sensíveis (`SensitiveWall.cs`):** Segmentos de parede pertencentes ao grupo `"Walls"` acumulam a variável `_currentIrritation` quando detectados pelo feixe da lanterna ou atingidos por disparos.
-* **Mecanismo de Ejeção:** Ao atingir o limite `MaxIrritation`, a parede dispara o método `TriggerEjection`. A parede sofre contração muscular visual, gera espasmos e aplica uma força atrativa/repulsiva que puxa o cientista para o seu centro geométrico e o ejeta.
+1. Movimentação inercial em gravidade zero.
+2. Lanterna: feixe que ilumina, causa dano aos inimigos e irrita as paredes.
+3. Combate por luz e divisão celular dos inimigos (fragmentação).
+4. Irritabilidade das paredes e ejeção do jogador para o espaço.
+5. Coleta de biomassa e evolução do traje.
+6. Troca entre modo manual e automático da lanterna.
+7. **Novo (out/2026):** objetivo da fase: destruir os spawners móveis (seção 4.3; ainda sem spec).
 
-### 3.4 Modos de Combate Modulares (Padrão Strategy)
-* **Modo Manual (`IsManualFire = true`):** A lanterna segue o ponteiro do mouse (ou o analógico direito do Gamepad), garantindo mira cirúrgica para iluminação focal sem estressar paredes desnecessariamente.
-* **Modo Automático (`IsManualFire = false`):** A lanterna orienta-se automaticamente para o vetor de deslocamento (`Velocity.Angle()`), permitindo que o jogador foque 100% na navegação e esquiva de obstáculos.
-* **Terminal de Troca (`TerminalModo.cs`):** Interagível via tecla 'E'/Espaço na câmara inicial (`sala_entrada.tscn`), alterando a propriedade no `Player.cs` em tempo real.
+### Adiadas para depois da demo
 
----
+1. **Vácuo como atalho estratégico:** arremessar o personagem para o vácuo de propósito como atalho entre estruturas. Ser ejetado para o espaço é uma **consequência** (em aberto, seção 3.3); navegar pelo vácuo continua adiado.
+2. **Foguetes de mega propulsão.**
 
-## 4. Estrutura e Templates de Salas Modulares (Chunks 1920x1080)
+### Core loop
 
-Para integração com o gerador procedural de labirintos (`MazeGenerator.cs`), o mapa é composto por cenas modulares em resolução **1920x1080 pixels**:
+`EXPLORAR` (navegação inercial pelas estruturas do hexágono) ➔ `ALERTAR` (luz e tiros estressam o organismo) ➔ `COMBATER` (dano por luz e fragmentação; destruir os spawners) ➔ `COLETAR` (biomassa neon) ➔ `EVOLUIR` (melhorias do traje na câmara inicial) ou `MORRER`.
 
-1. **`sala_entrada.tscn` (Câmara de Descompressão / Treino):**
-   * Ponto de *spawn* seguro do cientista.
-   * Paredes de titânio metálico (não pertencentes ao grupo `"Walls"`, sem irritabilidade).
-   * Contém o `TerminalModo.cs` para troca de modo de iluminação e o nó `PortaSaida` com `DoorTrigger.cs`.
-2. **`sala_desfiladeiro.tscn` (O Gargalo Paranoico):**
-   * Corredores estreitos em zigue-zague (formato "S" ou "Z").
-   * Revestido 100% por `ParedesReativas` (`SensitiveWall.cs` + Grupo `"Walls"`).
-   * Possui fendas com `JanelasVacuo` (`ColorRect` ciano translúcido + `PointLight2D` suave) revelando o vácuo do espaço.
-3. **`sala_ninho.tscn` (Arena de Combate - Em planejamento/desenvolvimento):**
-   * Arena circular ampla para encontros com hordas de anticorpos fractais.
-4. **`sala_nucleo.tscn` (Clímax / Reator - Em planejamento/desenvolvimento):**
-   * Sala de objetivo final da demonstração.
+Tiros ainda não existem: o "estresse por tiros" e os "modos de tiro" são decisões em aberto (backlog).
 
 ---
 
-## 5. Registro de Problemas Técnicos Resolvidos (Fixes de Código)
+## 3. Mecânicas implementadas (conforme o código, out/2026)
 
-### 5.1 Correção da Direção de Atração nas Paredes Reativas (`SensitiveWall.cs`)
-* **Sintoma:** Ao atingir estresse máximo, o vetor de sucção puxava o jogador para o canto superior esquerdo (quina `0,0`) do bloco.
-* **Causa Raiz:** O cálculo utilizava `GlobalPosition` do `StaticBody2D`, cujo pivô padrão na Godot fica no canto superior esquerdo.
-* **Solução:** Atualização no método `TriggerEjection` para calcular o centro geométrico real do `_visualRect`:
-```csharp
-Vector2 wallCenter = GlobalPosition;
-if (_visualRect != null)
-{
-    wallCenter = _visualRect.GlobalPosition + (_visualRect.Size / 2f);
-}
-Vector2 pullDirection = (wallCenter - playerPosition).Normalized();
-player.ApplyEjection(pullDirection * EjectionForce);
-```
+Resumo; as regras completas e os valores em teste estão nas specs.
 
-### 5.2 Correção do Erro de Compilação `IsManualFire`
-* **Sintoma:** Erro `Player does not contain a definition for IsManualFire` no `TerminalModo.cs`.
-* **Solução:** Adicionada a propriedade `[Export] public bool IsManualFire { get; set; } = true;` no `Player.cs` e refatorado o bloco de rotação da lanterna.
+### 3.1 Movimento em gravidade zero (`Player.cs`)
 
-### 5.3 Correção da Lanterna Invisível no Chão
-* **Sintoma:** O feixe de luz do `PointLight2D` não aparecia no chão da sala.
-* **Causa Raiz:** A Viewport padrão da Godot não é um `CanvasItem`.
-* **Solução:** Adição de um nó `ColorRect` (1920x1080) na primeira posição da árvore de nós da cena (`Background`) e um nó `CanvasModulate` (`#000000`).
+- Empuxo por vetor (WASD/analógico esquerdo): `ThrustForce` 450, `MaxSpeed` 600.
+- Sem input, a velocidade cai devagar e de forma **linear** (`Friction` 0,1 × `ThrustForce` = 45 px/s², com `MoveToward`). Para frear rápido, o jogador aplica contra-empuxo. (A v1.0 citava um amortecimento `_counterThrustDamping`, que não existe no código.)
+- O golpe de um inimigo (`ApplyKnockback`) **soma** um impulso à velocidade. A ejeção (`ApplyEjection`) **substitui** a velocidade e tira o controle por `EjectionDuration` (0,8 s).
+- Não há colisão soft-body (citada na v1.0); o jogador é um `CharacterBody2D` em Motion Mode Grounded (avaliar Floating: dívida técnica no backlog).
 
-### 5.4 Ajuste de Suavização e Limites da Câmera (`Camera2D`)
-* **Sintoma:** O efeito de suavização (`Position Smoothing`) parecia não funcionar.
-* **Causa Raiz:** Em mapa 1920x1080 com `Camera Limits` cravados exatamente em `(0,0,1920,1080)`, a tela cobria 100% da câmara, travando o deslocamento.
-* **Solução:** Aumento do `Zoom` da `Camera2D` para `1.3x ~ 1.5x` e ajuste da velocidade de suavização para `Speed = 6.0`.
+### 3.2 Lanterna e visibilidade
 
-### 5.5 Aviso de Ancoragem de Interface ao Redimensionar `JanelasVacuo`
-* **Sintoma:** Aviso `Não é possível modificar deslocamentos de ancoragem quando o pai tem um tamanho de 0`.
-* **Solução:** Desativação do Modo de Ancoragem (Anchor Mode) na barra de ferramentas 2D do editor ao manipular `ColorRect` dentro de um `Node2D`, ou ajuste via propriedade `Size` do Inspetor.
+- `FlashlightAnchor` (`Marker2D`) com um `PointLight2D` e a `LightDamageArea` (`Area2D` em cone de ~220 px), que dá dano aos inimigos (`DamagePerSecond`) e irrita as paredes do grupo `Walls` (`WallIrritationPerSecond`).
+- **Modos:** manual (segue o mouse ou o analógico direito) e automático (segue a direção da velocidade). O modo fica no `RunData` e vale em todas as salas; muda só por `GameState.ToggleFlashlightMode()` (sinal `FlashlightModeChanged`, escutado pelo `Player`), pelo `TerminalModo` da câmara inicial. Hoje o modo é um `bool`; vira padrão Strategy se surgirem mais modos.
+- **Visibilidade (out/2026): não há mais blecaute total.** Cada sala ainda precisa de um `ColorRect` de fundo como primeiro filho (sem ele, a luz da lanterna não tem onde aparecer). A cor do `CanvasModulate` virou decisão de arte; as cenas atuais ainda estão no estado antigo até o ajuste do dev (backlog 1.6). Proposta de linguagem visual: o sol ao fundo deixa tudo em silhueta, e a lanterna é a única luz frontal, que revela cor e volume do que atinge.
 
-### 5.6 Script de Transição Modular entre Cenas (`DoorTrigger.cs`)
-* **Solução:** Implementação de um script desacoplado anexado a nós `Area2D`:
-```csharp
-using Godot;
+### 3.3 Paredes reativas e ejeção
 
-public partial class DoorTrigger : Area2D
-{
-    [Export(PropertyHint.File, "*.tscn")] 
-    public string TargetScenePath { get; set; } = "";
+- **Hoje (`WallSensitive.cs`, spec `reactive-walls.md`):** as paredes do grupo `Walls` acumulam irritação sob a luz e se recuperam fora dela. No limite (`MaxIrritation`), puxam o jogador para o **centro real** da parede (calculado pela transformação global do `ColorRect`) com `EjectionForce`; durante a ejeção, ele atravessa só essa parede e as do grupo `Walls` no caminho até ela (exceção de colisão), e bate em todo o resto. Paredes de titânio (câmara inicial) e pilares ficam fora do grupo.
+- **Modelo-alvo (decisão do dev, out/2026; spec `dyson-wall.md`, proposta):** só as **paredes de fronteira com o espaço** são reativas. Elas são uma membrana de peças geométricas (triângulos de Sierpinski) que, irritada, se deforma, **abre uma fenda** e **suga** o jogador; ao cruzar a fenda, ele é ejetado para o espaço (sinal `PlayerEjected`). A sucção simula uma descompressão: é **gradual pela distância** (fraca longe, avassaladora perto, com um raio "sem retorno" em que ela empata com o empuxo do traje) e tem uma **rajada** no rompimento. O jogador mantém o controle e pode fugir com contra-empuxo. **Inimigos e orbes de biomassa também são sugados**, o que faz da fenda uma ferramenta tática e um risco. Paredes internas entre estruturas são rígidas. O `WallSensitive.cs` é transitório até a `DysonWall` existir.
+- **Deformação:** o modo Esmaecer (as peças encolhem em cascata até sumir) é o padrão **provisório**; a forma final está em aberto (referências sugeridas na spec).
+- **Depois da ejeção:** em aberto (morte, dano, volta ao último nó, perda de biomassa). O espaço não é navegável.
 
-    public override void _Ready()
-    {
-        BodyEntered += OnBodyEntered;
-    }
+### 3.4 Inimigo fractal e horda (`FractalEnemy.cs`, `FractalSwarm.cs`)
 
-    private void OnBodyEntered(Node2D body)
-    {
-        if (body is Player && !string.IsNullOrEmpty(TargetScenePath))
-        {
-            GetTree().ChangeSceneToFile(TargetScenePath);
-        }
-    }
-}
-```
+- Árvore fractal binária desenhada em `_Draw` (4 troncos), com o ângulo dos ramos pulsando; morre sob a luz e se divide em fragmentos menores até a geração máxima (divisão celular).
+- `CharacterBody2D` em Motion Mode **Floating**, camada 2 (máscara 1). Os inimigos não colidem entre si: o registro estático `FractalSwarm` calcula uma separação suave e põe para descansar quem está travado.
+- Spawners atuais: `NinhoSpawnerPooled.cs` (com pool; usado na `sala_ninho`) e `NinhoSpawner.cs` (sem pool). Tetos: `MaxConcurrentEnemies` (pressão do ninho) e `MaxTotalEnemies` (orçamento de física, contando fragmentos). Medido: com 200 no ninho e teto 350, FPS ≥ 100 (V-Sync desligado). O ninho fixo dá lugar aos spawners móveis (seção 4.3).
+- Specs: `fractal-enemy.md`, `fractal-enemy-movement.md`; visual 3D (etapa 2): `fractal-enemy-render-3d.md`.
+
+### 3.5 Biomassa (`BiomassOrb.cs`, `BiomassField.cs`, `BiomassCollector.cs`)
+
+- Quem morre sem se dividir solta um orbe (sem física, sempre visível). O registro estático `BiomassField` faz idade, ímã e coleta num único laço. A coleta vai para a biomassa carregada do `GameState`. Spec: `biomass-collection.md`.
+
+### 3.6 Integridade e morte (componentes no `player.tscn`)
+
+- `PlayerHurtbox` (contato com inimigos), `SuitIntegrity` (golpe, imunidade, piscar, empurrão; sinais `IntegrityChanged` e `Died`), `RestartOnDeath` (cobra a taxa da biomassa e volta à câmara inicial). Spec: `player-health-death.md`.
+
+### 3.7 Estado da partida e evolução (`GameState.cs`, `RunData.cs`)
+
+- Autoload `GameState` com um `RunData` (banco, biomassa carregada, níveis das melhorias por `Id`, modo da lanterna), separado do nó para facilitar salvar em disco no futuro.
+- Na câmara inicial (`sala_entrada`): deposita a biomassa carregada no banco; o `EvolutionTerminal` abre o `UpgradePanel`; a `PortaSaida` (`DoorTrigger.cs`) leva à `sala_ninho`. Melhorias como recursos `SuitUpgrade` (pasta `upgrades/`), aplicadas pelo `SuitUpgradeApplier`. Spec: `suit-evolution.md`.
 
 ---
 
-## 6. Arquitetura de Código C# e Diretrizes Clean Code
+## 4. Level design: a fase hexagonal (rascunho de out/2026)
 
-Para manter a sustentabilidade do código e evitar a criação de "Classes Deus" (*God Classes*), os novos scripts em C# devem respeitar as seguintes diretrizes:
+Substitui a v1.0, que previa salas modulares de 1920×1080 (entrada, desfiladeiro, ninho, núcleo) ligadas por um gerador de labirintos em grade (`MazeGenerator.cs`, nunca criado). Os detalhes serão fechados na spec da fase (backlog 1.3).
 
-1. **Princípio da Responsabilidade Única (SRP):** O método `_PhysicsProcess` atua apenas como orquestrador de alto nível, delegando tarefas para métodos privados ou componentes especializados.
-2. **Cláusulas de Guarda (*Early Returns*):** Eliminação de blocos `if/else` profundamente aninhados para manter a execução linear e legível.
-3. **Padrão Strategy:** Alternância de modos de disparo e comportamentos isolados em propriedades ou componentes intercambiáveis.
-4. **Padrão Observer (Signals/Events):** Comunicação entre salas, paredes e jogador via eventos e sinais do Godot para desacoplamento total.
+### 4.1 Estrutura
+
+- **Uma fase = um hexágono** da malha da esfera.
+- Estruturas de cada hexágono, e cada uma é uma **sala** onde o jogador combate, coleta e evita ser ejetado:
+  - **nó central** (centro do hexágono);
+  - **nós periféricos** (vértices do hexágono);
+  - **conectores de nós** (ligações entre nós);
+  - **conectores de placas** (ligações entre os nós e as placas triangulares);
+  - **painéis** (as placas triangulares).
+- Todas as estruturas da fase são interligadas: o hexágono inteiro forma a **arena**.
+- Leitura da imagem de referência, a confirmar na spec: 1 nó central, 6 nós periféricos (compartilhados com os hexágonos vizinhos), 12 conectores de nós (6 raios e 6 no perímetro), 6 painéis e os conectores de placa. São mais de 25 salas por hexágono.
+
+### 4.2 Como a sala é vista
+
+- Cada estrutura é vista **em corte** (como em Heavenly Bodies). O mockup do rascunho (`docs/reference/connector-cut-mockup.png`) mostra um conector em corte horizontal: um corredor curvo que acompanha a curvatura da esfera; as paredes superior e inferior são a fronteira com o espaço; o sol aparece ao fundo pelas janelas hexagonais.
+- A confirmar na spec da fase: as estruturas em corte se ligam como um **grafo** (cada estrutura é um nó do grafo; as passagens, as arestas).
+
+### 4.3 Spawners móveis e objetivo da fase
+
+- Os inimigos são criados por **spawners** (ex.: 10 por fase) que **circulam pela fase inteira** gerando inimigos o tempo todo.
+- **Objetivo da fase:** eliminar os spawners. A cada spawner morto, a dificuldade aumenta.
+- Em aberto (spec própria, backlog 1.4): vida e como matar um spawner, como ele se move, a curva de dificuldade, o que acontece quando todos morrem.
+
+### 4.4 Perguntas abertas e sugestões
+
+Registradas no backlog (1.3 e 1.4); as sugestões abaixo não são decisões.
+
+- **Continuidade:** spawners circulando pela fase inteira não cabem em "uma cena por sala que recomeça do zero". Opções: uma cena por hexágono, ou cena por estrutura com o estado da fase guardado no `GameState`.
+- **Escopo da demo:** um hexágono completo é grande para um dev solo. Sugestão: começar por um **setor** (um triângulo: 3 nós, 3 conectores, 1 painel).
+- **Grafo da fase:** os spawners andam pelas arestas (sem pathfinding); o mapa sai do grafo; só a sala atual e as vizinhas são simuladas por completo (o orçamento de física medido é de ~350 a 400 inimigos).
+- **Papel de cada estrutura:** nós = arenas de combate; conectores = corredores com risco de parede; painéis = áreas abertas com muita fronteira (muito risco de ejeção); conectores de placa = gargalos; nó central = clímax. As cenas atuais viram protótipos: `sala_desfiladeiro` → conector, `sala_ninho` → nó.
+- **Dificuldade dos spawners:** um orçamento global de spawn dividido entre os spawners vivos; ao matar um, os restantes aceleram (a dificuldade sobe sem estourar o teto de física) e o último fica frenético. Spawners rastreáveis (indicador ou pulso visível) e com silhueta própria.
+- **Câmara inicial (hub):** onde fica em relação ao hexágono e o que reinicia na morte (hoje: a sala recomeça do zero e o jogador volta à câmara).
+
+### 4.5 Cenas atuais
+
+- `sala_entrada.tscn`: câmara inicial (spawn, paredes de titânio fora do grupo `Walls`, `TerminalModo`, `EvolutionTerminal`, `PortaSaida`).
+- `sala_desfiladeiro.tscn`: corredores em zigue-zague com paredes reativas e janelas para o vácuo (`JanelasVacuo`).
+- `sala_ninho.tscn`: arena circular de segmentos reativos (`wall_segment.tscn`), pilares de cobertura (`cover_pillar.tscn`) e o ninho com pool.
+- `arena.tscn`: protótipo do início do projeto, só bancada de teste.
+- `sala_nucleo.tscn` não existe; o papel de clímax passa ao nó central do hexágono.
 
 ---
 
-## 7. Referências Visuais, de Gameplay e Estratégia de Mercado
+## 5. Direção de arte e áudio (etapa 2)
 
-* **Pathogenic (Aberrant Labs):** Referência primária para estética celular, física *soft-body* deformável, membranas translúcidas com Shaders e movimentação baseada em fluidez.
-* **Sir, We Have an Orc Problem (Mumpitz Games):** Referência para sensação de volume massivo de hordas, partículas neon e ciclo de metaprogressão roguelite (desenvolvido na Godot Engine por 2 pessoas em 4 meses, faturando > US$ 360k no dia 1).
-* **Balatro & Vampire Survivors:** Provas de mercado de que loops mecânicos hiper-focados e gratificação imediata superam custos massivos de produção gráfica.
-* **Chris Zukowski (How To Market A Game):** Estratégia comercial com precificação em US$ 14.99 (+20% de margem para promoções), meta de 30.000 wishlists, Supporter Pack DLC no Dia 1 (conversão de 5% a 11%) e lançamento de demo pública 3 a 4 meses antes do Steam Next Fest.
-* **Jonathan Blow (Order of the Sinking Star / The Witness):** Foco em sofisticação sistêmica e qualidade mecânica sobre narrativas lineares dispendiosas.
+Nada disto entra na etapa 1, salvo o que uma spec pedir.
+
+- **Referência principal: Cocoon:** gráficos low poly, efeitos de luz e sombra e silhuetas que simulam 3D.
+- **Cenário em corte:** referência citada no rascunho como "Heavyness body", registrada como **Heavenly Bodies** (2Pt Interactive, 2021), a confirmar.
+- **Contraluz:** o sol, no centro da esfera, fica ao fundo; paredes, inimigos e jogador aparecem como silhuetas com contorno de luz. Modelo de luz detalhado na `dyson-wall.md` (seção 2.7), a ser compartilhado pelo inimigo 3D.
+- **Cores:** o neon vibrante foi mantido, mas a testar contra tons pastel. Estrela laranja-avermelhada.
+- **Paredes:** sem transparência (regra do modo Esmaecer); deformação final em aberto.
+- **Inimigos com aspecto 3D:** a spec `fractal-enemy-render-3d.md` continua aplicável, com ramos facetados (prismas low poly) em vez de tubos lisos.
+- **Áudio:** efeitos sonoros e trilha sonora a definir.
 
 ---
 
-## 8. Próximos Passos Recomendados para Continuidade
+## 6. Registro de problemas técnicos resolvidos
 
-1. **Montagem do Template 3 (`sala_ninho.tscn`):** Construir a arena circular de combate com ninhos laterais e estruturas rígidas para cobertura.
-2. **Sistema de Partículas Bioluminescentes (`GPUParticles2D`):** Implementar a explosão de partículas neon ao derrotar os anticorpos fractais, gerando iluminação temporária no ambiente.
-3. **Gerador Procedural de Labirintos (`MazeGenerator.cs`):** Conectar as cenas modulares (`sala_entrada`, `sala_desfiladeiro`, `sala_ninho`, `sala_nucleo`) em uma grade 2x2 ou 3x3 e ajustar dinamente os `CameraLimits` ao trocar de sala.
-4. **Inimigos Fractais (`FractalEnemy.cs`):** Implementar a renderização programática recursiva de ramificações binárias no método `_Draw` com pulsação senoidal e divisão celular ao morrer.
+### 6.1 Direção do puxão nas paredes reativas
+
+- **v1.0:** o puxão ia para o canto do bloco, porque o cálculo usava o `GlobalPosition` do `StaticBody2D`. A correção da época (`_visualRect.GlobalPosition + Size / 2`) só funciona em paredes sem rotação nem escala.
+- **out/2026 (backlog 1.2):** em paredes giradas a conta errava de 120 a 280 px (verificado no motor) e a parede empurrava em vez de puxar. Correção: `ColorRect.GetGlobalTransform() * (Size / 2)` (`WallSensitive.GetWallCenter`). O pivô do `StaticBody2D` fica onde a cena o colocou (canto na `paredes_reativas.tscn`, centro na `wall_block.tscn`). Spec: `reactive-walls.md`.
+
+### 6.2 Jogador atravessava todas as paredes na ejeção
+
+- **Causa:** a ejeção desligava a máscara de colisão 1 inteira.
+- **Solução (out/2026):** exceção de colisão (`AddCollisionExceptionWith`) só com as paredes do caminho, encontradas por uma consulta ao espaço físico (`IntersectShape`). Spec: `reactive-walls.md`.
+
+### 6.3 Erro de compilação `IsManualFire`
+
+- **Sintoma:** `Player does not contain a definition for IsManualFire` no `TerminalModo.cs`. Resolvido na época com uma propriedade no `Player.cs`.
+- **Hoje (out/2026):** o modo fica no `RunData` e o `TerminalModo` pede a troca ao `GameState` (backlog 1.1, nota na `suit-evolution.md`).
+
+### 6.4 Lanterna invisível no chão
+
+- **Causa:** a luz 2D precisa de um `CanvasItem` para iluminar; a viewport sozinha não é um.
+- **Solução:** um `ColorRect` de fundo (1920×1080) como primeiro nó da cena. (O `CanvasModulate` preto da solução original era o blecaute, retirado em out/2026.)
+
+### 6.5 Suavização e limites da câmera (`Camera2D`)
+
+- **Sintoma:** a suavização parecia não funcionar com os limites cravados em (0, 0, 1920, 1080), porque a tela cobria a sala inteira.
+- **Solução:** `Zoom` entre 1,3× e 1,5× e `Position Smoothing Speed` 6,0. Os limites por sala (hoje fixos na `SalaEntrada.cs`) serão revistos com a fase hexagonal.
+
+### 6.6 Aviso de ancoragem ao redimensionar `ColorRect` dentro de `Node2D`
+
+- **Solução:** desligar o Anchor Mode na barra 2D do editor ou alterar `Size` pelo Inspector.
+
+### 6.7 Transição de cena (`DoorTrigger.cs`)
+
+- `Area2D` com `[Export] TargetScenePath`; ao detectar o `Player`, troca de cena de forma adiada (`CallDeferred` de `ChangeSceneToFile`, fora do callback de física), com trava contra troca dupla e aviso se o destino estiver vazio. Será revisto na spec da fase hexagonal.
+
+### 6.8 Desempenho da horda
+
+- O gargalo é a colisão, não o desenho: Motion Mode Floating, camada própria dos inimigos e separação por código. Medições e problema conhecido nas specs `fractal-enemy.md` (seção 11) e `fractal-enemy-movement.md` (seção 11).
+
+---
+
+## 7. Arquitetura C# e diretrizes de código
+
+1. **Responsabilidade única:** o `_PhysicsProcess` só orquestra, chamando métodos pequenos; comportamentos do jogador como componentes no `player.tscn` (integridade, contato, coleta, aplicador de melhorias).
+2. **Cláusulas de guarda** (early return) em vez de `if/else` aninhado.
+3. **Strategy** para comportamentos intercambiáveis (modos da lanterna quando houver mais de dois, alvos das melhorias quando crescerem).
+4. **Observer (sinais):** paredes, inimigos, HUD e jogador reagem sem referência direta (ex.: `BiomassChanged`, `IntegrityChanged`, `FlashlightModeChanged`).
+5. **Registros estáticos** para sistemas com centenas de elementos (`FractalSwarm`, `BiomassField`): um laço em C#, sem consultas à física.
+6. **Estado da partida separado do nó** (`RunData`), pronto para salvar em disco.
+
+---
+
+## 8. Referências visuais, de gameplay e de mercado
+
+- **Cocoon (Geometric Interactive):** referência visual principal (low poly, luz e sombra, silhuetas).
+- **Heavenly Bodies (2Pt Interactive), a confirmar:** cenário em corte e game feel de gravidade zero (inclusive a descompressão, referência para a sucção da parede).
+- **Pathogenic (Aberrant Labs):** referência de **comportamento orgânico** (tecido que reage). Desde out/2026, não é mais referência visual (membranas translúcidas e soft-body saíram do pilar visual).
+- **Scorn (Ebb Software):** aberturas biomecânicas (esfíncteres), referência para a deformação da parede.
+- **Sir, We Have an Orc Problem (Mumpitz Games):** volume de hordas, partículas e metaprogressão roguelite (feito na Godot por 2 pessoas em 4 meses, mais de US$ 360 mil no dia 1).
+- **Balatro e Vampire Survivors:** loops mecânicos focados e gratificação imediata superam custos altos de produção gráfica.
+- **Chris Zukowski (How To Market A Game):** preço de US$ 14,99 (+20% de margem para promoções), meta de 30.000 wishlists, Supporter Pack DLC no dia 1 (conversão de 5% a 11%) e demo pública 3 a 4 meses antes do Steam Next Fest.
+- **Jonathan Blow (Order of the Sinking Star / The Witness):** sofisticação sistêmica e qualidade mecânica acima de narrativa linear cara.
+
+---
+
+## 9. Próximos passos
+
+A lista de tarefas, decisões em aberto e dívidas técnicas fica no **`docs/BACKLOG.md`** (a v1.0 mantinha os próximos passos aqui). Ordem sugerida: decidir a estrutura da fase hexagonal (backlog 1.3), que destrava os spawners móveis (1.4) e o posicionamento da parede de fronteira (1.5).

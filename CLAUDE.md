@@ -1,6 +1,6 @@
 # Project Bio-Breach (Neon Nexus)
 
-Action roguelike 2D em gravidade zero. O jogador é um cientista explorando, no escuro, uma megaestrutura viva (uma Esfera de Dyson bio-mecânica) e usa uma lanterna para combater anticorpos fractais sem irritar demais o tecido das paredes. É uma demo para a Steam.
+Action roguelike 2D em gravidade zero. O jogador é um cientista explorando uma megaestrutura viva (uma Esfera de Dyson bio-mecânica em volta de uma estrela laranja-avermelhada), cujas estruturas são vistas em corte e em contraluz, e usa uma lanterna para combater anticorpos fractais sem irritar demais o tecido das paredes. Cada fase é um hexágono da esfera; o objetivo é destruir os spawners móveis. É uma demo para a Steam. Design atual: `docs/HANDOFF.md` (v2.0, out/2026).
 
 - Dev solo (analista de sistemas), ainda aprendendo o editor da Godot. Você é o assistente de código didático que explica detalhadamente os conceitos utilizados e o porque de cada sugestão (ex: aqui sugiro a utilização do padrão de projeto strategy ou observer para...); as decisões de design são dele.
 - Conversas, comentários e specs em português (Brasil). Identificadores novos no código em inglês (padrão da maior parte do projeto); nomes já existentes em português ficam como estão.
@@ -16,9 +16,9 @@ Action roguelike 2D em gravidade zero. O jogador é um cientista explorando, no 
 
 Implementar, testar e validar as mecânicas principais. NÃO mexa em arte, áudio, animação, shaders ou polimento visual (etapa 2), a menos que a spec peça. Nada de "melhorias" fora do pedido.
 
-Core loop: EXPLORAR (navegação inercial no escuro) → ALERTAR (luz e tiros estressam o organismo) → COMBATER (dano por luz e fragmentação) → COLETAR (biomassa neon) → EVOLUIR ou MORRER.
+Core loop: EXPLORAR (navegação inercial pelas estruturas do hexágono) → ALERTAR (luz e tiros estressam o organismo) → COMBATER (dano por luz e fragmentação) → COLETAR (biomassa neon) → EVOLUIR ou MORRER.
 
-Adiado para depois da demo (não implemente nem prepare): "Vácuo como atalho estratégico" e "Foguetes de mega propulsão".
+Adiado para depois da demo (não implemente nem prepare): "Vácuo como atalho estratégico" e "Foguetes de mega propulsão". Ser ejetado para o espaço pela parede é consequência (em aberto no backlog), não navegação: o vácuo não é navegável.
 
 ## Como trabalhar
 
@@ -49,14 +49,14 @@ Adiado para depois da demo (não implemente nem prepare): "Vácuo como atalho es
 
 ## Regras do projeto (lições já aprendidas)
 
-- Iluminação 2D: toda sala precisa de um `CanvasModulate` preto (#000000) e de um `ColorRect` de fundo 1920x1080 como PRIMEIRO filho da cena. Sem esse fundo o feixe da lanterna não aparece.
+- Iluminação 2D: toda sala precisa de um `ColorRect` de fundo 1920x1080 como PRIMEIRO filho da cena. Sem esse fundo o feixe da lanterna não aparece. Não há mais blecaute total (out/2026): a cor do `CanvasModulate` é decisão de arte, provisória na etapa 1 (backlog 1.6); as cenas atuais ainda estão no estado antigo (preto na `sala_entrada`, `sala_desfiladeiro` e `arena`; oculto na `sala_ninho`), e só o dev muda isso.
 - O pivô de um `StaticBody2D` fica onde a cena o colocou: no canto na `paredes_reativas.tscn`, no centro na `wall_block.tscn` e nas paredes da `sala_desfiladeiro`. Para achar o centro de uma parede, use `ColorRect.GetGlobalTransform() * (Size / 2)` (`WallSensitive.GetWallCenter`). Somar `GlobalPosition + Size / 2` erra em parede girada ou escalada.
-- Paredes reativas ficam no grupo `Walls` e usam `WallSensitive.cs`. Paredes de titânio (sala de treino) NÃO entram no grupo.
+- Paredes reativas ficam no grupo `Walls` e usam `WallSensitive.cs`. Paredes de titânio (sala de treino) NÃO entram no grupo. Modelo-alvo (out/2026): só as paredes de fronteira com o espaço serão reativas, como a membrana da `docs/specs/dyson-wall.md` (abre uma fenda e suga como numa descompressão: força gradual pela distância, com raio sem retorno e rajada no rompimento, sem tirar o controle; afeta jogador, inimigos e orbes); paredes internas entre estruturas serão rígidas. O `WallSensitive.cs` é a implementação atual, transitória.
 - Câmera: `Camera2D` com zoom entre 1.3x e 1.5x e suavização de posição com Speed 6.0.
 - Ao redimensionar `ColorRect` filho de `Node2D`, desligue o Anchor Mode na barra 2D do editor ou altere `Size` pelo Inspector.
 - Movimento zero-g (`Player.cs`): empuxo por vetor (WASD/joystick), `ThrustForce` 450 e `MaxSpeed` 600. Sem input, a velocidade cai devagar e de forma linear (`Friction` 0.1 × `ThrustForce` = 45 px/s², com `MoveToward`); o jogador precisa aplicar contra-empuxo para frear rápido. O golpe (`ApplyKnockback`) soma um impulso à velocidade; a ejeção (`ApplyEjection`) substitui a velocidade e tira o controle por `EjectionDuration`.
 - Lanterna: `PointLight2D` + `Area2D` do feixe. Modo manual (`IsManualFire = true`) segue o mouse/analógico direito; modo automático segue a direção da velocidade. O modo fica no `RunData` e vale em todas as salas: muda só por `GameState.ToggleFlashlightMode()` (sinal `FlashlightModeChanged`, escutado pelo `Player`).
-- Irritação tecidual: a parede acumula estresse (`_currentIrritation`) com luz e tiros; ao atingir `MaxIrritation` dispara `TriggerEjection`. A ejeção puxa o jogador para o centro real da parede, e ele atravessa só essa parede e as do grupo `Walls` no caminho até ela, por exceção de colisão (`AddCollisionExceptionWith`). Nunca desligue a máscara inteira. Spec: `docs/specs/reactive-walls.md`.
+- Irritação tecidual (implementação atual): a parede acumula estresse (`_currentIrritation`) com luz e tiros; ao atingir `MaxIrritation` dispara `TriggerEjection`. A ejeção puxa o jogador para o centro real da parede, e ele atravessa só essa parede e as do grupo `Walls` no caminho até ela, por exceção de colisão (`AddCollisionExceptionWith`). Nunca desligue a máscara inteira. Spec: `docs/specs/reactive-walls.md`.
 - Controle na interface: na Godot 4.7, `ui_accept` e `ui_cancel` não têm botões de controle por padrão; o projeto mapeia o botão 0 (A) e o botão 1 (B). Como o A também é `interact`, interações com o mundo reagem ao evento em `_UnhandledInput` (a interface consome o aperto que usou), não por polling (`Input.IsActionJustPressed`).
 - Ordem do `_Ready`: filhos ficam prontos antes dos pais. Quando um nó depende do estado de irmãos ou do pai, aplique/avise de forma adiada (`Callable.From(...).CallDeferred()`).
 - Recursos (`.tres`) editados no Inspector são salvos pelo ícone de disquete do Inspector; o Ctrl+S salva a cena aberta.
@@ -72,12 +72,13 @@ Adiado para depois da demo (não implemente nem prepare): "Vácuo como atalho es
 - Cenas: `player.tscn`, `fractal_enemy.tscn`, `wall_block.tscn`, `wall_segment.tscn`, `paredes_reativas.tscn`, `sala_entrada.tscn`, `sala_desfiladeiro.tscn`, `sala_ninho.tscn`, `arena.tscn`, `sala_desfiladeiro_TESTE_estrelas.tscn`, `cover_pillar.tscn` (pilar de cobertura usado na `sala_ninho`)
 - Assets: `lanterna.png`, `lanterna_reta.png`, `lanterna_torta.png`, `light.png`, `icon.svg`, pasta `shaders/`
 - Dados: pasta `upgrades/` (recursos `SuitUpgrade` e o `upgrade_catalog.tres`)
-- Citados no handoff, mas não encontrados no projeto (confirmar antes de assumir): `sala_nucleo.tscn`, `MazeGenerator.cs` (gerador procedural de labirintos). O `DoorTrigger.cs` citado no handoff foi criado em out/2026, na versão mínima (destino no Inspector).
+- Não existem: `sala_nucleo.tscn` e `MazeGenerator.cs`. O rascunho de out/2026 trocou a grade de labirinto pela fase hexagonal (HANDOFF v2.0, seção 4; backlog 1.3), e o papel de clímax passa ao nó central do hexágono. O `DoorTrigger.cs` existe na versão mínima (destino no Inspector, troca adiada com trava).
+- Docs: `docs/specs/` (specs), `docs/reference/` (material de referência, fora da importação da Godot por um `.gdignore`: o protótipo `dyson-wall-prototype.html`, que acompanha a `docs/specs/dyson-wall.md` e não é código para portar linha a linha, e as imagens do rascunho de design `dyson-sphere-reference.png` e `connector-cut-mockup.png`).
 - `arena.tscn`: cena de protótipo do início do projeto, usada só para validar ideias e mecânicas. Não será usada na demo (pode servir de bancada de teste, ex.: inimigos colocados à mão na cena).
-- Não documentados no handoff (ler o código antes de assumir o que fazem): `SalaEntrada.cs`, `SalaDesfiladeiro.cs`, `sala_desfiladeiro_TESTE_estrelas.tscn`, `NinhoSpawner.cs`, `NinhoSpawnerPooled.cs`.
+- Não documentados no handoff (ler o código antes de assumir o que fazem): `SalaDesfiladeiro.cs`, `sala_desfiladeiro_TESTE_estrelas.tscn`.
 
 ## Referências
 
 - Specs das mecânicas: `docs/specs/` (modelo em `docs/specs/_TEMPLATE.md`).
 - Tarefas pendentes, decisões em aberto e dívidas técnicas: `docs/BACKLOG.md` (ler no início de uma tarefa nova).
-- Contexto de design e decisões: `docs/HANDOFF.md` (pode estar desatualizado onde divergir do código).
+- Contexto de design e decisões: `docs/HANDOFF.md` (v2.0, out/2026, revisado contra o código; onde divergir, o código vale).
