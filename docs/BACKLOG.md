@@ -12,18 +12,18 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 
 - **Contexto:** uma fase é um hexágono da esfera. Cada estrutura (nó central, nós periféricos, conectores de nós, conectores de placas e painéis) é uma sala, e todas são interligadas: o hexágono inteiro é a arena (HANDOFF v2.0, seção 4).
 - **Problema atual:** só existe uma porta de mão única (`DoorTrigger` na `PortaSaida`, `sala_entrada` → `sala_ninho`, com `ChangeSceneToFile`), a troca é abrupta e cada sala recomeça do zero. A `SalaEntrada.cs` põe o jogador no único `SpawnPoint` e trava a câmera em 1920×1080.
-- **É uma tarefa grande, que pede spec própria.** Perguntas para a spec:
-  - **Plano de jogo:** cada estrutura vista em corte lateral (como no mockup do conector), ligadas como um grafo de salas. Confirmar.
-  - **Continuidade:** uma cena por hexágono (os spawners circulam e o estado persiste) ou uma cena por estrutura com o estado da fase no `GameState`? "Uma cena por sala que recomeça do zero" é **incompatível** com spawners circulando pela fase inteira.
-  - **Escopo da demo:** um hexágono completo tem mais de 25 estruturas. Sugestão: começar por um setor (um triângulo: 3 nós, 3 conectores, 1 painel).
-  - **Papel de cada tipo de estrutura** (sugestão: nós = arenas; conectores = corredores com risco de parede; painéis = áreas abertas com muita fronteira; conectores de placa = gargalos; nó central = clímax) e o que acontece com as cenas atuais (`sala_desfiladeiro` → conector, `sala_ninho` → nó).
-  - **Transição entre estruturas:** câmera passando de uma para outra na mesma cena, ou troca de cena com transição (escurecer e clarear). Portas nos dois sentidos, cada uma com o seu ponto de chegada.
-  - **Câmara inicial (hub):** onde fica em relação ao hexágono; a fase recomeça na morte? Os spawners mortos continuam mortos?
-  - **O que reinicia na morte** (`player-health-death.md`) e **se a integridade persiste entre estruturas** (`suit-evolution.md`, decisão 6).
-  - **Simulação por proximidade:** simular por completo só a estrutura atual e as vizinhas (orçamento de física medido: ~350 a 400 inimigos).
-  - **Câmera e limites por estrutura** (hoje fixos em 1920×1080).
-  - **Geração procedural:** o hexágono substitui a grade de labirinto do antigo `MazeGenerator.cs` (nunca criado). Procedural fica para depois da estrutura fixa?
-- **Spec:** criar `docs/specs/hex-phase.md` (nome a confirmar).
+- **Spec:** `docs/specs/hex-phase.md` (aprovada, out/2026). Decidido: planta da casca vista de fora da esfera (H1), uma cena por fase (H2), contornos por código e recheio no editor (H3), setor de teste primeiro e hexágono por parâmetro (H4), câmara inicial separada com entrada e extração pela eclusa e a fase recomeçando a cada entrada (H5).
+- **Estado (out/2026): fase A validada, passos 1 a 6 testados pelo dev** (spec, seção 8):
+  - geometria do setor e do hexágono (`HexPhaseLayout`);
+  - fundo, pisos e paredes com aberturas gerados por código (`HexPhaseBuilder`);
+  - giro de 30° (base dos painéis na horizontal);
+  - estrutura atual no HUD e regra provisória do espaço (`StructureTracker`, `StructureHud`);
+  - nascimento na eclusa, limites e zoom por tipo de estrutura (`PhaseCamera`);
+  - sensibilidade das paredes por tipo;
+  - hexágono completo por parâmetro, com a receita 2× como padrão e a parede que dorme fora da luz (Processo de Física da fase vazia de ~4 ms para 0,3 ms; spec, seção 4).
+- **Próximo passo:** plano da fase B (porta da eclusa, transição de tela, extração, `PortaSaida` → fase, reinício na morte), a aprovar pelo dev.
+- **Antes da fase B:** mover a `hex_phase.tscn` de `res://upgrades/` para `res://` pelo painel Sistema de Arquivos da Godot.
+- **Em aberto na spec:** sensibilidade das paredes por tipo (a testar e definir pelo dev); papel e recheio de cada tipo de estrutura; hexágonos vizinhos; a regra provisória do espaço até a consequência da ejeção ser decidida. Simulação por proximidade fica com o 1.4. Geração procedural fica para depois.
 
 ### 1.4 Spawners móveis e objetivo da fase (novo)
 
@@ -58,10 +58,9 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 
 | Item | Onde está registrado | Observação |
 |---|---|---|
-| Consequência de ser ejetado para o espaço | `dyson-wall.md` (2.6), `reactive-walls.md` (D5), `player-health-death.md` (decisão 7) | O espaço **não é navegável** ("vácuo como atalho" continua adiado). Opções: morte, dano, volta ao último nó, perda de parte da biomassa carregada. Sugestão: fade e volta ao último nó com uma perda |
+| Consequência de ser ejetado para o espaço | `dyson-wall.md` (2.6), `reactive-walls.md` (D5), `player-health-death.md` (decisão 7) | O espaço **não é navegável** ("vácuo como atalho" continua adiado). Opções: morte, dano, volta ao último nó, perda de parte da biomassa carregada. Sugestão: fade e volta ao último nó com uma perda. Provisório para testar a fase hexagonal: volta à eclusa sem perdas (`hex-phase.md`, seção 10) |
 | Deformação final da parede de fronteira | `dyson-wall.md` (seção 10) | Esmaecer é o padrão provisório. Referências sugeridas: exocitose, estômato, esfíncter/íris (Scorn), peristalse |
 | Detalhes da sucção nos inimigos e orbes | `dyson-wall.md` (seção 10) | Inimigo sugado solta biomassa? (proposto: não); spawners são afetados?; fendas viram estratégia dominante contra a horda? |
-| Câmara inicial (hub) e o que reinicia na morte | HANDOFF v2.0 (4.4), item 1.3 | Hoje: a sala recomeça do zero e o jogador volta à câmara |
 | Tiros no ALERTAR | CLAUDE.md (core loop) e HANDOFF | O core loop cita "luz e tiros", mas não existe tiro; os "modos de tiro" do `TerminalModo` são modos da lanterna |
 | Melhoria "Potência da lanterna" | `suit-evolution.md` (decisão 4) | Adiada até ter requisitos; volta junto com o valor no enum `SuitUpgrade.TargetStat` |
 | Salvar progresso em disco | `suit-evolution.md` (decisão 2) | `RunData` já separado do nó; salvar = converter o `RunData` |
@@ -86,10 +85,12 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 | `TerminalModo` lê a tecla por polling | `suit-evolution.md` (notas) | Só importa se ele ganhar interface; usar `_UnhandledInput` como o `EvolutionTerminal` |
 | Pool de fragmentos | `fractal-enemy.md` (seção 5) | Só se matar muitos inimigos de uma vez causar engasgo |
 | `Player._PhysicsProcess` longo, com três estados (normal, ejetado, morto) em `if/else` | código (`Player.cs`) | Se surgirem mais estados (ex.: ejetado para o espaço), considerar o padrão State. A sucção da dyson-wall não é um estado novo (o jogador mantém o controle): entra como aceleração externa |
+| Entalhes nas quinas convexas das paredes geradas | `hex-phase.md` (seção 5) | Só visual, do lado de fora; resolver na arte (etapa 2) |
 | Paredes da `sala_desfiladeiro` não são instâncias de uma cena de parede | `reactive-walls.md` (seção 4) | Cada uma tem os próprios `[Export]`: ajustar um valor exige mudar parede por parede ou o padrão no código. Prioridade baixa (as paredes de fronteira serão substituídas pela dyson-wall) |
 
 ## 4. Etapa 2 (não fazer agora)
 
+- Fase hexagonal, compressão e alívio (`hex-phase.md`, decisão 7): paralaxe da megaestrutura vista pelos vãos (`Parallax2D`), estruturas em primeiro plano, contraste de luz (arenas iluminadas, corredores escuros), referências de escala e áudio (eco nas arenas, abafado nos corredores).
 - Direção de arte Cocoon com contraluz: um modelo de luz único para parede, inimigo e jogador (`dyson-wall.md`, seção 2.7); cor da estrela laranja-avermelhada; neon × pastel.
 - Visual 3D do inimigo fractal: `docs/specs/fractal-enemy-render-3d.md` (proposta; aplicável, com ramos facetados em vez de tubos lisos).
 - Parede de fronteira, fases C (todos os modos de abertura) e D (contraluz): `docs/specs/dyson-wall.md`.

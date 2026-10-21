@@ -122,5 +122,5 @@ Todas as propostas abaixo foram **aceitas pelo dev** (out/2026). As alternativas
 
 ### Impacto do rascunho de game design (out/2026)
 
-- "A sala de destino recomeça do zero" pressupõe salas isoladas. Com a fase hexagonal contínua (backlog 1.3), definir na spec da fase o que reinicia na morte (spawners, inimigos, orbes, a fase inteira) e para onde o jogador volta (câmara inicial ou outro ponto). O componente `RestartOnDeath` (`ReturnScenePath`) continua valendo até lá.
+- "A sala de destino recomeça do zero" pressupunha salas isoladas. **Decidido na `hex-phase.md` (H5):** a morte continua voltando à câmara inicial (`RestartOnDeath`, sem mudança), e a fase hexagonal recomeça do zero a cada entrada (spawners, inimigos e orbes novos). Dentro da fase, a integridade se mantém entre as estruturas.
 8. **Piscar o sprite no golpe.** Proposto sim, como feedback mínimo de mecânica (o jogador precisa saber que foi atingido). Alternativa: nenhum feedback visual até a etapa 2.

@@ -1,0 +1,35 @@
+[gd_scene format=3 uid="uid://bg27ng01eost2"]
+
+[ext_resource type="Script" uid="uid://dbyfyxjst0snd" path="res://HexPhaseBuilder.cs" id="1_sgjfe"]
+[ext_resource type="PackedScene" uid="uid://cgy8y45ghbrod" path="res://player.tscn" id="2_1gulo"]
+[ext_resource type="Script" uid="uid://yej4lv07547j" path="res://StructureTracker.cs" id="3_ie58g"]
+[ext_resource type="Script" uid="uid://cwnicg7cly5qh" path="res://StructureHud.cs" id="4_e333e"]
+[ext_resource type="Script" uid="uid://b1ju74mhjar6l" path="res://PhaseCamera.cs" id="5_e333e"]
+
+[node name="HexPhase" type="Node2D" unique_id=410249403 node_paths=PackedStringArray("Player")]
+script = ExtResource("1_sgjfe")
+Shape = 1
+Player = NodePath("Player")
+
+[node name="Player" parent="." unique_id=2016198778 instance=ExtResource("2_1gulo")]
+
+[node name="StructureTracker" type="Node" parent="." unique_id=299230605 node_paths=PackedStringArray("Phase")]
+script = ExtResource("3_ie58g")
+Phase = NodePath("..")
+
+[node name="PhaseHud" type="CanvasLayer" parent="." unique_id=505427194]
+
+[node name="StructureLabel" type="Label" parent="PhaseHud" unique_id=1910774314]
+offset_left = 16.0
+offset_top = 80.0
+offset_right = 56.0
+offset_bottom = 103.0
+script = ExtResource("4_e333e")
+
+[node name="PhaseCamera" type="Node" parent="." unique_id=1128102368 node_paths=PackedStringArray("Phase", "Tracker")]
+script = ExtResource("5_e333e")
+Phase = NodePath("..")
+Tracker = NodePath("../StructureTracker")
+
+[connection signal="LostInSpace" from="StructureTracker" to="." method="OnPlayerLostInSpace"]
+[connection signal="StructureChanged" from="StructureTracker" to="PhaseHud/StructureLabel" method="OnStructureChanged"]

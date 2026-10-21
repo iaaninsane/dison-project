@@ -25,22 +25,24 @@ public partial class WallSensitive : StaticBody2D
                        "Verifique se o nó filho na árvore de cenas está escrito exatamente como 'ColorRect' " +
                        "(confira se não ficou salvo como 'ColorRetc' ou com espaços).");
         }
+
+        // A Godot liga o _PhysicsProcess antes do _Ready; desligar aqui faz a parede calma não custar nada
+        SetPhysicsProcess(false); // Calma: dorme até a luz chegar (AddIrritation acorda)
     }
 
+    // Só roda enquanto a parede está irritada: decai a irritação e, ao chegar a zero, volta a dormir
     public override void _PhysicsProcess(double delta) {
+        _currentIrritation = Mathf.Max(0f, _currentIrritation - (RecoveryRate * (float)delta));
+        UpdateVisuals();
 
-        if (_currentIrritation > 0f) {
-            // Decai a irritação gradualmente se não estiver recebendo luz
-            _currentIrritation = Mathf.Max(0f, _currentIrritation - (RecoveryRate * (float)delta));
-           UpdateVisuals();
-    
-        }
+        if (_currentIrritation <= 0f) SetPhysicsProcess(false); // Calma de novo
     }
 
     // Método chamado dinamicamente pela LightDamageArea da lanterna
     public void AddIrritation(float amount, Vector2 playerPosition) {
         _currentIrritation = Mathf.Min(MaxIrritation, _currentIrritation + amount);
         UpdateVisuals();
+        SetPhysicsProcess(true); // Acorda para se acalmar aos poucos quando a luz sair
 
         if (_currentIrritation >= MaxIrritation) {
             TriggerEjection(playerPosition);

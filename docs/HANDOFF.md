@@ -94,7 +94,7 @@ Resumo; as regras completas e os valores em teste estão nas specs.
 
 ## 4. Level design: a fase hexagonal (rascunho de out/2026)
 
-Substitui a v1.0, que previa salas modulares de 1920×1080 (entrada, desfiladeiro, ninho, núcleo) ligadas por um gerador de labirintos em grade (`MazeGenerator.cs`, nunca criado). Os detalhes serão fechados na spec da fase (backlog 1.3).
+Substitui a v1.0, que previa salas modulares de 1920×1080 (entrada, desfiladeiro, ninho, núcleo) ligadas por um gerador de labirintos em grade (`MazeGenerator.cs`, nunca criado). Spec: `docs/specs/hex-phase.md` (aprovada, out/2026).
 
 ### 4.1 Estrutura
 
@@ -110,8 +110,9 @@ Substitui a v1.0, que previa salas modulares de 1920×1080 (entrada, desfiladeir
 
 ### 4.2 Como a sala é vista
 
-- Cada estrutura é vista **em corte** (como em Heavenly Bodies). O mockup do rascunho (`docs/reference/connector-cut-mockup.png`) mostra um conector em corte horizontal: um corredor curvo que acompanha a curvatura da esfera; as paredes superior e inferior são a fronteira com o espaço; o sol aparece ao fundo pelas janelas hexagonais.
-- A confirmar na spec da fase: as estruturas em corte se ligam como um **grafo** (cada estrutura é um nó do grafo; as passagens, as arestas).
+- **Decidido (out/2026): planta da casca.** A câmera olha a esfera **de fora**, com o teto das estruturas removido. O hexágono fica deitado no plano do jogo (nós = câmaras, conectores = corredores a 60°, painéis = salas triangulares) e o vão entre as estruturas é o espaço. A estrela fica **atrás do plano**: contraluz, com a luz vazando pelos vãos e por janelas no piso.
+- É a leitura do mockup do rascunho (`docs/reference/connector-cut-mockup.png`): um conector visto de cima, com o sol atrás, janelas hexagonais no piso e as paredes de cima e de baixo dando para o espaço. A curvatura do mockup fica só no visual.
+- Jogos com o mesmo plano: FTL, Heat Signature (inclusive a sucção pelo rombo no casco, que afeta guardas e jogador) e Space Haven. Mantém o movimento atual (vista de cima, gravidade zero, todas as direções).
 
 ### 4.3 Spawners móveis e objetivo da fase
 
@@ -119,16 +120,21 @@ Substitui a v1.0, que previa salas modulares de 1920×1080 (entrada, desfiladeir
 - **Objetivo da fase:** eliminar os spawners. A cada spawner morto, a dificuldade aumenta.
 - Em aberto (spec própria, backlog 1.4): vida e como matar um spawner, como ele se move, a curva de dificuldade, o que acontece quando todos morrem.
 
-### 4.4 Perguntas abertas e sugestões
+### 4.4 Decisões da spec da fase e sugestões em aberto
 
-Registradas no backlog (1.3 e 1.4); as sugestões abaixo não são decisões.
+Decidido na `hex-phase.md` (out/2026):
 
-- **Continuidade:** spawners circulando pela fase inteira não cabem em "uma cena por sala que recomeça do zero". Opções: uma cena por hexágono, ou cena por estrutura com o estado da fase guardado no `GameState`.
-- **Escopo da demo:** um hexágono completo é grande para um dev solo. Sugestão: começar por um **setor** (um triângulo: 3 nós, 3 conectores, 1 painel).
+- **Continuidade:** uma cena por fase; o jogador voa entre as estruturas sem troca de cena.
+- **Montagem:** contornos (piso, paredes, aberturas) gerados por código a partir da geometria; recheio em cenas pequenas feitas no editor.
+- **Escopo:** setor de teste primeiro (um triângulo: 3 nós, 3 conectores de nós, 1 painel, 3 conectores de placa); hexágono completo por parâmetro.
+- **Câmara inicial:** cena separada; entrada e extração pela eclusa de um nó periférico; a morte volta à câmara; a fase recomeça a cada entrada.
+- **Orientação (implementação):** hexágono "deitado" (giro de 30°): todo painel tem um lado horizontal; no setor de teste, o painel aponta para cima.
+- **Compressão e alívio:** arenas (nós e painéis) amplas e corredores estreitos e longos. A câmera afasta nas arenas e aproxima nos corredores, e as paredes dos corredores e das placas são mais sensíveis: o perigo fica onde está o aperto.
+
+Sugestões em aberto (backlog 1.3 e 1.4):
 - **Grafo da fase:** os spawners andam pelas arestas (sem pathfinding); o mapa sai do grafo; só a sala atual e as vizinhas são simuladas por completo (o orçamento de física medido é de ~350 a 400 inimigos).
 - **Papel de cada estrutura:** nós = arenas de combate; conectores = corredores com risco de parede; painéis = áreas abertas com muita fronteira (muito risco de ejeção); conectores de placa = gargalos; nó central = clímax. As cenas atuais viram protótipos: `sala_desfiladeiro` → conector, `sala_ninho` → nó.
 - **Dificuldade dos spawners:** um orçamento global de spawn dividido entre os spawners vivos; ao matar um, os restantes aceleram (a dificuldade sobe sem estourar o teto de física) e o último fica frenético. Spawners rastreáveis (indicador ou pulso visível) e com silhueta própria.
-- **Câmara inicial (hub):** onde fica em relação ao hexágono e o que reinicia na morte (hoje: a sala recomeça do zero e o jogador volta à câmara).
 
 ### 4.5 Cenas atuais
 
@@ -145,7 +151,7 @@ Registradas no backlog (1.3 e 1.4); as sugestões abaixo não são decisões.
 Nada disto entra na etapa 1, salvo o que uma spec pedir.
 
 - **Referência principal: Cocoon:** gráficos low poly, efeitos de luz e sombra e silhuetas que simulam 3D.
-- **Cenário em corte:** referência citada no rascunho como "Heavyness body", registrada como **Heavenly Bodies** (2Pt Interactive, 2021), a confirmar.
+- **Cenário em corte:** as estruturas são vistas de cima, sem teto (como em FTL e Heat Signature). A referência citada no rascunho como "Heavyness body", registrada como **Heavenly Bodies** (2Pt Interactive, 2021, a confirmar), é vista de lado; fica como referência de game feel em gravidade zero e da descompressão.
 - **Contraluz:** o sol, no centro da esfera, fica ao fundo; paredes, inimigos e jogador aparecem como silhuetas com contorno de luz. Modelo de luz detalhado na `dyson-wall.md` (seção 2.7), a ser compartilhado pelo inimigo 3D.
 - **Cores:** o neon vibrante foi mantido, mas a testar contra tons pastel. Estrela laranja-avermelhada.
 - **Paredes:** sem transparência (regra do modo Esmaecer); deformação final em aberto.
@@ -179,7 +185,8 @@ Nada disto entra na etapa 1, salvo o que uma spec pedir.
 ### 6.5 Suavização e limites da câmera (`Camera2D`)
 
 - **Sintoma:** a suavização parecia não funcionar com os limites cravados em (0, 0, 1920, 1080), porque a tela cobria a sala inteira.
-- **Solução:** `Zoom` entre 1,3× e 1,5× e `Position Smoothing Speed` 6,0. Os limites por sala (hoje fixos na `SalaEntrada.cs`) serão revistos com a fase hexagonal.
+- **Solução da época:** `Zoom` entre 1,3× e 1,5× e `Position Smoothing Speed` 6,0.
+- **Hoje (out/2026):** o `Camera2D` do `player.tscn` está com zoom 1× (o ajuste de zoom não ficou no código) e suavização 6,0. Na fase hexagonal, o `PhaseCamera` aplica os limites da fase e o zoom por tipo de estrutura; as salas separadas continuam travando a câmera em 1920×1080 (`SalaEntrada.cs`).
 
 ### 6.6 Aviso de ancoragem ao redimensionar `ColorRect` dentro de `Node2D`
 
@@ -209,7 +216,8 @@ Nada disto entra na etapa 1, salvo o que uma spec pedir.
 ## 8. Referências visuais, de gameplay e de mercado
 
 - **Cocoon (Geometric Interactive):** referência visual principal (low poly, luz e sombra, silhuetas).
-- **Heavenly Bodies (2Pt Interactive), a confirmar:** cenário em corte e game feel de gravidade zero (inclusive a descompressão, referência para a sucção da parede).
+- **FTL (Subset Games), Heat Signature (Suspicious Developments) e Space Haven (Bugbyte):** plano de jogo da fase (estruturas vistas de cima, sem teto, com o espaço em volta). Heat Signature também é referência da sucção por rombo no casco, que afeta inimigos e jogador.
+- **Heavenly Bodies (2Pt Interactive), a confirmar:** game feel de gravidade zero e da descompressão (é visto de lado, diferente do plano da fase).
 - **Pathogenic (Aberrant Labs):** referência de **comportamento orgânico** (tecido que reage). Desde out/2026, não é mais referência visual (membranas translúcidas e soft-body saíram do pilar visual).
 - **Scorn (Ebb Software):** aberturas biomecânicas (esfíncteres), referência para a deformação da parede.
 - **Sir, We Have an Orc Problem (Mumpitz Games):** volume de hordas, partículas e metaprogressão roguelite (feito na Godot por 2 pessoas em 4 meses, mais de US$ 360 mil no dia 1).
