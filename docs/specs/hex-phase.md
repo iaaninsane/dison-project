@@ -1,6 +1,6 @@
 # Spec: Fase hexagonal (estruturas interligadas da esfera)
 
-- **Status:** aprovada (out/2026); **fase A validada** (passos 1 a 6, testados pelo dev no editor); **fase B em planejamento**. Decisões na seção 10. Valores em teste.
+- **Status:** aprovada (out/2026); **fase A validada** (passos 1 a 6, testados pelo dev no editor); **fase B aprovada** (plano na seção 10, decisão 14), em execução passo a passo. Decisões na seção 10. Valores em teste.
 - **Etapa:** 1 (mecânica). Fases A e B nesta spec; a fase C entra junto com os spawners móveis (backlog 1.4).
 - **Depende de:** `docs/HANDOFF.md` (v2.0, seção 4), `docs/specs/reactive-walls.md` (paredes atuais), `docs/specs/suit-evolution.md` (câmara inicial e banco), `docs/specs/player-health-death.md` (morte). Futuro: `docs/specs/dyson-wall.md` (paredes de fronteira).
 - **Referências:** `docs/reference/dyson-sphere-reference.png` (a malha da esfera) e `docs/reference/connector-cut-mockup.png` (mockup de um conector). Jogos com o mesmo plano: FTL, Heat Signature e Space Haven (estruturas vistas de cima, sem teto, com o espaço em volta); a câmera do Cocoon também olha o mundo de cima.
@@ -50,9 +50,9 @@ Trocar as salas isoladas por uma **fase**: um hexágono da esfera (de início, u
 ### Câmara inicial e reinício (H5)
 
 - A câmara inicial (`sala_entrada`) continua uma cena separada.
-- A `PortaSaida` leva à fase. O jogador nasce na **eclusa** de um nó periférico (`EntryPeripheral`), parado e com a câmera já no lugar. Hoje a eclusa é o centro desse nó; a porta da eclusa vem na fase B.
-- A eclusa também leva de volta à câmara (**extração**): ao chegar, a biomassa carregada é depositada no banco (a `SalaEntrada` já faz isso a cada entrada).
-- As trocas entre a câmara e a fase usam uma transição de tela (escurecer e clarear, `ScreenFadeDuration`).
+- A `PortaSaida` leva à fase. O jogador nasce na **eclusa** de um nó periférico (`EntryPeripheral`), parado e com a câmera já no lugar. Hoje a eclusa é o centro desse nó. Na fase B, a porta da eclusa fica na **parede externa** do nó (o lado oposto ao centro da fase, onde não sai corredor), e o jogador nasce à frente dela, também ao voltar do espaço.
+- A eclusa também leva de volta à câmara (**extração**) **ao tocar a porta**, como a `PortaSaida`: ao chegar, a biomassa carregada é depositada no banco (a `SalaEntrada` já faz isso a cada entrada). Se extrair sem querer virar problema nos testes, passa a exigir `interact`.
+- As trocas de cena usam uma transição de tela (escurecer e clarear, `ScreenFadeDuration`): entre a câmara e a fase e também na morte. O jogo não pausa durante o escurecer.
 - Morrer volta à câmara, como hoje (`RestartOnDeath`).
 - **A fase recomeça do zero a cada entrada:** spawners, inimigos e orbes novos. Banco, níveis das melhorias e modo da lanterna continuam no `GameState`.
 - A integridade começa cheia ao entrar na fase e se mantém entre as estruturas.
@@ -131,11 +131,12 @@ Zooms aprovados pelo dev no passo 6 (out/2026).
 | `ZoomTransitionTime` | 0,8 s | Duração da troca de zoom |
 | `CameraMargin` | 600 px | Quanto a câmera pode mostrar além da borda da fase |
 
-### Fase B (a definir no plano)
+### Fase B
 
-| Parâmetro | Valor inicial | Observação |
-|---|---|---|
-| `ScreenFadeDuration` | 0,4 s | Escurecer e clarear entre câmara e fase |
+| Parâmetro | Valor inicial | Onde fica | Observação |
+|---|---|---|---|
+| `ScreenFadeDuration` | 0,4 s no código; **0,8 s no `player.tscn`** (escolha do dev, B1) | `ScreenFade` (`player.tscn`) | Escurecer e clarear em toda troca de cena |
+| Distâncias da eclusa | a definir no passo B3 | `HexPhaseBuilder` | Da porta à parede externa e do nascimento à porta (~300 px) |
 
 ### Como as medidas se relacionam (com as larguras atuais)
 
@@ -201,10 +202,13 @@ Medido pelo dev no editor, com o hexágono vazio (sem inimigos) e o V-Sync desli
   - `StructureTracker.cs` (`Node`): estrutura atual, sinais `StructureChanged` e `LostInSpace` (regra provisória do espaço).
   - `StructureHud.cs` (`Label`): HUD de teste "Estrutura: …".
   - `PhaseCamera.cs` (`Node`): limites da fase, zoom por tipo de estrutura, `ResetSmoothing`.
-  - `hex_phase.tscn`, montada pelo dev. **Hoje está em `res://upgrades/`**: mover para `res://` pelo painel Sistema de Arquivos da Godot antes da fase B (a `PortaSaida` vai apontar para ela).
+  - `hex_phase.tscn`, montada pelo dev, em `res://` (movida de `upgrades/` pelo painel Sistema de Arquivos no passo B0).
 - **Alterado no passo 6** (com autorização do dev): `WallSensitive.cs`, a parede dorme fora da luz (`SetPhysicsProcess(false)` no `_Ready` e ao zerar a irritação; `SetPhysicsProcess(true)` no `AddIrritation`). A fase continua preenchendo só o `[Export]` `MaxIrritation`. Também mudaram os padrões de medidas do `HexPhaseBuilder.cs` (receita 2×).
-- **Fase B (a definir no plano):** transição de tela (preferência: sem autoload; quem sai escurece, quem chega clareia), a porta da eclusa, `DoorTrigger.cs` e o destino da `PortaSaida` da `sala_entrada.tscn`.
-- **Somente leitura:** `Player.cs`, `GameState.cs`, `RestartOnDeath.cs`, `SalaEntrada.cs`.
+- **Fase B (plano aprovado, out/2026):**
+  - Novo (B1, feito): `ScreenFade.cs` (`CanvasLayer`, nó no `player.tscn`): transição de tela, sem autoload; quem chega clareia, quem sai escurece e troca de cena. Método estático `ScreenFade.ChangeScene(quem pede, cena)` acha o fade da cena pelo grupo `ScreenFade` (cena sem fade: troca direto).
+  - Alterados: `DoorTrigger.cs` e `RestartOnDeath.cs` (trocam de cena pelo `ScreenFade`); `HexPhaseBuilder.cs` (posiciona a porta da eclusa e o nascimento).
+  - Cenas, montadas pelo dev: `player.tscn` (nó `ScreenFade`), `hex_phase.tscn` (nó `Airlock` com `DoorTrigger.cs`), `sala_entrada.tscn` (destino da `PortaSaida`).
+- **Somente leitura:** `Player.cs`, `GameState.cs`, `SalaEntrada.cs`.
 - **Ficam como bancadas:** `sala_ninho.tscn`, `sala_desfiladeiro.tscn` e `arena.tscn` (protótipos do recheio de nós e conectores).
 
 ## 7. Passos no editor (feitos pelo dev)
@@ -219,10 +223,14 @@ Feitos em out/2026 (fase A):
 6. **`PhaseCamera`** (`Node`, `PhaseCamera.cs`), filho da raiz, com **Phase** = `HexPhase` e **Tracker** = `StructureTracker` (os avisos são ligados por código).
 7. Passo 6: **Shape** = Hexagon na `HexPhase`; **Node Spacing** e **Panel Gap** revertidos (↺) para os padrões do código (receita 2×). A cena só guarda os valores diferentes do padrão do script.
 
+Feitos na fase B:
+
+8. B0: `hex_phase.tscn` movida de `upgrades/` para `res://` (painel Sistema de Arquivos).
+9. B1: **`ScreenFade`** (`CanvasLayer`, `ScreenFade.cs`), filho da raiz do `player.tscn`, com **Layer** = 10 (acima do HUD, na 1, e do painel de evolução, na 2) e **Screen Fade Duration** = 0,8. Sem campos de nó para ligar.
+
 Pendentes:
 
-- Mover a `hex_phase.tscn` de `upgrades/` para `res://` (painel Sistema de Arquivos).
-- (Fase B) `PortaSaida` da `sala_entrada` com destino `res://hex_phase.tscn`; porta da eclusa; transição de tela.
+- (Fase B) porta da eclusa (`Airlock`) na `hex_phase.tscn`; `PortaSaida` da `sala_entrada` com destino `res://hex_phase.tscn`.
 
 ## 8. Pronto quando
 
@@ -280,6 +288,16 @@ Confirmado pelo dev no editor (out/2026):
 11. **Medidas padrão: receita 2×** (passo 6): `NodeSpacing` 6200, `NodeRadius` 1100, `PanelGap` 1000, 32 lados. Nós e painéis de ~2200 px e corredores longos (~4000 px nos conectores de nós, ~1500 px nos de placa): o maior contraste de compressão e alívio entre as configurações testadas. Viraram os padrões do código.
 12. **Zoom aprovado** (passo 6): 0,7 nas arenas, 1,2 nos corredores e 1,3 nas placas.
 13. **A parede dorme fora da luz** (passo 6, `WallSensitive.cs`): em vez de cada parede perguntar a todo passo se está irritada (*polling*), ela reage ao aviso da luz (`AddIrritation`) e só processa enquanto se acalma. É a ideia do "sono" dos corpos rígidos (`RigidBody2D.CanSleep`) e do "só atualize os objetos ativos" (*Game Programming Patterns*, "Update Method"). Alternativa descartada: trechos de parede maiores nos corredores (reduz só parte das paredes e muda o jogo: o centro do puxão e o tamanho do trecho irritado). A mesma ideia vale para a `DysonWall` (backlog 1.5).
+14. **Plano da fase B** (aprovado pelo dev, out/2026). Já funciona sem código novo: a fase recomeça do zero e a integridade começa cheia a cada entrada (cada troca cria instâncias novas), a câmara deposita a biomassa a cada entrada e a morte volta à câmara. Passos:
+    - **B0** (editor): mover a `hex_phase.tscn` para `res://`.
+    - **B1:** `ScreenFade.cs` e o nó `ScreenFade` no `player.tscn` (clareia ao chegar).
+    - **B2:** `DoorTrigger` e `RestartOnDeath` trocam de cena pelo `ScreenFade` (teste no fluxo atual, câmara ↔ `sala_ninho`).
+    - **B3:** porta da eclusa (`Airlock`) posicionada pelo `HexPhaseBuilder` na parede externa do nó de entrada, com o nascimento à frente.
+    - **B4** (editor): `PortaSaida` → `res://hex_phase.tscn` e o teste do ciclo completo (seção 9, item 5), com um ninho temporário num nó para testar a morte.
+    - **B5:** fechamento (spec, backlog, CLAUDE.md, HANDOFF, mensagem de commit).
+15. **Decisões da fase B** (recomendadas e aceitas): porta na parede externa do nó de entrada (alternativa descartada: porta no centro, armada depois da primeira saída); extração ao tocar (`interact` se houver extração sem querer); a morte também usa a transição; sem pausa durante o escurecer (a pausa continua depois da troca de cena, e o painel de evolução também pausa).
+16. **Transição no `player.tscn`, sem autoload:** o jogador está em todas as salas, então todas ganham a transição sem montagem por cena (o HUD já mora lá). Quem pede a troca acha o fade da cena pelo grupo `ScreenFade`; cena sem fade troca direto. A cena que sai termina preta e a que chega nasce preta; a Godot troca a cena antes de desenhar o quadro, então nenhum quadro sai sem cena (verificado no descartável).
+17. **Fade sem Tween** (B1): o quadro em que a fase é montada dura ~130 a 145 ms, e um Tween (que avança pelo tempo real) fazia o preto pular de 96% para 60% de uma vez (medido no descartável). O `ScreenFade` anima a transparência no `_Process`, com o passo limitado a 1/30 s por quadro (`MaxFrameStep`), e só processa durante a transição. Abaixo de 30 FPS, a transição fica um pouco mais longa. Se a cena de destino não abrir, mostra o erro e volta a clarear.
 
 ### Em aberto
 

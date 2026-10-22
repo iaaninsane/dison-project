@@ -21,8 +21,7 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
   - nascimento na eclusa, limites e zoom por tipo de estrutura (`PhaseCamera`);
   - sensibilidade das paredes por tipo;
   - hexágono completo por parâmetro, com a receita 2× como padrão e a parede que dorme fora da luz (Processo de Física da fase vazia de ~4 ms para 0,3 ms; spec, seção 4).
-- **Próximo passo:** plano da fase B (porta da eclusa, transição de tela, extração, `PortaSaida` → fase, reinício na morte), a aprovar pelo dev.
-- **Antes da fase B:** mover a `hex_phase.tscn` de `res://upgrades/` para `res://` pelo painel Sistema de Arquivos da Godot.
+- **Próximo passo:** fase B, plano aprovado pelo dev (out/2026) e em execução passo a passo, de B0 a B5 (spec, seção 10, decisão 14). Feitos: B0 (cena movida para `res://`) e B1 (transição de tela, `ScreenFade`). Faltam: portas e morte pela transição (B2), porta da eclusa (B3), `PortaSaida` → fase e o ciclo completo (B4), fechamento (B5).
 - **Em aberto na spec:** sensibilidade das paredes por tipo (a testar e definir pelo dev); papel e recheio de cada tipo de estrutura; hexágonos vizinhos; a regra provisória do espaço até a consequência da ejeção ser decidida. Simulação por proximidade fica com o 1.4. Geração procedural fica para depois.
 
 ### 1.4 Spawners móveis e objetivo da fase (novo)

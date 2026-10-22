@@ -12,6 +12,7 @@
 [ext_resource type="Script" uid="uid://4xxrewgc1csd" path="res://RestartOnDeath.cs" id="10_n7ghd"]
 [ext_resource type="Script" uid="uid://cvtu88k6g38w3" path="res://SuitUpgradeApplier.cs" id="11_ivps1"]
 [ext_resource type="Resource" uid="uid://ckk8tfaxyiisu" path="res://upgrades/upgrade_catalog.tres" id="12_urp6f"]
+[ext_resource type="Script" uid="uid://cuoby5abte8bx" path="res://ScreenFade.cs" id="13_urp6f"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_i3pqv"]
 light_mode = 1
@@ -101,6 +102,11 @@ script = ExtResource("11_ivps1")
 Catalog = ExtResource("12_urp6f")
 Integrity = NodePath("../SuitIntegrity")
 Collector = NodePath("../BiomassCollector")
+
+[node name="ScreenFade" type="CanvasLayer" parent="." unique_id=1231953074]
+layer = 10
+script = ExtResource("13_urp6f")
+ScreenFadeDuration = 0.8
 
 [connection signal="BiomassChanged" from="BiomassCollector" to="Hud/BiomassLabel" method="OnBiomassChanged"]
 [connection signal="Died" from="SuitIntegrity" to="." method="OnDied"]
