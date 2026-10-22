@@ -1,7 +1,7 @@
 using Godot;
 
 // Monta a fase hexagonal na cena a partir da geometria do HexPhaseLayout (spec hex-phase.md, H3).
-// Fica na raiz da hex_phase.tscn. Por enquanto: fundo e piso; paredes, nascimento e câmera vêm nos próximos passos.
+// Fica na raiz da hex_phase.tscn. Cria fundo, pisos e paredes, posiciona a porta da eclusa e põe o jogador à frente dela.
 public partial class HexPhaseBuilder : Node2D
 {
     [Signal] public delegate void PlayerPlacedEventHandler(); // O jogador foi posto na eclusa (ao nascer ou voltando do espaço)
@@ -28,6 +28,9 @@ public partial class HexPhaseBuilder : Node2D
     [ExportGroup("Jogador e eclusa")]
     [Export] public Player Player;                    // O jogador da cena (ligado no Inspector)
     [Export] public int EntryPeripheral = 2;          // Número do nó periférico da eclusa (como nos nomes: 1 a 6)
+    [Export] public Node2D Airlock;                   // Porta da eclusa, montada no editor (ligada no Inspector)
+    [Export] public float AirlockInset = 60f;         // Distância da parede externa do nó até o centro da porta (px)
+    [Export] public float AirlockSpawnDistance = 300f; // O jogador nasce a essa distância da porta, para dentro do nó (px)
 
     [ExportGroup("Visual provisório (arte na etapa 2)")]
     [Export] public float BackgroundMargin = 2000f;   // Quanto o fundo passa da fase em cada lado
@@ -45,16 +48,37 @@ public partial class HexPhaseBuilder : Node2D
         CreateBackground();
         CreateFloors();
         CreateWalls();
+        PlaceAirlock();
         PlacePlayerAtEntry(); // Nasce na eclusa
     }
 
-    // Põe o jogador na eclusa, parado, e avisa (a câmera se ajusta sem a fase precisar conhecê-la)
+    // Põe o jogador na eclusa (à frente da porta), parado, e avisa (a câmera se ajusta sem a fase precisar conhecê-la)
     public void PlacePlayerAtEntry()
     {
         if (Player == null) return;
-        Player.GlobalPosition = ToGlobal(Layout.PeripheralNodeCenter(EntryPeripheral));
+        Player.GlobalPosition = ToGlobal(EntryPoint(AirlockInset + AirlockSpawnDistance));
         Player.Velocity = Vector2.Zero;
         EmitSignal(SignalName.PlayerPlaced);
+    }
+
+    // Porta na parede externa do nó de entrada (o lado oposto ao centro da fase, onde não sai corredor).
+    // A porta é girada para fora: o eixo X dela aponta para o espaço.
+    private void PlaceAirlock()
+    {
+        if (Airlock == null) return;
+        Airlock.GlobalPosition = ToGlobal(EntryPoint(AirlockInset));
+        Airlock.GlobalRotation = GlobalRotation + EntryOutward().Angle();
+    }
+
+    // Ponto no eixo que sai do centro da fase e passa pelo nó de entrada, a `distanceFromWall` da parede externa
+    private Vector2 EntryPoint(float distanceFromWall) =>
+        Layout.PeripheralNodeCenter(EntryPeripheral) + EntryOutward() * (NodeRadius - distanceFromWall);
+
+    // "Para fora" no nó de entrada: do centro da fase para o centro do nó. Nó inválido (vira o central): a direita.
+    private Vector2 EntryOutward()
+    {
+        Vector2 nodeCenter = Layout.PeripheralNodeCenter(EntryPeripheral);
+        return nodeCenter == Vector2.Zero ? Vector2.Right : nodeCenter.Normalized();
     }
 
     // Conectado pelo editor ao sinal LostInSpace do StructureTracker (regra provisória, spec hex-phase.md, seção 10)

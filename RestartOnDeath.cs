@@ -1,6 +1,6 @@
 using Godot;
 
-// Depois da morte, cobra a taxa da biomassa carregada e, após um atraso, troca de cena
+// Depois da morte, cobra a taxa da biomassa carregada e, após um atraso, escurece a tela e troca de cena
 // (a câmara inicial, ou recarrega a sala atual se nenhum destino for configurado).
 public partial class RestartOnDeath : Node
 {
@@ -18,11 +18,8 @@ public partial class RestartOnDeath : Node
 
     private void GoAfterDeath()
     {
-        if (string.IsNullOrEmpty(ReturnScenePath))
-        {
-            GetTree().ReloadCurrentScene(); // Comportamento antigo, se nenhum destino for configurado
-            return;
-        }
-        GetTree().ChangeSceneToFile(ReturnScenePath);
+        // Destino vazio = recarregar a sala atual (comportamento antigo)
+        string scenePath = string.IsNullOrEmpty(ReturnScenePath) ? GetTree().CurrentScene.SceneFilePath : ReturnScenePath;
+        ScreenFade.ChangeScene(this, scenePath);
     }
 }

@@ -50,7 +50,7 @@ Trocar as salas isoladas por uma **fase**: um hexágono da esfera (de início, u
 ### Câmara inicial e reinício (H5)
 
 - A câmara inicial (`sala_entrada`) continua uma cena separada.
-- A `PortaSaida` leva à fase. O jogador nasce na **eclusa** de um nó periférico (`EntryPeripheral`), parado e com a câmera já no lugar. Hoje a eclusa é o centro desse nó. Na fase B, a porta da eclusa fica na **parede externa** do nó (o lado oposto ao centro da fase, onde não sai corredor), e o jogador nasce à frente dela, também ao voltar do espaço.
+- A `PortaSaida` leva à fase. O jogador nasce na **eclusa** de um nó periférico (`EntryPeripheral`), parado e com a câmera já no lugar. A porta da eclusa (`Airlock`) fica na **parede externa** do nó (o lado oposto ao centro da fase, onde não sai corredor), virada para fora, e o jogador nasce à frente dela, também ao voltar do espaço (B3).
 - A eclusa também leva de volta à câmara (**extração**) **ao tocar a porta**, como a `PortaSaida`: ao chegar, a biomassa carregada é depositada no banco (a `SalaEntrada` já faz isso a cada entrada). Se extrair sem querer virar problema nos testes, passa a exigir `interact`.
 - As trocas de cena usam uma transição de tela (escurecer e clarear, `ScreenFadeDuration`): entre a câmara e a fase e também na morte. O jogo não pausa durante o escurecer.
 - Morrer volta à câmara, como hoje (`RestartOnDeath`).
@@ -117,6 +117,7 @@ O padrão do `WallSensitive` é 15 (~3 s). A recuperação (15/s) e a força do 
 |---|---|---|---|
 | `Player` | — | `HexPhaseBuilder` | Ligado no Inspector |
 | `EntryPeripheral` | 2 | `HexPhaseBuilder` | Número do nó periférico da eclusa (1 a 6, como nos nomes) |
+| `Airlock` | — | `HexPhaseBuilder` | Porta da eclusa (`Area2D` com `DoorTrigger.cs`), montada no editor e ligada no Inspector (B3) |
 | `SpaceReturnDelay` | 2 s | `StructureTracker` | Só da regra provisória do espaço |
 
 ### Câmera (`PhaseCamera`)
@@ -136,7 +137,8 @@ Zooms aprovados pelo dev no passo 6 (out/2026).
 | Parâmetro | Valor inicial | Onde fica | Observação |
 |---|---|---|---|
 | `ScreenFadeDuration` | 0,4 s no código; **0,8 s no `player.tscn`** (escolha do dev, B1) | `ScreenFade` (`player.tscn`) | Escurecer e clarear em toda troca de cena |
-| Distâncias da eclusa | a definir no passo B3 | `HexPhaseBuilder` | Da porta à parede externa e do nascimento à porta (~300 px) |
+| `AirlockInset` | 60 px | `HexPhaseBuilder` | Da parede externa do nó até o centro da porta (porta de 40 × 240: sobra ~28 px até a parede) |
+| `AirlockSpawnDistance` | 300 px | `HexPhaseBuilder` | O jogador nasce a essa distância da porta, para dentro do nó |
 
 ### Como as medidas se relacionam (com as larguras atuais)
 
@@ -192,6 +194,10 @@ Medido pelo dev no editor, com o hexágono vazio (sem inimigos) e o V-Sync desli
 - **Entrar e sair rápido de um corredor:** cada troca de zoom interrompe a anterior (`Kill` no Tween), sem engasgo.
 - **Jogador morto no espaço:** a regra provisória não age; quem age é o `RestartOnDeath`.
 - **Trocas repetidas entre câmara e fase** (fase B): sem erros e com "Nós Órfãos" = 0 (os registros estáticos `FractalSwarm` e `BiomassField` se limpam no `_ExitTree`).
+- **Morrer durante o escurecer de uma porta** (B2): a porta já pediu a troca e vence (o `ScreenFade` ignora o segundo pedido). A taxa da morte já foi cobrada. O temporizador da morte dispara depois da troca, mas a Godot não chama o método de um nó já liberado: sem erro e sem segunda troca (verificado no descartável).
+- **Corpo deslizando para uma porta** (B2): morto não usa porta (`DoorTrigger` ignora `IsDead`); quem age é o `RestartOnDeath`. Sem a guarda, o corpo poderia "extrair" pela eclusa no lugar de morrer.
+- **Porta da eclusa** (B3): a posição e o giro do `Airlock` no editor não valem; o construtor o move ao rodar. Com o campo `Airlock` vazio, a porta não sai do lugar e nada avisa (o nascimento usa o ponto novo mesmo assim). `EntryPeripheral` fora dos nós que existem (1 e 2 no setor, 1 a 6 no hexágono) cai no nó central, onde à direita sai um corredor: não usar.
+- **Pedido de troca dentro de um callback de física** (`BodyEntered`): o pedido só marca o fade para escurecer; a troca de verdade acontece no `_Process` do `ScreenFade`, fora da física.
 - **Inimigos e orbes para teste:** o ninho atual (`NinhoSpawnerPooled`) pode ser colocado num nó só para testar combate na fase, até os spawners móveis existirem.
 
 ## 6. Arquivos e cenas
@@ -206,7 +212,8 @@ Medido pelo dev no editor, com o hexágono vazio (sem inimigos) e o V-Sync desli
 - **Alterado no passo 6** (com autorização do dev): `WallSensitive.cs`, a parede dorme fora da luz (`SetPhysicsProcess(false)` no `_Ready` e ao zerar a irritação; `SetPhysicsProcess(true)` no `AddIrritation`). A fase continua preenchendo só o `[Export]` `MaxIrritation`. Também mudaram os padrões de medidas do `HexPhaseBuilder.cs` (receita 2×).
 - **Fase B (plano aprovado, out/2026):**
   - Novo (B1, feito): `ScreenFade.cs` (`CanvasLayer`, nó no `player.tscn`): transição de tela, sem autoload; quem chega clareia, quem sai escurece e troca de cena. Método estático `ScreenFade.ChangeScene(quem pede, cena)` acha o fade da cena pelo grupo `ScreenFade` (cena sem fade: troca direto).
-  - Alterados: `DoorTrigger.cs` e `RestartOnDeath.cs` (trocam de cena pelo `ScreenFade`); `HexPhaseBuilder.cs` (posiciona a porta da eclusa e o nascimento).
+  - Alterados (B2, feito): `DoorTrigger.cs` (troca pelo `ScreenFade`; ignora o jogador morto) e `RestartOnDeath.cs` (troca pelo `ScreenFade`; destino vazio = abrir de novo o arquivo da cena atual).
+  - Alterado (B3, feito): `HexPhaseBuilder.cs` (`[Export]` `Airlock`, `AirlockInset` e `AirlockSpawnDistance`; `PlaceAirlock` põe a porta na parede externa do nó de entrada; `PlacePlayerAtEntry` põe o jogador à frente dela).
   - Cenas, montadas pelo dev: `player.tscn` (nó `ScreenFade`), `hex_phase.tscn` (nó `Airlock` com `DoorTrigger.cs`), `sala_entrada.tscn` (destino da `PortaSaida`).
 - **Somente leitura:** `Player.cs`, `GameState.cs`, `SalaEntrada.cs`.
 - **Ficam como bancadas:** `sala_ninho.tscn`, `sala_desfiladeiro.tscn` e `arena.tscn` (protótipos do recheio de nós e conectores).
@@ -228,9 +235,11 @@ Feitos na fase B:
 8. B0: `hex_phase.tscn` movida de `upgrades/` para `res://` (painel Sistema de Arquivos).
 9. B1: **`ScreenFade`** (`CanvasLayer`, `ScreenFade.cs`), filho da raiz do `player.tscn`, com **Layer** = 10 (acima do HUD, na 1, e do painel de evolução, na 2) e **Screen Fade Duration** = 0,8. Sem campos de nó para ligar.
 
+10. B3: **`Airlock`** (`Area2D`, `DoorTrigger.cs`, **Target Scene Path** = `sala_entrada.tscn`), filho da raiz `HexPhase`, logo acima do `Player` (o jogador é desenhado por cima da porta), com **`CollisionShape2D`** (retângulo 40 × 240) e **`ColorRect`** (Position (-20, -120), Size (40, 240), Mouse Filter = Ignore, cor provisória). Na raiz: **Airlock** = `Airlock`.
+
 Pendentes:
 
-- (Fase B) porta da eclusa (`Airlock`) na `hex_phase.tscn`; `PortaSaida` da `sala_entrada` com destino `res://hex_phase.tscn`.
+- (Fase B) `PortaSaida` da `sala_entrada` com destino `res://hex_phase.tscn`.
 
 ## 8. Pronto quando
 
@@ -298,6 +307,7 @@ Confirmado pelo dev no editor (out/2026):
 15. **Decisões da fase B** (recomendadas e aceitas): porta na parede externa do nó de entrada (alternativa descartada: porta no centro, armada depois da primeira saída); extração ao tocar (`interact` se houver extração sem querer); a morte também usa a transição; sem pausa durante o escurecer (a pausa continua depois da troca de cena, e o painel de evolução também pausa).
 16. **Transição no `player.tscn`, sem autoload:** o jogador está em todas as salas, então todas ganham a transição sem montagem por cena (o HUD já mora lá). Quem pede a troca acha o fade da cena pelo grupo `ScreenFade`; cena sem fade troca direto. A cena que sai termina preta e a que chega nasce preta; a Godot troca a cena antes de desenhar o quadro, então nenhum quadro sai sem cena (verificado no descartável).
 17. **Fade sem Tween** (B1): o quadro em que a fase é montada dura ~130 a 145 ms, e um Tween (que avança pelo tempo real) fazia o preto pular de 96% para 60% de uma vez (medido no descartável). O `ScreenFade` anima a transparência no `_Process`, com o passo limitado a 1/30 s por quadro (`MaxFrameStep`), e só processa durante a transição. Abaixo de 30 FPS, a transição fica um pouco mais longa. Se a cena de destino não abrir, mostra o erro e volta a clarear.
+18. **Porta da eclusa** (B3): a posição sai do código (depende das medidas e do `EntryPeripheral`) e a aparência fica no editor (H3). O construtor recebe a porta como um `Node2D` qualquer, sem saber que é um `DoorTrigger` (baixo acoplamento: a eclusa pode virar uma cena com animação sem mudar o construtor). "Para fora" é o vetor do centro da fase ao centro do nó; a porta fica a `AirlockInset` da parede, girada para fora (eixo X local para o espaço). O nascimento sai da geometria, não da porta: vale sem porta e na volta do espaço. Verificado no descartável nos nós 1 e 2 do setor e 1 a 6 do hexágono (receita 2×): porta dentro do piso do nó, nascimento a 300 px, porta sem disparar no nascimento.
 
 ### Em aberto
 

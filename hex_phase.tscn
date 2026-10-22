@@ -2,14 +2,34 @@
 
 [ext_resource type="Script" uid="uid://dbyfyxjst0snd" path="res://HexPhaseBuilder.cs" id="1_sgjfe"]
 [ext_resource type="PackedScene" uid="uid://cgy8y45ghbrod" path="res://player.tscn" id="2_1gulo"]
+[ext_resource type="Script" uid="uid://b0m6vfdsu2g4q" path="res://DoorTrigger.cs" id="2_kwqvq"]
 [ext_resource type="Script" uid="uid://yej4lv07547j" path="res://StructureTracker.cs" id="3_ie58g"]
 [ext_resource type="Script" uid="uid://cwnicg7cly5qh" path="res://StructureHud.cs" id="4_e333e"]
 [ext_resource type="Script" uid="uid://b1ju74mhjar6l" path="res://PhaseCamera.cs" id="5_e333e"]
 
-[node name="HexPhase" type="Node2D" unique_id=410249403 node_paths=PackedStringArray("Player")]
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1tabr"]
+size = Vector2(40, 240)
+
+[node name="HexPhase" type="Node2D" unique_id=410249403 node_paths=PackedStringArray("Player", "Airlock")]
 script = ExtResource("1_sgjfe")
 Shape = 1
 Player = NodePath("Player")
+Airlock = NodePath("Airlock")
+
+[node name="Airlock" type="Area2D" parent="." unique_id=411826568]
+script = ExtResource("2_kwqvq")
+TargetScenePath = "uid://qkdv3hvlc3qt"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Airlock" unique_id=595330657]
+shape = SubResource("RectangleShape2D_1tabr")
+
+[node name="ColorRect" type="ColorRect" parent="Airlock" unique_id=39580795]
+offset_left = -20.0
+offset_top = -120.0
+offset_right = 20.0
+offset_bottom = 120.0
+mouse_filter = 2
+color = Color(0.7781171, 0.9629982, 7.70092e-07, 1)
 
 [node name="Player" parent="." unique_id=2016198778 instance=ExtResource("2_1gulo")]
 
