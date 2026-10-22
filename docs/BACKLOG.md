@@ -1,6 +1,6 @@
 # Backlog do projeto
 
-Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atualizada em 2026-10-21.
+Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atualizada em 2026-10-22.
 
 > **Como usar:** cada item aponta para a spec relacionada e traz um "ponto de partida" técnico. O ponto de partida é uma **leitura inicial do código, não uma solução aprovada**: antes de implementar, seguir o fluxo do CLAUDE.md (ler spec e código, propor plano, esperar aprovação). Ao concluir um item, removê-lo daqui e registrar o resultado na spec.
 
@@ -8,21 +8,7 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 
 ## 1. Refinamentos do gameplay atual (prioridade do dev)
 
-### 1.3 Fase hexagonal: estruturas interligadas (substitui "transição entre salas")
-
-- **Contexto:** uma fase é um hexágono da esfera. Cada estrutura (nó central, nós periféricos, conectores de nós, conectores de placas e painéis) é uma sala, e todas são interligadas: o hexágono inteiro é a arena (HANDOFF v2.0, seção 4).
-- **Problema atual:** só existe uma porta de mão única (`DoorTrigger` na `PortaSaida`, `sala_entrada` → `sala_ninho`, com `ChangeSceneToFile`), a troca é abrupta e cada sala recomeça do zero. A `SalaEntrada.cs` põe o jogador no único `SpawnPoint` e trava a câmera em 1920×1080.
-- **Spec:** `docs/specs/hex-phase.md` (aprovada, out/2026). Decidido: planta da casca vista de fora da esfera (H1), uma cena por fase (H2), contornos por código e recheio no editor (H3), setor de teste primeiro e hexágono por parâmetro (H4), câmara inicial separada com entrada e extração pela eclusa e a fase recomeçando a cada entrada (H5).
-- **Estado (out/2026): fase A validada, passos 1 a 6 testados pelo dev** (spec, seção 8):
-  - geometria do setor e do hexágono (`HexPhaseLayout`);
-  - fundo, pisos e paredes com aberturas gerados por código (`HexPhaseBuilder`);
-  - giro de 30° (base dos painéis na horizontal);
-  - estrutura atual no HUD e regra provisória do espaço (`StructureTracker`, `StructureHud`);
-  - nascimento na eclusa, limites e zoom por tipo de estrutura (`PhaseCamera`);
-  - sensibilidade das paredes por tipo;
-  - hexágono completo por parâmetro, com a receita 2× como padrão e a parede que dorme fora da luz (Processo de Física da fase vazia de ~4 ms para 0,3 ms; spec, seção 4).
-- **Próximo passo:** fase B, plano aprovado pelo dev (out/2026) e em execução passo a passo, de B0 a B5 (spec, seção 10, decisão 14). Feitos: B0 (cena movida para `res://`), B1 (transição de tela, `ScreenFade`), B2 (portas e morte pela transição) e B3 (porta da eclusa). Faltam: `PortaSaida` → fase e o ciclo completo (B4), fechamento (B5).
-- **Em aberto na spec:** sensibilidade das paredes por tipo (a testar e definir pelo dev); papel e recheio de cada tipo de estrutura; hexágonos vizinhos; a regra provisória do espaço até a consequência da ejeção ser decidida. Simulação por proximidade fica com o 1.4. Geração procedural fica para depois.
+> **1.3 concluído (out/2026):** fase hexagonal, fases A e B validadas pelo dev (`docs/specs/hex-phase.md`). A câmara leva à fase pela `PortaSaida`; a fase tem eclusa (entrada e extração), transição de tela (`ScreenFade`) em toda troca de cena e recomeça do zero a cada entrada. Os pontos em aberto foram para a seção 2; a fase C da spec (spawners na fase) entra com o 1.4.
 
 ### 1.4 Spawners móveis e objetivo da fase (novo)
 
@@ -36,7 +22,7 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
   - O que acontece quando todos morrem (fase vencida → próxima fase? volta à câmara?).
   - Tetos globais (`MaxTotalEnemies`) e um pool compartilhado entre os spawners.
   - Desempenho: reavaliar o problema conhecido da `fractal-enemy-movement.md` (seção 11).
-- **Depende de:** 1.3 (estrutura e continuidade da fase).
+- **Depende de:** 1.3, concluído (a fase existe inteira numa cena; `hex-phase.md`). Para testar combate na fase antes dos spawners, um ninho temporário funciona (spec, seção 7, item 11).
 - **Spec:** criar (nome a confirmar, ex.: `docs/specs/mobile-spawners.md`).
 
 ### 1.5 Parede de fronteira (dyson-wall), fases A e B (novo)
@@ -45,7 +31,7 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 - **Sucção (decidida, out/2026):** gradual pela distância, como numa descompressão (raio sem retorno, rajada no rompimento), sem tirar o controle do jogador; afeta também inimigos e orbes. Toca no `Player.cs` (aceleração externa), no `FractalEnemy.cs`/`FractalSwarm.cs` e no `BiomassField.cs` (spec, seções 2.6 e 6).
 - **Spec:** `docs/specs/dyson-wall.md` (proposta). Protótipo de referência: `docs/reference/dyson-wall-prototype.html`.
 - **Ponto de partida:** a fase A (geometria e irritação) pode começar numa cena de teste isolada (`wall_test.tscn`), sem depender do 1.3. A `LightDamageArea` já chama `AddIrritation` nos corpos do grupo `Walls`, mas entrega o corpo inteiro, não as peças (nota na seção 6 da spec).
-- **Para fechar a fase B:** decidir a consequência da ejeção (seção 2) e onde ficam as fronteiras em cada estrutura (1.3). Decisões em aberto da própria spec: renderização (W1/W2), cálculo da luz, posição do sol, se a sucção afeta inimigos, respiração em repouso.
+- **Para fechar a fase B:** decidir a consequência da ejeção (seção 2) e onde ficam as fronteiras em cada estrutura (`hex-phase.md`; hoje toda parede externa da fase é fronteira). Decisões em aberto da própria spec: renderização (W1/W2), cálculo da luz, posição do sol, se a sucção afeta inimigos, respiração em repouso.
 
 ### 1.6 Visibilidade sem blecaute nas cenas atuais (pequeno, no editor)
 
@@ -53,11 +39,18 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 - **O que fazer:** o dev escolhe uma cor provisória de `CanvasModulate` para testar as mecânicas sem blecaute. O `ColorRect` de fundo continua obrigatório (sem ele a luz da lanterna não aparece). Arte final na etapa 2.
 - **Spec:** nenhuma (ajuste de cena). Conferir depois se a lanterna continua legível sobre fundos claros.
 
+### 1.7 Câmara de partida no nó inicial (ideia do dev, futura)
+
+- **Contexto:** o jogador nasceria no primeiro nó da fase, com os terminais da câmara e as saídas fechadas; um terminal "Liberar saídas" abre o nó e começa a incursão. Morrer ou ser ejetado recarrega a fase nesse modo; a `sala_entrada` vira bancada.
+- **Estado:** documentada para implementação futura (out/2026). Por ora, fica o fluxo atual (câmara separada, eclusa). Não implementar até o dev decidir.
+- **Spec:** `docs/specs/start-chamber.md` (rascunho, com análise, decisões D1 a D6, plano e os documentos a atualizar).
+- **Ligação com o 1.4:** se adotada, vale fazer antes dos spawners, que escutariam o sinal `IncursionStarted`.
+
 ## 2. Decisões de design em aberto
 
 | Item | Onde está registrado | Observação |
 |---|---|---|
-| Consequência de ser ejetado para o espaço | `dyson-wall.md` (2.6), `reactive-walls.md` (D5), `player-health-death.md` (decisão 7) | O espaço **não é navegável** ("vácuo como atalho" continua adiado). Opções: morte, dano, volta ao último nó, perda de parte da biomassa carregada. Sugestão: fade e volta ao último nó com uma perda. Provisório para testar a fase hexagonal: volta à eclusa sem perdas (`hex-phase.md`, seção 10) |
+| Consequência de ser ejetado para o espaço | `dyson-wall.md` (2.6), `reactive-walls.md` (D5), `player-health-death.md` (decisão 7) | O espaço **não é navegável** ("vácuo como atalho" continua adiado). Opções: morte, dano, volta ao último nó, perda de parte da biomassa carregada. Sugestão: fade e volta ao último nó com uma perda. Provisório para testar a fase hexagonal: volta à eclusa sem perdas (`hex-phase.md`, seção 10). A ideia futura da câmara de partida (1.7, `start-chamber.md`, D3) propõe: igual à morte |
 | Deformação final da parede de fronteira | `dyson-wall.md` (seção 10) | Esmaecer é o padrão provisório. Referências sugeridas: exocitose, estômato, esfíncter/íris (Scorn), peristalse |
 | Detalhes da sucção nos inimigos e orbes | `dyson-wall.md` (seção 10) | Inimigo sugado solta biomassa? (proposto: não); spawners são afetados?; fendas viram estratégia dominante contra a horda? |
 | Tiros no ALERTAR | CLAUDE.md (core loop) e HANDOFF | O core loop cita "luz e tiros", mas não existe tiro; os "modos de tiro" do `TerminalModo` são modos da lanterna |
@@ -69,6 +62,9 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 | Neon × tons pastel | HANDOFF v2.0 (seção 5), `fractal-enemy-render-3d.md` | Testar na etapa 2 |
 | Cor da parede irritada | `dyson-wall.md` (seção 10) | Vermelho no `WallSensitive.cs` × verde-água na dyson-wall |
 | Orbe de biomassa com luz própria | `biomass-collection.md` (seção 10) | Sem blecaute, passa a ser só estética (etapa 2); medir o custo antes |
+| Sensibilidade das paredes por tipo de estrutura | `hex-phase.md` (seções 4 e 10) | Hoje 25 (nós e painéis), 10 (conectores de nós) e 7,5 (conectores de placa): provisórios, o dev vai testar e definir |
+| Papel e recheio de cada tipo de estrutura | `hex-phase.md` (seção 10), HANDOFF v2.0 (seção 4) | Sugestão: nós = arenas, conectores = corredores com risco de parede, painéis = áreas abertas, placas = gargalos, nó central = clímax. O recheio (pilares, costelas, gargalos) pode acompanhar os spawners (1.4) |
+| Hexágonos vizinhos e progressão entre fases | `hex-phase.md` (seções 3 e 10) | Provavelmente depois da demo; ligado ao "o que acontece quando todos os spawners morrem" (1.4) |
 | Referência de cenário em corte | HANDOFF v2.0 (seções 5 e 8) | Citada no rascunho como "Heavyness body"; registrada como Heavenly Bodies (2Pt Interactive, 2021), a confirmar |
 
 ## 3. Dívidas técnicas

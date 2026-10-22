@@ -88,7 +88,7 @@ Resumo; as regras completas e os valores em teste estão nas specs.
 ### 3.7 Estado da partida e evolução (`GameState.cs`, `RunData.cs`)
 
 - Autoload `GameState` com um `RunData` (banco, biomassa carregada, níveis das melhorias por `Id`, modo da lanterna), separado do nó para facilitar salvar em disco no futuro.
-- Na câmara inicial (`sala_entrada`): deposita a biomassa carregada no banco; o `EvolutionTerminal` abre o `UpgradePanel`; a `PortaSaida` (`DoorTrigger.cs`) leva à `sala_ninho`. Melhorias como recursos `SuitUpgrade` (pasta `upgrades/`), aplicadas pelo `SuitUpgradeApplier`. Spec: `suit-evolution.md`.
+- Na câmara inicial (`sala_entrada`): deposita a biomassa carregada no banco; o `EvolutionTerminal` abre o `UpgradePanel`; a `PortaSaida` (`DoorTrigger.cs`) leva à fase hexagonal (`hex_phase.tscn`), e a eclusa da fase traz de volta (extração). Melhorias como recursos `SuitUpgrade` (pasta `upgrades/`), aplicadas pelo `SuitUpgradeApplier`. Spec: `suit-evolution.md`.
 
 ---
 
@@ -127,11 +127,12 @@ Decidido na `hex-phase.md` (out/2026):
 - **Continuidade:** uma cena por fase; o jogador voa entre as estruturas sem troca de cena.
 - **Montagem:** contornos (piso, paredes, aberturas) gerados por código a partir da geometria; recheio em cenas pequenas feitas no editor.
 - **Escopo:** setor de teste primeiro (um triângulo: 3 nós, 3 conectores de nós, 1 painel, 3 conectores de placa); hexágono completo por parâmetro.
-- **Câmara inicial:** cena separada; entrada e extração pela eclusa de um nó periférico; a morte volta à câmara; a fase recomeça a cada entrada.
+- **Câmara inicial:** cena separada; entrada e extração pela eclusa de um nó periférico; a morte volta à câmara; a fase recomeça a cada entrada. Implementado (fase B): a porta da eclusa fica na parede externa do nó de entrada, e toda troca de cena escurece e clareia (`ScreenFade`).
+- **Medidas:** receita 2× como padrão (nós e painéis de ~2200 px, conectores de nós de ~4000 px). O hexágono completo tem 1268 trechos de parede; a parede calma não processa (Processo de Física da fase vazia ~0,3 ms).
 - **Orientação (implementação):** hexágono "deitado" (giro de 30°): todo painel tem um lado horizontal; no setor de teste, o painel aponta para cima.
 - **Compressão e alívio:** arenas (nós e painéis) amplas e corredores estreitos e longos. A câmera afasta nas arenas e aproxima nos corredores, e as paredes dos corredores e das placas são mais sensíveis: o perigo fica onde está o aperto.
 
-Sugestões em aberto (backlog 1.3 e 1.4):
+Sugestões em aberto (backlog, seção 2, e 1.4):
 - **Grafo da fase:** os spawners andam pelas arestas (sem pathfinding); o mapa sai do grafo; só a sala atual e as vizinhas são simuladas por completo (o orçamento de física medido é de ~350 a 400 inimigos).
 - **Papel de cada estrutura:** nós = arenas de combate; conectores = corredores com risco de parede; painéis = áreas abertas com muita fronteira (muito risco de ejeção); conectores de placa = gargalos; nó central = clímax. As cenas atuais viram protótipos: `sala_desfiladeiro` → conector, `sala_ninho` → nó.
 - **Dificuldade dos spawners:** um orçamento global de spawn dividido entre os spawners vivos; ao matar um, os restantes aceleram (a dificuldade sobe sem estourar o teto de física) e o último fica frenético. Spawners rastreáveis (indicador ou pulso visível) e com silhueta própria.
@@ -194,7 +195,7 @@ Nada disto entra na etapa 1, salvo o que uma spec pedir.
 
 ### 6.7 Transição de cena (`DoorTrigger.cs`)
 
-- `Area2D` com `[Export] TargetScenePath`; ao detectar o `Player`, troca de cena de forma adiada (`CallDeferred` de `ChangeSceneToFile`, fora do callback de física), com trava contra troca dupla e aviso se o destino estiver vazio. Será revisto na spec da fase hexagonal.
+- `Area2D` com `[Export] TargetScenePath`; ao detectar o `Player` vivo, pede a troca ao `ScreenFade` (`ScreenFade.ChangeScene`): a tela escurece, a troca acontece fora do callback de física e a cena nova clareia. Trava contra troca dupla e aviso se o destino estiver vazio. Usado na `PortaSaida` da câmara e na eclusa da fase (`Airlock`). O `RestartOnDeath` usa o mesmo caminho. Spec: `hex-phase.md` (fase B).
 
 ### 6.8 Desempenho da horda
 

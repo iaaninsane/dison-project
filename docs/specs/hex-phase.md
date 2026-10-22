@@ -1,6 +1,6 @@
 # Spec: Fase hexagonal (estruturas interligadas da esfera)
 
-- **Status:** aprovada (out/2026); **fase A validada** (passos 1 a 6, testados pelo dev no editor); **fase B aprovada** (plano na seção 10, decisão 14), em execução passo a passo. Decisões na seção 10. Valores em teste.
+- **Status:** aprovada (out/2026); **fase A validada** (passos 1 a 6, testados pelo dev no editor); **fase B validada** (passos B0 a B5, testados pelo dev no editor, out/2026). A fase C entra com os spawners móveis (backlog 1.4). Decisões na seção 10. Valores em teste.
 - **Etapa:** 1 (mecânica). Fases A e B nesta spec; a fase C entra junto com os spawners móveis (backlog 1.4).
 - **Depende de:** `docs/HANDOFF.md` (v2.0, seção 4), `docs/specs/reactive-walls.md` (paredes atuais), `docs/specs/suit-evolution.md` (câmara inicial e banco), `docs/specs/player-health-death.md` (morte). Futuro: `docs/specs/dyson-wall.md` (paredes de fronteira).
 - **Referências:** `docs/reference/dyson-sphere-reference.png` (a malha da esfera) e `docs/reference/connector-cut-mockup.png` (mockup de um conector). Jogos com o mesmo plano: FTL, Heat Signature e Space Haven (estruturas vistas de cima, sem teto, com o espaço em volta); a câmera do Cocoon também olha o mundo de cima.
@@ -210,11 +210,11 @@ Medido pelo dev no editor, com o hexágono vazio (sem inimigos) e o V-Sync desli
   - `PhaseCamera.cs` (`Node`): limites da fase, zoom por tipo de estrutura, `ResetSmoothing`.
   - `hex_phase.tscn`, montada pelo dev, em `res://` (movida de `upgrades/` pelo painel Sistema de Arquivos no passo B0).
 - **Alterado no passo 6** (com autorização do dev): `WallSensitive.cs`, a parede dorme fora da luz (`SetPhysicsProcess(false)` no `_Ready` e ao zerar a irritação; `SetPhysicsProcess(true)` no `AddIrritation`). A fase continua preenchendo só o `[Export]` `MaxIrritation`. Também mudaram os padrões de medidas do `HexPhaseBuilder.cs` (receita 2×).
-- **Fase B (plano aprovado, out/2026):**
+- **Fase B (feita, out/2026):**
   - Novo (B1, feito): `ScreenFade.cs` (`CanvasLayer`, nó no `player.tscn`): transição de tela, sem autoload; quem chega clareia, quem sai escurece e troca de cena. Método estático `ScreenFade.ChangeScene(quem pede, cena)` acha o fade da cena pelo grupo `ScreenFade` (cena sem fade: troca direto).
   - Alterados (B2, feito): `DoorTrigger.cs` (troca pelo `ScreenFade`; ignora o jogador morto) e `RestartOnDeath.cs` (troca pelo `ScreenFade`; destino vazio = abrir de novo o arquivo da cena atual).
   - Alterado (B3, feito): `HexPhaseBuilder.cs` (`[Export]` `Airlock`, `AirlockInset` e `AirlockSpawnDistance`; `PlaceAirlock` põe a porta na parede externa do nó de entrada; `PlacePlayerAtEntry` põe o jogador à frente dela).
-  - Cenas, montadas pelo dev: `player.tscn` (nó `ScreenFade`), `hex_phase.tscn` (nó `Airlock` com `DoorTrigger.cs`), `sala_entrada.tscn` (destino da `PortaSaida`).
+  - Cenas, montadas pelo dev: `player.tscn` (nó `ScreenFade`), `hex_phase.tscn` (nó `Airlock` com `DoorTrigger.cs`), `sala_entrada.tscn` (a `PortaSaida` leva à `hex_phase.tscn`; a `sala_ninho` fica como bancada).
 - **Somente leitura:** `Player.cs`, `GameState.cs`, `SalaEntrada.cs`.
 - **Ficam como bancadas:** `sala_ninho.tscn`, `sala_desfiladeiro.tscn` e `arena.tscn` (protótipos do recheio de nós e conectores).
 
@@ -237,9 +237,9 @@ Feitos na fase B:
 
 10. B3: **`Airlock`** (`Area2D`, `DoorTrigger.cs`, **Target Scene Path** = `sala_entrada.tscn`), filho da raiz `HexPhase`, logo acima do `Player` (o jogador é desenhado por cima da porta), com **`CollisionShape2D`** (retângulo 40 × 240) e **`ColorRect`** (Position (-20, -120), Size (40, 240), Mouse Filter = Ignore, cor provisória). Na raiz: **Airlock** = `Airlock`.
 
-Pendentes:
+11. B4: **`PortaSaida`** da `sala_entrada` com **Target Scene Path** = `hex_phase.tscn`. Para o teste do ciclo, um ninho temporário (`TesteNinho` > `NinhoSpawn1` (6000, -300), `NinhoSpawn2` (6000, 300) e `NinhoSpawner` com `NinhoSpawnerPooled.cs`: intervalo 1 s, 15 simultâneos, estoque 30) no nó 2, apagado depois do teste.
 
-- (Fase B) `PortaSaida` da `sala_entrada` com destino `res://hex_phase.tscn`.
+Nenhum passo pendente na fase B.
 
 ## 8. Pronto quando
 
@@ -260,11 +260,14 @@ Confirmado pelo dev no editor (out/2026):
 
 ### Fase B: o fluxo da partida
 
-- [ ] Da câmara, a `PortaSaida` leva à fase com escurecer e clarear; o jogador nasce na eclusa, parado, com a câmera no lugar
-- [ ] A eclusa leva de volta à câmara, e a biomassa carregada é depositada no banco
-- [ ] Morrer na fase volta à câmara; entrar de novo encontra a fase do zero
-- [ ] A integridade se mantém entre as estruturas e começa cheia a cada entrada
-- [ ] Trocas repetidas entre câmara e fase sem erros no Output e com "Nós Órfãos" = 0
+Confirmado pelo dev no editor (out/2026), com o ninho temporário na fase:
+
+- [x] `dotnet build` sem erros a cada passo
+- [x] Da câmara, a `PortaSaida` leva à fase com escurecer e clarear; o jogador nasce na eclusa, parado, com a câmera no lugar
+- [x] A eclusa leva de volta à câmara, e a biomassa carregada é depositada no banco
+- [x] Morrer na fase volta à câmara; entrar de novo encontra a fase do zero
+- [x] A integridade se mantém entre as estruturas e começa cheia a cada entrada
+- [x] Trocas repetidas entre câmara e fase sem erros no Output e com "Nós Órfãos" = 0
 
 ## 9. Como testar (roteiro manual no editor)
 
@@ -272,7 +275,7 @@ Confirmado pelo dev no editor (out/2026):
 2. Irrite paredes de nó, de corredor e de placa, contando o tempo até a ejeção (~5 s, ~2 s, ~1,5 s); ejetado, confirme a volta à eclusa em ~2 s, sem a câmera deslizar.
 3. Entre e saia de corredores e placas e confira o zoom (afasta nas arenas, aproxima nos corredores).
 4. **Passo 6:** com `Shape` = Hexagon, repita o passo 1 rapidamente e anote FPS, Processo de Física e Nós (Depurador > Monitores; V-Sync desligado só durante o teste). Referência na seção 4.
-5. (Fase B) F5: câmara → fase → eclusa → câmara (o banco sobe); morra na fase e entre de novo (fase nova); repita 5 vezes olhando o Output e "Nós Órfãos".
+5. (Fase B) F5: câmara → fase → eclusa → câmara (o banco sobe); morra na fase e entre de novo (fase nova); repita 5 vezes olhando o Output e "Nós Órfãos". Enquanto a fase não tem spawners, use um ninho temporário (seção 7, item 11) e apague-o depois: oculto, ele continuaria criando inimigos.
 
 ## 10. Decisões e notas
 
@@ -304,6 +307,7 @@ Confirmado pelo dev no editor (out/2026):
     - **B3:** porta da eclusa (`Airlock`) posicionada pelo `HexPhaseBuilder` na parede externa do nó de entrada, com o nascimento à frente.
     - **B4** (editor): `PortaSaida` → `res://hex_phase.tscn` e o teste do ciclo completo (seção 9, item 5), com um ninho temporário num nó para testar a morte.
     - **B5:** fechamento (spec, backlog, CLAUDE.md, HANDOFF, mensagem de commit).
+    - **Resultado:** os seis passos foram feitos e testados pelo dev em out/2026, cada um verificado antes no descartável. Nenhum script novo além do `ScreenFade.cs`, nenhum autoload e nada no `project.godot`.
 15. **Decisões da fase B** (recomendadas e aceitas): porta na parede externa do nó de entrada (alternativa descartada: porta no centro, armada depois da primeira saída); extração ao tocar (`interact` se houver extração sem querer); a morte também usa a transição; sem pausa durante o escurecer (a pausa continua depois da troca de cena, e o painel de evolução também pausa).
 16. **Transição no `player.tscn`, sem autoload:** o jogador está em todas as salas, então todas ganham a transição sem montagem por cena (o HUD já mora lá). Quem pede a troca acha o fade da cena pelo grupo `ScreenFade`; cena sem fade troca direto. A cena que sai termina preta e a que chega nasce preta; a Godot troca a cena antes de desenhar o quadro, então nenhum quadro sai sem cena (verificado no descartável).
 17. **Fade sem Tween** (B1): o quadro em que a fase é montada dura ~130 a 145 ms, e um Tween (que avança pelo tempo real) fazia o preto pular de 96% para 60% de uma vez (medido no descartável). O `ScreenFade` anima a transparência no `_Process`, com o passo limitado a 1/30 s por quadro (`MaxFrameStep`), e só processa durante a transição. Abaixo de 30 FPS, a transição fica um pouco mais longa. Se a cena de destino não abrir, mostra o erro e volta a clarear.
@@ -316,6 +320,7 @@ Confirmado pelo dev no editor (out/2026):
 - **Papel de cada tipo de estrutura** (sugestão): nós = arenas de combate; conectores = corredores com risco de parede; painéis = áreas abertas com muita fronteira; conectores de placa = gargalos; nó central = clímax.
 - **Recheio de cada tipo** e quando entra (pode acompanhar os spawners, 1.4).
 - **Hexágonos vizinhos** e progressão entre fases (provavelmente depois da demo).
+- **Câmara de partida no nó inicial** (ideia do dev, out/2026, para o futuro): `docs/specs/start-chamber.md` (backlog 1.7). Se adotada, revê a H5 (câmara separada), a extração pela eclusa e a regra provisória do espaço.
 
 ### Notas
 

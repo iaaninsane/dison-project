@@ -22,7 +22,7 @@ Fechar o core loop: a biomassa coletada no combate é gasta, na câmara inicial 
 ### Morte e saída da câmara
 
 - Quando o jogador morre, então, depois de `DeathRestartDelay`, a cena carregada é a câmara inicial (`sala_entrada.tscn`), em vez de recarregar a sala atual.
-- Quando o jogador entra na porta de saída da câmara (`PortaSaida`), então a cena carregada é a sala de combate configurada no Inspector (hoje, `sala_ninho.tscn`).
+- Quando o jogador entra na porta de saída da câmara (`PortaSaida`), então a cena carregada é a sala de combate configurada no Inspector (desde out/2026, a fase hexagonal `hex_phase.tscn`, com transição de tela; `hex-phase.md`, fase B).
 - Ao entrar em qualquer sala, o traje começa com a integridade cheia (decisão em aberto 6).
 
 ### Terminal de evolução
@@ -58,7 +58,7 @@ Pontos de partida aceitos pelo dev, para ajustar depois.
 |---|---|---|---|
 | `DeathKeepFraction` | 0,5 | estado da partida | Fração da biomassa carregada que vai para o banco na morte |
 | Cena de destino da morte | `sala_entrada.tscn` | componente de morte (`RestartOnDeath`) | Vazio = recarregar a sala atual (comportamento de hoje) |
-| Cena de destino da `PortaSaida` | `sala_ninho.tscn` | porta (Inspector) | |
+| Cena de destino da `PortaSaida` | `sala_ninho.tscn` (desde out/2026, `hex_phase.tscn`) | porta (Inspector) | A `sala_ninho` ficou como bancada |
 | Integridade do traje | +20 por nível, 3 níveis, custos 20 / 40 / 80 | definição da melhoria | 100 → 160 |
 | Ímã de biomassa | +30 px por nível, 3 níveis, custos 15 / 30 / 60 | definição da melhoria | 80 → 170 px |
 | Potência da lanterna (adiada) | proposta: +10 por nível, 3 níveis, custos 25 / 50 / 100 | — | Fora do catálogo até ter requisitos definidos |

@@ -116,7 +116,7 @@ offset_bottom = 581.0
 
 [node name="PortaSaida" type="Area2D" parent="." unique_id=1899580598]
 script = ExtResource("3_m0at7")
-TargetScenePath = "uid://dvtu8hh1tbf2j"
+TargetScenePath = "uid://bg27ng01eost2"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="PortaSaida" unique_id=853478841]
 position = Vector2(1930, 574)
