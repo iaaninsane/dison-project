@@ -1,11 +1,11 @@
 using Godot;
 using System.Collections.Generic;
 
-// Área de contato do traje: só sabe quais inimigos estão encostados no jogador.
+// Área de contato do traje: só sabe o que está encostado no jogador e fere ao encostar (inimigos, spawners).
 // A regra do dano fica no SuitIntegrity (responsabilidade única).
 public partial class PlayerHurtbox : Area2D
 {
-    private readonly List<FractalEnemy> _touching = new();
+    private readonly List<IContactHazard> _touching = new();
 
     public override void _Ready()
     {
@@ -13,21 +13,21 @@ public partial class PlayerHurtbox : Area2D
         BodyExited += OnBodyExited;
     }
 
-    public override void _PhysicsProcess(double delta) => RemoveGoneEnemies();
+    public override void _PhysicsProcess(double delta) => RemoveGoneHazards();
 
-    // Procura o inimigo encostado mais próximo de "from". Devolve false se não houver nenhum.
-    public bool TryGetNearestContact(Vector2 from, out Vector2 enemyPosition)
+    // Procura o perigo encostado mais próximo de "from". Devolve false se não houver nenhum.
+    public bool TryGetNearestContact(Vector2 from, out Vector2 hazardPosition)
     {
-        enemyPosition = Vector2.Zero;
+        hazardPosition = Vector2.Zero;
         float bestDistanceSq = float.MaxValue;
 
-        foreach (FractalEnemy enemy in _touching)
+        foreach (IContactHazard hazard in _touching)
         {
-            float distanceSq = from.DistanceSquaredTo(enemy.GlobalPosition);
+            float distanceSq = from.DistanceSquaredTo(hazard.GlobalPosition);
             if (distanceSq >= bestDistanceSq) continue;
 
             bestDistanceSq = distanceSq;
-            enemyPosition = enemy.GlobalPosition;
+            hazardPosition = hazard.GlobalPosition;
         }
 
         return bestDistanceSq < float.MaxValue;
@@ -35,23 +35,23 @@ public partial class PlayerHurtbox : Area2D
 
     private void OnBodyEntered(Node2D body)
     {
-        if (body is not FractalEnemy enemy) return; // só inimigos interessam
-        if (_touching.Contains(enemy)) return;
-        _touching.Add(enemy);
+        if (body is not IContactHazard hazard) return; // só o que fere ao encostar interessa
+        if (_touching.Contains(hazard)) return;
+        _touching.Add(hazard);
     }
 
     private void OnBodyExited(Node2D body)
     {
-        if (body is FractalEnemy enemy) _touching.Remove(enemy);
+        if (body is IContactHazard hazard) _touching.Remove(hazard);
     }
 
-    // Tira da lista quem foi liberado ou morreu (inclusive os guardados no pool)
-    private void RemoveGoneEnemies()
+    // Tira da lista quem foi liberado ou morreu (inclusive os inimigos guardados no pool)
+    private void RemoveGoneHazards()
     {
         for (int i = _touching.Count - 1; i >= 0; i--)
         {
-            FractalEnemy enemy = _touching[i];
-            if (GodotObject.IsInstanceValid(enemy) && !enemy.IsDead) continue;
+            IContactHazard hazard = _touching[i];
+            if (GodotObject.IsInstanceValid(hazard as GodotObject) && !hazard.IsDead) continue;
             _touching.RemoveAt(i);
         }
     }

@@ -7,7 +7,6 @@ radius = 40.0
 
 [node name="MobileSpawner" type="AnimatableBody2D" unique_id=1211166817]
 collision_layer = 2
-collision_mask = 0
 script = ExtResource("1_sicnb")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1970642451]

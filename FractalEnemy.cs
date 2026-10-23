@@ -1,7 +1,7 @@
 using Godot;
 using System;
 
-public partial class FractalEnemy : CharacterBody2D
+public partial class FractalEnemy : CharacterBody2D, ILightDamageable, IContactHazard // A luz fere; encostar fere o traje
 {
     [Export] public float Speed = 80f;            // Velocidade de perseguição lenta e implacável
     [Export] public int RecursionDepth = 5;       // Profundidade da árvore fractal (complexidade)

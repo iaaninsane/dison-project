@@ -7,8 +7,8 @@ public partial class LightDamageArea : Area2D
     [Export] public float DamagePerSecond = 35f;       // Dano contínuo da luz básica
     [Export] public float WallIrritationPerSecond = 20f; // Quanto a luz "irrita" as paredes sensíveis por segundo
 
-    // Listas dinâmicas para rastreamento de alvos
-    private readonly List<FractalEnemy> _enemiesInLight = new();
+    // Listas dinâmicas para rastreamento de alvos: o que a luz fere (inimigos, spawners) e as paredes que ela irrita
+    private readonly List<ILightDamageable> _targetsInLight = new();
     private readonly List<Node2D> _wallsInLight = new();
 
     public override void _Ready()
@@ -22,18 +22,18 @@ public partial class LightDamageArea : Area2D
     {
         float dt = (float)delta;
 
-        // 1. Aplica dano contínuo a todos os anticorpos sob a luz
-        for (int i = _enemiesInLight.Count - 1; i >= 0; i--)
+        // 1. Aplica dano contínuo a tudo o que a luz fere (anticorpos e spawners)
+        for (int i = _targetsInLight.Count - 1; i >= 0; i--)
         {
-            var enemy = _enemiesInLight[i];
-            if (GodotObject.IsInstanceValid(enemy))
+            var target = _targetsInLight[i];
+            if (GodotObject.IsInstanceValid(target as GodotObject))
             {
-                enemy.TakeDamage(DamagePerSecond * dt);
+                target.TakeDamage(DamagePerSecond * dt);
             }
             else
             {
-                // Remove da lista se o inimigo foi destruído
-                _enemiesInLight.RemoveAt(i);
+                // Remove da lista se o alvo foi destruído
+                _targetsInLight.RemoveAt(i);
             }
         }
 
@@ -58,12 +58,12 @@ public partial class LightDamageArea : Area2D
 
     private void OnBodyEntered(Node2D body)
     {
-        // Detecta se o objeto que entrou é um inimigo fractal
-        if (body is FractalEnemy enemy)
+        // Detecta se o objeto que entrou é algo que a luz fere (pela interface: não importa o tipo)
+        if (body is ILightDamageable target)
         {
-            if (!_enemiesInLight.Contains(enemy))
+            if (!_targetsInLight.Contains(target))
             {
-                _enemiesInLight.Add(enemy);
+                _targetsInLight.Add(target);
             }
         }
         // Detecta se é uma parede celular sensível pelo grupo da Godot
@@ -78,9 +78,9 @@ public partial class LightDamageArea : Area2D
 
     private void OnBodyExited(Node2D body)
     {
-        if (body is FractalEnemy enemy)
+        if (body is ILightDamageable target)
         {
-            _enemiesInLight.Remove(enemy);
+            _targetsInLight.Remove(target);
         }
         else if (body.IsInGroup("Walls"))
         {
