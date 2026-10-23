@@ -51,6 +51,47 @@ public class HexStructure
     }
 }
 
+// Ponto de passagem das rotas dos spawners (spec mobile-spawners.md): o centro de um nó ou de um painel
+public class HexWaypoint
+{
+    private readonly List<HexRoute> _routes = new();
+
+    public HexStructure Structure { get; }            // O nó ou o painel onde o ponto fica
+    public Vector2 Position { get; }                  // Em coordenadas da fase
+    public IReadOnlyList<HexRoute> Routes => _routes; // Rotas que saem daqui
+
+    public HexWaypoint(HexStructure structure, Vector2 position)
+    {
+        Structure = structure;
+        Position = position;
+    }
+
+    internal void Connect(HexRoute route) => _routes.Add(route); // Só o layout liga as rotas, ao montar o grafo
+}
+
+// Rota entre dois pontos de passagem: o eixo reto de um corredor (conector de nós ou de placa), nos dois sentidos
+public class HexRoute
+{
+    public HexWaypoint A { get; }
+    public HexWaypoint B { get; }
+    public HexStructure Corridor { get; } // O corredor que a rota atravessa
+    public float Length { get; }
+
+    public HexRoute(HexWaypoint a, HexWaypoint b, HexStructure corridor)
+    {
+        A = a;
+        B = b;
+        Corridor = corridor;
+        Length = a.Position.DistanceTo(b.Position);
+    }
+
+    // A outra ponta, para quem chegou por `from`
+    public HexWaypoint Other(HexWaypoint from) => from == A ? B : A;
+
+    // A rota começa ou termina nesta estrutura? (ex.: as que tocam o nó de entrada ficam fora do sorteio inicial)
+    public bool Touches(HexStructure structure) => A.Structure == structure || B.Structure == structure;
+}
+
 // Geometria da fase hexagonal: só dados e matemática, sem nó (como o RunData).
 // Origem no nó central; os nós periféricos ficam a cada 60°, começando acima e à direita (hexágono "deitado").
 public class HexPhaseLayout
@@ -63,9 +104,13 @@ public class HexPhaseLayout
     private readonly List<HexStructure> _structures = new(); // Em ordem de prioridade: nós, conectores, placas, painéis
     private readonly List<HexWallSegment> _wallSegments = new();
     private readonly Dictionary<int, HexStructure> _peripheralNodes = new(); // Pelo índice (0 a 5)
+    private readonly List<HexWaypoint> _waypoints = new(); // Centros dos nós e dos painéis (rotas dos spawners)
+    private readonly List<HexRoute> _routes = new();       // Eixos dos corredores entre esses centros
 
     public IReadOnlyList<HexStructure> Structures => _structures;
     public IReadOnlyList<HexWallSegment> WallSegments => _wallSegments;
+    public IReadOnlyList<HexWaypoint> Waypoints => _waypoints; // Grafo das rotas: os pontos de passagem...
+    public IReadOnlyList<HexRoute> Routes => _routes;          // ...e as rotas entre eles
     public Rect2 Bounds { get; private set; } // Retângulo que envolve todas as estruturas (fundo e limites da câmera)
 
     public HexPhaseLayout(HexPhaseSettings settings)
@@ -107,35 +152,44 @@ public class HexPhaseLayout
         List<(int A, int B)> neighborPairs = GetNeighborPairs(peripherals);
         Vector2 center = Vector2.Zero;
 
-        // 1. Nós primeiro (nas passagens, o nó ganha)
-        AddNode(HexStructureKind.CentralNode, "Nó central", center);
+        // 1. Nós primeiro (nas passagens, o nó ganha). O centro de cada nó é um ponto de passagem das rotas.
+        HexWaypoint centralPoint = AddWaypoint(AddNode(HexStructureKind.CentralNode, "Nó central", center), center);
+        var peripheralPoints = new Dictionary<int, HexWaypoint>();
         foreach (int i in peripherals)
         {
             _peripheralNodes[i] = AddNode(HexStructureKind.PeripheralNode, $"Nó {i + 1}", PeripheralPosition(i));
+            peripheralPoints[i] = AddWaypoint(_peripheralNodes[i], PeripheralPosition(i));
         }
 
-        // 2. Conectores de nós: raios (centro → periférico) e perímetro (periférico → vizinho)
+        // 2. Conectores de nós: raios (centro → periférico) e perímetro (periférico → vizinho). Cada um é uma rota.
         foreach (int i in peripherals)
         {
-            AddNodeConnector($"Conector C-{i + 1}", center, PeripheralPosition(i));
+            HexStructure connector = AddNodeConnector($"Conector C-{i + 1}", center, PeripheralPosition(i));
+            AddRoute(centralPoint, peripheralPoints[i], connector);
         }
         foreach ((int a, int b) in neighborPairs)
         {
-            AddNodeConnector($"Conector {a + 1}-{b + 1}", PeripheralPosition(a), PeripheralPosition(b));
+            HexStructure connector = AddNodeConnector($"Conector {a + 1}-{b + 1}", PeripheralPosition(a), PeripheralPosition(b));
+            AddRoute(peripheralPoints[a], peripheralPoints[b], connector);
         }
 
-        // 3. Conectores de placa agora; os painéis vão para o fim da lista (a placa ganha do painel na passagem)
+        // 3. Conectores de placa agora; os painéis vão para o fim da lista (a placa ganha do painel na passagem).
+        // Cada placa é uma rota do centro do painel ao centro do nó do canto, em linha reta pelo eixo da placa.
         var panels = new List<HexStructure>();
         foreach ((int a, int b) in neighborPairs)
         {
             Vector2[] corners = { center, PeripheralPosition(a), PeripheralPosition(b) };
+            HexWaypoint[] cornerPoints = { centralPoint, peripheralPoints[a], peripheralPoints[b] };
             string[] cornerNames = { "C", $"{a + 1}", $"{b + 1}" };
             Vector2[] outline = BuildPanelOutline(corners, out Vector2[] cutMidpoints);
-            panels.Add(new HexStructure(HexStructureKind.Panel, $"Painel {a + 1}-{b + 1}", outline));
+            var panel = new HexStructure(HexStructureKind.Panel, $"Painel {a + 1}-{b + 1}", outline);
+            panels.Add(panel);
+            HexWaypoint panelPoint = AddWaypoint(panel, Centroid(corners));
 
             for (int k = 0; k < 3; k++)
             {
-                AddPlateConnector($"Placa {a + 1}-{b + 1} ({cornerNames[k]})", cutMidpoints[k], corners[k]);
+                HexStructure plate = AddPlateConnector($"Placa {a + 1}-{b + 1} ({cornerNames[k]})", cutMidpoints[k], corners[k]);
+                AddRoute(panelPoint, cornerPoints[k], plate);
             }
         }
         _structures.AddRange(panels);
@@ -325,29 +379,48 @@ public class HexPhaseLayout
     }
 
     // O corredor entra uma espessura de parede em cada nó, para não sobrar fresta na emenda
-    private void AddNodeConnector(string name, Vector2 from, Vector2 to)
+    private HexStructure AddNodeConnector(string name, Vector2 from, Vector2 to)
     {
         float inset = NodeInset(_settings.ConnectorWidth) - _settings.WallThickness;
-        AddCorridor(HexStructureKind.NodeConnector, name, from, to, _settings.ConnectorWidth, inset, inset);
+        return AddCorridor(HexStructureKind.NodeConnector, name, from, to, _settings.ConnectorWidth, inset, inset);
     }
 
     // Do corte no canto do painel até o nó; começa uma espessura de parede dentro do painel, pelo mesmo motivo
-    private void AddPlateConnector(string name, Vector2 panelCut, Vector2 nodeCenter)
+    private HexStructure AddPlateConnector(string name, Vector2 panelCut, Vector2 nodeCenter)
     {
         float nodeInset = NodeInset(_settings.PlateConnectorWidth) - _settings.WallThickness;
-        AddCorridor(HexStructureKind.PlateConnector, name, panelCut, nodeCenter,
-                    _settings.PlateConnectorWidth, -_settings.WallThickness, nodeInset);
+        return AddCorridor(HexStructureKind.PlateConnector, name, panelCut, nodeCenter,
+                           _settings.PlateConnectorWidth, -_settings.WallThickness, nodeInset);
     }
 
     // Retângulo de largura `width` ao longo de from → to, encurtado `startOffset` no início e `endOffset` no fim
-    private void AddCorridor(HexStructureKind kind, string name, Vector2 from, Vector2 to,
-                             float width, float startOffset, float endOffset)
+    private HexStructure AddCorridor(HexStructureKind kind, string name, Vector2 from, Vector2 to,
+                                     float width, float startOffset, float endOffset)
     {
         Vector2 along = (to - from).Normalized();
         Vector2 side = along.Orthogonal() * (width / 2f);
         Vector2 start = from + along * startOffset;
         Vector2 end = to - along * endOffset;
-        _structures.Add(new HexStructure(kind, name, new[] { start + side, end + side, end - side, start - side }));
+        var corridor = new HexStructure(kind, name, new[] { start + side, end + side, end - side, start - side });
+        _structures.Add(corridor);
+        return corridor;
+    }
+
+    // Ponto de passagem das rotas no centro de um nó ou de um painel
+    private HexWaypoint AddWaypoint(HexStructure structure, Vector2 position)
+    {
+        var waypoint = new HexWaypoint(structure, position);
+        _waypoints.Add(waypoint);
+        return waypoint;
+    }
+
+    // Liga dois pontos pelo eixo do corredor; a rota vale nos dois sentidos
+    private void AddRoute(HexWaypoint a, HexWaypoint b, HexStructure corridor)
+    {
+        var route = new HexRoute(a, b, corridor);
+        _routes.Add(route);
+        a.Connect(route);
+        b.Connect(route);
     }
 
     // Distância do centro do nó até onde um corredor dessa largura encosta no círculo do nó

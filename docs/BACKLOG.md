@@ -26,7 +26,7 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
   - **S8:** sólido e fere (camada 2; empurra o jogador e segue a rota; mesmo golpe do inimigo).
   - **S9:** valores iniciais da seção 4 da spec aceitos como pontos de partida.
 - **Achado no código:** o estoque de inimigos não pode ser filho do spawner (os filhos herdam a transformação do pai, e os fragmentos nascem no pai): o pool fica num nó parado, compartilhado.
-- **Plano de implementação aprovado** (seção 10 da spec, passos 1 a 7). Próximo: passo 1 (grafo de rotas), depois do commit da câmara de partida (1.7).
+- **Plano de implementação aprovado** (seção 10 da spec, passos 1 a 7). Passo 1 (grafo de rotas no `HexPhaseLayout`) aplicado, aguardando o teste do dev; próximo: passo 2 (spawner que anda).
 - **Depende de:** 1.3 e 1.7, concluídos (a fase existe inteira numa cena; `hex-phase.md`, `start-chamber.md`). Os spawners começam no sinal `IncursionStarted` da `StartChamber` e não geram inimigos no nó inicial travado. Para testar combate na fase antes dos spawners, um ninho temporário funciona (`hex-phase.md`, seção 7, item 11).
 
 ### 1.5 Parede de fronteira (dyson-wall), fases A e B (novo)
