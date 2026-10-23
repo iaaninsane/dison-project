@@ -88,6 +88,9 @@ public class HexRoute
     // A outra ponta, para quem chegou por `from`
     public HexWaypoint Other(HexWaypoint from) => from == A ? B : A;
 
+    // Ponto da rota a `distance` px de `from`, em direção à outra ponta
+    public Vector2 PointAt(HexWaypoint from, float distance) => from.Position.MoveToward(Other(from).Position, distance);
+
     // A rota começa ou termina nesta estrutura? (ex.: as que tocam o nó de entrada ficam fora do sorteio inicial)
     public bool Touches(HexStructure structure) => A.Structure == structure || B.Structure == structure;
 }

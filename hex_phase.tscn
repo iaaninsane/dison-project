@@ -3,8 +3,10 @@
 [ext_resource type="Script" uid="uid://dbyfyxjst0snd" path="res://HexPhaseBuilder.cs" id="1_sgjfe"]
 [ext_resource type="PackedScene" uid="uid://cgy8y45ghbrod" path="res://player.tscn" id="2_1gulo"]
 [ext_resource type="Script" uid="uid://b0m6vfdsu2g4q" path="res://DoorTrigger.cs" id="2_kwqvq"]
+[ext_resource type="Script" uid="uid://dyuf202yoqbyb" path="res://SpawnerDirector.cs" id="3_48hdx"]
 [ext_resource type="Script" uid="uid://yej4lv07547j" path="res://StructureTracker.cs" id="3_ie58g"]
 [ext_resource type="Script" uid="uid://cwnicg7cly5qh" path="res://StructureHud.cs" id="4_e333e"]
+[ext_resource type="PackedScene" uid="uid://day8clpbmbfi5" path="res://mobile_spawner.tscn" id="4_x5cs5"]
 [ext_resource type="Script" uid="uid://b1ju74mhjar6l" path="res://PhaseCamera.cs" id="5_e333e"]
 [ext_resource type="Script" uid="uid://bkw1rvj2rdh7h" path="res://StartChamber.cs" id="7_souy7"]
 [ext_resource type="Script" uid="uid://cyse0mxb55rao" path="res://ExitReleaseTerminal.cs" id="8_dmel6"]
@@ -48,6 +50,12 @@ offset_bottom = 120.0
 mouse_filter = 2
 color = Color(0.7781171, 0.9629982, 7.70092e-07, 1)
 
+[node name="SpawnerDirector" type="Node2D" parent="." unique_id=1093335878 node_paths=PackedStringArray("Phase", "StartChamber")]
+script = ExtResource("3_48hdx")
+Phase = NodePath("..")
+StartChamber = NodePath("../StartChamber")
+SpawnerScene = ExtResource("4_x5cs5")
+
 [node name="Player" parent="." unique_id=2016198778 instance=ExtResource("2_1gulo")]
 
 [node name="StructureTracker" type="Node" parent="." unique_id=299230605 node_paths=PackedStringArray("Phase")]
@@ -67,6 +75,8 @@ script = ExtResource("4_e333e")
 script = ExtResource("5_e333e")
 Phase = NodePath("..")
 Tracker = NodePath("../StructureTracker")
+ArenaZoom = 0.1
+CorridorZoom = 0.1
 
 [node name="StartChamber" type="Node2D" parent="." unique_id=778838981 node_paths=PackedStringArray("Phase", "Airlock")]
 script = ExtResource("7_souy7")

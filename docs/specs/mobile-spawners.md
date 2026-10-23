@@ -1,6 +1,6 @@
 # Spec: Spawners móveis e objetivo da fase
 
-- **Status:** aprovada (decisões S1 a S9 do dev, out/2026; seção 10). Plano de implementação aprovado pelo dev (seção 10); passo 1 aplicado, aguardando o teste do dev. Valores em teste.
+- **Status:** aprovada (decisões S1 a S9 do dev, out/2026; seção 10). Plano de implementação aprovado pelo dev (seção 10); passo 1 feito e testado pelo dev; passo 2 aplicado (scripts), aguardando a montagem no editor e o teste do dev. Valores em teste.
 - **Etapa:** 1 (mecânica). É a "fase C" da `hex-phase.md` (spawners na fase e simulação por proximidade).
 - **Depende de:** `docs/specs/hex-phase.md` (a fase, o `HexPhaseLayout`), `docs/specs/start-chamber.md` (sinal `IncursionStarted`; nada nasce no nó inicial travado), `docs/specs/fractal-enemy.md` e `docs/specs/fractal-enemy-movement.md` (inimigo, horda, tetos e o problema conhecido de FPS), `docs/specs/biomass-collection.md` (recompensa), `docs/specs/player-health-death.md` (golpe de contato). Relaciona-se com a `docs/specs/dyson-wall.md` (a sucção afeta os spawners? Em aberto lá).
 
@@ -42,6 +42,7 @@ Dar à fase um objetivo: cerca de 10 spawners circulam pelas estruturas do hexá
   - os inimigos (máscara 1) o atravessam: nascem dentro dele sem enroscar;
   - o `PlayerHurtbox` (máscara 2) o percebe; encostar dá o **mesmo golpe do inimigo** (`SuitIntegrity`: `ContactDamage`, empurrão e imunidade; S8b).
 - O spawner **empurra o jogador e segue a rota** (S8a): é um corpo movido por código (`AnimatableBody2D`), que não para por causa do jogador. O golpe de contato já joga o jogador para longe. Como o spawner anda no eixo do corredor, sobram ~120 px de cada lado nos conectores de nós e ~80 px nos de placa: o jogador passa ao lado dele e não é esmagado na parede.
+- O jogador **não pega carona** no spawner: empurrado por ele (inclusive de baixo para cima) ou encostado por cima, fica para trás quando o spawner vira. Exige o **Floor Layers** do `Player` sem a camada 2 (seção 5).
 
 ### Geração de inimigos
 
@@ -137,7 +138,8 @@ O dano do contato é o do `SuitIntegrity` (`ContactDamage` 10, `KnockbackImpulse
 - **Caçar no corredor:** o feixe que persegue o spawner pode irritar as paredes do corredor (~2 s; placas ~1,5 s). Risco × recompensa intencional.
 - **Modo automático da lanterna:** o feixe segue a velocidade; voando atrás do spawner, ele fica iluminado. Combina com a fuga.
 - **Encostar no spawner:** mesmo golpe do inimigo; o empurrão afasta o jogador, e a imunidade evita golpes seguidos. Se o jogador continuar no caminho, o spawner o empurra pela rota.
-- **"Carona" no spawner (a verificar no descartável):** o `Player` usa Motion Mode Grounded, que trata como "chão" a superfície com a normal para cima e soma ao jogador a velocidade de um chão que se move. Encostado por cima no spawner, o jogador poderia ser arrastado. Se acontecer, a correção é só no Inspector do `Player` (tirar a camada 2 de Platform > Floor Layers), sem código.
+- **"Carona" no spawner (verificado no motor, passo 2):** o `Player` usa Motion Mode Grounded, que trata como "chão" a superfície com a normal para cima e acompanha um chão que se move. No descartável, o jogador encostado por cima (ou empurrado pelo spawner de baixo para cima) foi carregado e continuou em cima dele depois da curva (terminou a 3 px do centro do spawner, 495 px longe de onde estava). **Correção, só no Inspector:** `player.tscn` > `Player` > Moving Platform > **Floor Layers** sem a camada 2. Com ela, o jogador é empurrado e fica para trás na curva, como no modo Floating. Vale também para os inimigos, que estão na mesma camada.
+- **Empurrão de frente:** o jogador chega a entrar até ~3 px no spawner antes de ser empurrado (a posição do corpo movido por código vale no passo de física seguinte). Imperceptível.
 - **Inimigos nascendo dentro do spawner:** atravessam o corpo dele (máscara 1) e se espalham pela separação da horda.
 - **Dois spawners na mesma rota ou no mesmo ponto:** sobrepõem-se (corpos movidos por código não se empurram). Aceito.
 - **Fuga com o jogador à frente:** vira na rota; com o jogador parado no ponto de destino, o spawner volta pela rota e escolhe outra no ponto de origem.
@@ -151,20 +153,20 @@ O dano do contato é o do `SuitIntegrity` (`ContactDamage` 10, `KnockbackImpulse
 ## 6. Arquivos e cenas
 
 - **Existentes, lidos:** `NinhoSpawnerPooled.cs` (modelo do estoque), `NinhoSpawner.cs`, `FractalSwarm.cs` (`Count`), `FractalEnemy.cs`, `LightDamageArea.cs`, `PlayerHurtbox.cs`, `SuitIntegrity.cs`, `HexPhaseLayout.cs`, `HexPhaseBuilder.cs`, `StartChamber.cs`, `BiomassField.cs`.
-- **Novos (proposto; criar só com autorização):**
-  - `MobileSpawner.cs` (`AnimatableBody2D`, o nó da Godot para corpos movidos por código) e a cena `mobile_spawner.tscn` (montada pelo dev): anda pelas rotas, gera inimigos, toma dano da luz, foge, morre e avisa.
-  - `SpawnerDirector.cs` (`Node2D`, filho da raiz da fase): começa no `IncursionStarted`, cria e posiciona os spawners, calcula a curva de dificuldade e emite `SpawnersChanged` e `AllSpawnersDestroyed`.
+- **Novos (criar só com autorização):**
+  - `MobileSpawner.cs` (`AnimatableBody2D`, o nó da Godot para corpos movidos por código) e a cena `mobile_spawner.tscn` (montada pelo dev): anda pelas rotas, gera inimigos, toma dano da luz, foge, morre e avisa. **Criado no passo 2** (andar pelas rotas e silhueta provisória).
+  - `SpawnerDirector.cs` (`Node2D`, filho da raiz da fase): começa no `IncursionStarted`, cria e posiciona os spawners, calcula a curva de dificuldade e emite `SpawnersChanged` e `AllSpawnersDestroyed`. **Criado no passo 2** (começar e posicionar).
   - `EnemyPool.cs` (`Node2D` parado, filho da raiz da fase): o estoque compartilhado.
   - `ILightDamageable.cs` (interface C#): "o que a luz fere".
   - `IContactHazard.cs` (interface C#): "o que fere o traje ao encostar".
   - `SpawnerHud.cs` (`Label`) e `SpawnerIndicator.cs` (`Control`, a seta).
 - **Alterados (proposto):**
-  - `HexPhaseLayout.cs`: o grafo de rotas (pontos e rotas), montado junto com as estruturas.
+  - `HexPhaseLayout.cs`: o grafo de rotas (pontos e rotas), montado junto com as estruturas (passo 1); `HexRoute.PointAt` (passo 2).
   - `LightDamageArea.cs`: fere qualquer `ILightDamageable` (inimigo e spawner), em vez de só `FractalEnemy`.
   - `PlayerHurtbox.cs`: percebe qualquer `IContactHazard` (inimigo e spawner), em vez de só `FractalEnemy`.
   - `FractalEnemy.cs`: implementa as duas interfaces (já tem `TakeDamage` e `IsDead`); recolhimento por distância (`DespawnDistance`, `DespawnDelay`).
-- **Cenas (no editor):** `mobile_spawner.tscn` (nova), `hex_phase.tscn` (nós novos), `fractal_enemy.tscn` (`DespawnDistance`).
-- **Sem mudança:** `player.tscn` (as máscaras já incluem a camada 2), `SuitIntegrity.cs` (o golpe é o mesmo), `FractalSwarm.cs`, `NinhoSpawnerPooled.cs`, `NinhoSpawner.cs`, `StartChamber.cs` (só emite o sinal), `HexPhaseBuilder.cs`.
+- **Cenas (no editor):** `mobile_spawner.tscn` (nova), `hex_phase.tscn` (nós novos), `fractal_enemy.tscn` (`DespawnDistance`), `player.tscn` (Floor Layers sem a camada 2, contra a "carona"; as máscaras já incluem a camada 2).
+- **Sem mudança:** `SuitIntegrity.cs` (o golpe é o mesmo), `FractalSwarm.cs`, `NinhoSpawnerPooled.cs`, `NinhoSpawner.cs`, `StartChamber.cs` (só emite o sinal), `HexPhaseBuilder.cs`.
 
 ## 7. Passos no editor (resumo; o roteiro numerado completo vem com cada passo do plano)
 
@@ -173,6 +175,7 @@ O dano do contato é o do `SuitIntegrity` (`ContactDamage` 10, `KnockbackImpulse
 3. `hex_phase.tscn`: **`EnemyPool`** (`Node2D`, `EnemyPool.cs`, campo **Enemy Scene**) e **`SpawnerDirector`** (`Node2D`, `SpawnerDirector.cs`) como filhos da raiz `HexPhase`, em (0, 0); campos do diretor a ligar: **Phase**, **Start Chamber**, **Pool** e **Spawner Scene**.
 4. `PhaseHud` > **`SpawnerLabel`** (`Label`, `SpawnerHud.cs`) e **`SpawnerIndicator`** (`Control`, `SpawnerIndicator.cs`, campo **Director**); sinais `SpawnersChanged` e `AllSpawnersDestroyed` → `SpawnerLabel`.
 5. `fractal_enemy.tscn`: **Despawn Distance** = 3000.
+6. `player.tscn` > raiz **`Player`** > CharacterBody2D > Moving Platform > **Floor Layers**: sem a camada 2 (passo 2).
 
 ## 8. Pronto quando
 
@@ -236,7 +239,7 @@ Todas seguiram a recomendação da análise, menos a S8 (o dev escolheu o spawne
 
 ### A verificar no descartável, antes de cada passo
 
-- A `LightDamageArea` e o `PlayerHurtbox` (`Area2D`) percebem um `AnimatableBody2D` movido por código na camada 2; o jogador bate nele e é empurrado sem ficar preso; e se há "carona" no modo Grounded (seção 5).
+- Verificado no passo 2: uma `Area2D` com máscara 2 percebe o `AnimatableBody2D` movido por código na camada 2; o jogador bate nele e é empurrado; a "carona" do modo Grounded acontece e é corrigida pelo Floor Layers (seção 5).
 - O custo de criar o estoque (60 inimigos) no quadro de montagem da fase.
 - O recolhimento devolve ao estoque sem fragmentos nem orbes, e o inimigo reaproveitado renasce normal.
 
@@ -245,10 +248,12 @@ Todas seguiram a recomendação da análise, menos a S8 (o dev escolheu o spawne
 Cada passo: verificação antes no descartável (Godot headless), apresentação do código atual, da mudança, do porquê e das consequências, autorização, `dotnet build` e teste do dev no editor.
 
 0. **Commit da câmara de partida** (backlog 1.7), pelo dev, antes de começar.
-1. **Grafo de rotas** (`HexPhaseLayout.cs`): pontos de passagem e rotas, montados junto com as estruturas. Sem efeito visível. **Aplicado** (out/2026), aguardando o teste do dev:
+1. **Grafo de rotas** (`HexPhaseLayout.cs`): pontos de passagem e rotas, montados junto com as estruturas. Sem efeito visível. **Feito e testado pelo dev** (out/2026: tudo igual a antes, sem erros no Output):
    - tipos novos `HexWaypoint` (centro de um nó ou painel, com as rotas que saem dele) e `HexRoute` (eixo de um corredor, com `Other` e `Touches`), no mesmo arquivo; listas `Waypoints` e `Routes`; `AddNodeConnector`, `AddPlateConnector` e `AddCorridor` devolvem a estrutura criada;
    - verificado no descartável (Godot 4.7.2 headless, receita 2×): setor com 4 pontos e 6 rotas, hexágono com 13 e 30; saídas por ponto 12 (central), 5 (periféricos) e 3 (painéis); rotas de 6200 px (conectores de nós) e 3580 px (placas); com a entrada no nó 2, 5 rotas tocam o nó (25 elegíveis; no setor, 3); em 13.892 amostras (a cada 10 px e a ±50 px do eixo), nenhuma fora do piso, e toda rota passa por "ponta A → corredor → ponta B"; um círculo de raio 40 (e até 110) ao longo das rotas não toca parede; paredes inalteradas (364 e 1268); geometria e grafo do hexágono em 3,4 ms.
-2. **Spawner que anda** (novos `MobileSpawner.cs` e `SpawnerDirector.cs`; cena `mobile_spawner.tscn`): o diretor cria os spawners no `IncursionStarted`, longe do nó de entrada; passeio aleatório; silhueta provisória; corpo sólido na camada 2. Teste: os spawners circulam pela fase; o jogador bate neles e é empurrado.
+2. **Spawner que anda** (novos `MobileSpawner.cs` e `SpawnerDirector.cs`; cena `mobile_spawner.tscn`): o diretor cria os spawners no `IncursionStarted`, longe do nó de entrada; passeio aleatório; silhueta provisória; corpo sólido na camada 2. Teste: os spawners circulam pela fase; o jogador bate neles e é empurrado. **Scripts aplicados** (out/2026), aguardando a montagem no editor e o teste do dev:
+   - `HexRoute.PointAt` no layout; `MobileSpawner` anda `MoveSpeed` px por passo e, ao passar da ponta, sorteia outra rota (menos a de onde veio), sem perder o que sobrou do passo; desenha o corpo e o anel com o raio da `CollisionShape2D`. `SpawnerDirector` se inscreve no `IncursionStarted` (ou começa adiado, sem câmara), embaralha as rotas que não tocam o nó de entrada e põe cada spawner no ponto sorteado **antes** de ele entrar na árvore (com o Sync to Physics, a posição vale no passo seguinte; um "pulo" da origem viraria velocidade na física);
+   - verificado no descartável (0 falhas): nada antes de liberar; ao liberar, 10 spawners em 10 rotas distintas, nenhuma tocando o nó 2, entre 25% e 74% da rota, já no ponto certo; 60 s a 3000 px/s: 36.110 amostras sem sair do piso, sem salto, 398 trocas de rota sem voltar pela mesma, sem tocar parede, 30 de 30 rotas visitadas; setor sem câmara começa sozinho (10 spawners nas 3 rotas elegíveis); `Area2D` com máscara 2 percebe o spawner (com máscara 1, não); inimigo (máscara 1) atravessado; "carona" confirmada e corrigida pelo Floor Layers (seção 5).
 3. **Luz e contato** (novos `ILightDamageable.cs` e `IContactHazard.cs`; alterados `LightDamageArea.cs`, `PlayerHurtbox.cs` e `FractalEnemy.cs`; mais vida, pânico e morte no `MobileSpawner`): a luz fere e mata o spawner, que foge e solta biomassa; encostar fere. Teste: matar spawners; `sala_ninho` igual a antes.
 4. **Geração e curva** (novo `EnemyPool.cs`; geração no `MobileSpawner`; curva e contagem no `SpawnerDirector`): inimigos nascem perto do jogador; o intervalo encurta a cada spawner morto; tetos de estoque e de física.
 5. **Recolhimento por distância** (`FractalEnemy.cs`; `DespawnDistance` na `fractal_enemy.tscn`).

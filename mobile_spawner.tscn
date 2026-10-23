@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://day8clpbmbfi5"]
+
+[ext_resource type="Script" uid="uid://rrcvskxx538v" path="res://MobileSpawner.cs" id="1_sicnb"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_1tabr"]
+radius = 40.0
+
+[node name="MobileSpawner" type="AnimatableBody2D" unique_id=1211166817]
+collision_layer = 2
+collision_mask = 0
+script = ExtResource("1_sicnb")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1970642451]
+shape = SubResource("CircleShape2D_1tabr")
