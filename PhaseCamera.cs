@@ -31,7 +31,7 @@ public partial class PhaseCamera : Node
         if (Tracker != null) Tracker.StructureChanged -= OnStructureChanged;
     }
 
-    // O jogador foi posto na eclusa (ao nascer ou voltando do espaço): limites da fase e câmera no lugar
+    // O jogador foi posto na eclusa (ao nascer): limites da fase e câmera no lugar
     private void OnPlayerPlaced()
     {
         Camera2D camera = GetCamera();

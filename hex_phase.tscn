@@ -6,19 +6,36 @@
 [ext_resource type="Script" uid="uid://yej4lv07547j" path="res://StructureTracker.cs" id="3_ie58g"]
 [ext_resource type="Script" uid="uid://cwnicg7cly5qh" path="res://StructureHud.cs" id="4_e333e"]
 [ext_resource type="Script" uid="uid://b1ju74mhjar6l" path="res://PhaseCamera.cs" id="5_e333e"]
+[ext_resource type="Script" uid="uid://bkw1rvj2rdh7h" path="res://StartChamber.cs" id="7_souy7"]
+[ext_resource type="Script" uid="uid://cyse0mxb55rao" path="res://ExitReleaseTerminal.cs" id="8_dmel6"]
+[ext_resource type="Script" uid="uid://dk2htimxcqhfo" path="res://TerminalModo.cs" id="9_5nn04"]
+[ext_resource type="Script" uid="uid://b01ffb8wlgby" path="res://EvolutionTerminal.cs" id="10_mvtee"]
+[ext_resource type="Script" uid="uid://xnkl64yqg5qb" path="res://UpgradePanel.cs" id="11_o6jdb"]
+[ext_resource type="Resource" uid="uid://ckk8tfaxyiisu" path="res://upgrades/upgrade_catalog.tres" id="12_48hdx"]
+[ext_resource type="Script" uid="uid://dfbuerobfmo3k" path="res://EjectionConsequence.cs" id="13_mvtee"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_1tabr"]
 size = Vector2(40, 240)
 
-[node name="HexPhase" type="Node2D" unique_id=410249403 node_paths=PackedStringArray("Player", "Airlock")]
+[sub_resource type="CircleShape2D" id="CircleShape2D_1tabr"]
+radius = 60.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_x5cs5"]
+radius = 71.00704
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_anlkq"]
+radius = 60.0
+
+[node name="HexPhase" type="Node2D" unique_id=410249403 node_paths=PackedStringArray("Player", "Airlock", "StartChamber")]
 script = ExtResource("1_sgjfe")
 Shape = 1
 Player = NodePath("Player")
 Airlock = NodePath("Airlock")
+StartChamber = NodePath("StartChamber")
 
 [node name="Airlock" type="Area2D" parent="." unique_id=411826568]
 script = ExtResource("2_kwqvq")
-TargetScenePath = "uid://qkdv3hvlc3qt"
+TargetScenePath = "uid://bg27ng01eost2"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Airlock" unique_id=595330657]
 shape = SubResource("RectangleShape2D_1tabr")
@@ -51,5 +68,93 @@ script = ExtResource("5_e333e")
 Phase = NodePath("..")
 Tracker = NodePath("../StructureTracker")
 
-[connection signal="LostInSpace" from="StructureTracker" to="." method="OnPlayerLostInSpace"]
+[node name="StartChamber" type="Node2D" parent="." unique_id=778838981 node_paths=PackedStringArray("Phase", "Airlock")]
+script = ExtResource("7_souy7")
+Phase = NodePath("..")
+Airlock = NodePath("../Airlock")
+
+[node name="ExitReleaseTerminal" type="Area2D" parent="StartChamber" unique_id=166014925]
+position = Vector2(300, 0)
+script = ExtResource("8_dmel6")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StartChamber/ExitReleaseTerminal" unique_id=489480135]
+shape = SubResource("CircleShape2D_1tabr")
+
+[node name="ColorRect" type="ColorRect" parent="StartChamber/ExitReleaseTerminal" unique_id=369240316]
+offset_left = -42.5
+offset_top = -40.0
+offset_right = 42.5
+offset_bottom = 40.0
+mouse_filter = 2
+color = Color(0.29279086, 0.51630354, 0.19160366, 1)
+
+[node name="TerminalModo" type="Area2D" parent="StartChamber" unique_id=2057220450]
+position = Vector2(550, -350)
+script = ExtResource("9_5nn04")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StartChamber/TerminalModo" unique_id=724189164]
+shape = SubResource("CircleShape2D_x5cs5")
+
+[node name="ColorRect" type="ColorRect" parent="StartChamber/TerminalModo" unique_id=1798153464]
+offset_left = -41.0
+offset_top = -40.0
+offset_right = 44.0
+offset_bottom = 40.0
+
+[node name="EvolutionTerminal" type="Area2D" parent="StartChamber" unique_id=320878786 node_paths=PackedStringArray("Panel")]
+position = Vector2(550, 350)
+script = ExtResource("10_mvtee")
+Panel = NodePath("../EvolutionUi/UpgradePanel")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StartChamber/EvolutionTerminal" unique_id=1825237903]
+shape = SubResource("CircleShape2D_anlkq")
+
+[node name="ColorRect" type="ColorRect" parent="StartChamber/EvolutionTerminal" unique_id=6948119]
+offset_left = -40.0
+offset_top = -40.0
+offset_right = 40.0
+offset_bottom = 40.0
+color = Color(0.5372549, 0.23921569, 0.8627451, 1)
+
+[node name="EvolutionUi" type="CanvasLayer" parent="StartChamber" unique_id=180857109]
+layer = 2
+
+[node name="UpgradePanel" type="PanelContainer" parent="StartChamber/EvolutionUi" unique_id=1149608845 node_paths=PackedStringArray("BankLabel", "UpgradeList", "CloseButton")]
+custom_minimum_size = Vector2(700, 300)
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("11_o6jdb")
+Catalog = ExtResource("12_48hdx")
+BankLabel = NodePath("Content/BankLabel")
+UpgradeList = NodePath("Content/UpgradeList")
+CloseButton = NodePath("Content/CloseButton")
+
+[node name="Content" type="VBoxContainer" parent="StartChamber/EvolutionUi/UpgradePanel" unique_id=741553357]
+layout_mode = 2
+
+[node name="BankLabel" type="Label" parent="StartChamber/EvolutionUi/UpgradePanel/Content" unique_id=1499295332]
+layout_mode = 2
+
+[node name="UpgradeList" type="VBoxContainer" parent="StartChamber/EvolutionUi/UpgradePanel/Content" unique_id=1836907021]
+layout_mode = 2
+
+[node name="CloseButton" type="Button" parent="StartChamber/EvolutionUi/UpgradePanel/Content" unique_id=1599878267]
+layout_mode = 2
+text = "FECHAR"
+
+[node name="EjectionConsequence" type="Node" parent="." unique_id=801110781 node_paths=PackedStringArray("Player")]
+script = ExtResource("13_mvtee")
+Player = NodePath("../Player")
+
+[connection signal="LostInSpace" from="StructureTracker" to="EjectionConsequence" method="OnPlayerLostInSpace"]
 [connection signal="StructureChanged" from="StructureTracker" to="PhaseHud/StructureLabel" method="OnStructureChanged"]
+[connection signal="Activated" from="StartChamber/ExitReleaseTerminal" to="StartChamber" method="OnExitsReleased"]

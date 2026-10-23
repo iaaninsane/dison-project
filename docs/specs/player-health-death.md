@@ -1,6 +1,6 @@
 # Spec: Integridade do traje e morte do jogador
 
-- **Status:** validada (out/2026). Valores em teste. O fluxo depois da morte foi definido pela spec `suit-evolution.md`: voltar à câmara inicial.
+- **Status:** validada (out/2026). Valores em teste. O fluxo depois da morte foi definido pela spec `suit-evolution.md`: voltar à câmara inicial. **Atualizado (out/2026, `start-chamber.md`):** a câmara passou para o nó de entrada da fase; a morte recarrega a fase em modo câmara (`RestartOnDeath` com destino vazio), e ser ejetado para o espaço tem a mesma consequência (`SuitIntegrity.Breach`).
 - **Etapa:** 1 (mecânica)
 - **Depende de:** `docs/specs/fractal-enemy.md` (inimigos, camadas de colisão), `docs/specs/fractal-enemy-movement.md` (inimigos travados descansam encostados no jogador), `docs/specs/biomass-collection.md` (o que acontece com a biomassa na morte).
 
@@ -27,7 +27,7 @@ O anticorpo fractal passa a ser uma ameaça: encostar na horda danifica o traje 
 
 - Quando a integridade chega a zero, então o jogador morre: emite o sinal `Died`, perde o controle do movimento e da lanterna e para de receber dano.
 - Na morte, a biomassa carregada perde a parte que não é guardada (`DeathKeepFraction`, 0,5: guarda metade, arredondado para baixo).
-- Depois de `DeathRestartDelay` segundos, o jogo vai para a cena `ReturnScenePath` do `RestartOnDeath` (hoje, a câmara inicial `sala_entrada.tscn`), que deposita no banco o que sobrou. Com `ReturnScenePath` vazio, a sala atual é recarregada (o comportamento original, ainda disponível).
+- Depois de `DeathRestartDelay` segundos, o jogo vai para a cena `ReturnScenePath` do `RestartOnDeath` (na validação, a câmara inicial `sala_entrada.tscn`), que deposita no banco o que sobrou. Com `ReturnScenePath` vazio, a sala atual é recarregada. **Hoje (out/2026):** vazio, a fase recarrega em modo câmara e a `StartChamber` deposita o que sobrou (`start-chamber.md`). A troca de cena passa pelo `ScreenFade` (escurecer e clarear).
 - A sala de destino recomeça do zero: integridade cheia, inimigos e orbes novos. Banco e níveis das melhorias ficam no `GameState` (spec `suit-evolution.md`).
 
 ## 3. Fora do escopo
@@ -119,8 +119,9 @@ Todas as propostas abaixo foram **aceitas pelo dev** (out/2026). As alternativas
 6. **Biomassa na morte.** Primeiro, perdida (recarregar a sala). **Definido depois pela spec `suit-evolution.md`: guarda metade** (`DeathKeepFraction` = 0,5), depositada no banco ao chegar à câmara.
 7. **Ejeção pela parede causa dano?** O high concept do handoff fala em "risco constante de ser ejetado para o vácuo". Proposto: **não** nesta spec (a ejeção continua só como empurrão e perda de controle); fica anotado como candidato para quando o vácuo tiver papel no jogo.
    - **Atualizado (out/2026):** o vácuo ganhou papel. O rascunho de game design define que a parede de fronteira ejeta o jogador para o espaço (`dyson-wall.md`, sinal `PlayerEjected`). A consequência (dano, morte, volta ao último nó, perda de biomassa) está em aberto no backlog; até ser decidida, a ejeção continua sem dano.
+   - **Decidido (out/2026, `start-chamber.md`, D3):** ser ejetado para o espaço é igual à morte. Fora de todas as estruturas por `SpaceReturnDelay`, o `EjectionConsequence` rompe o traje (`SuitIntegrity.Breach`: integridade 0, sinal `Died`), e o fluxo da morte segue (taxa, escurecer, recarga). A ejeção em si (o puxão pela parede) continua sem dano.
 
 ### Impacto do rascunho de game design (out/2026)
 
-- "A sala de destino recomeça do zero" pressupunha salas isoladas. **Decidido na `hex-phase.md` (H5):** a morte continua voltando à câmara inicial (`RestartOnDeath`, sem mudança), e a fase hexagonal recomeça do zero a cada entrada (spawners, inimigos e orbes novos). Dentro da fase, a integridade se mantém entre as estruturas.
+- "A sala de destino recomeça do zero" pressupunha salas isoladas. **Decidido na `hex-phase.md` (H5):** a morte continua voltando à câmara inicial (`RestartOnDeath`, sem mudança), e a fase hexagonal recomeça do zero a cada entrada (spawners, inimigos e orbes novos). Dentro da fase, a integridade se mantém entre as estruturas. **Revisto (out/2026, `start-chamber.md`):** a câmara agora é o nó de entrada da própria fase, e a morte recarrega a fase.
 8. **Piscar o sprite no golpe.** Proposto sim, como feedback mínimo de mecânica (o jogador precisa saber que foi atingido). Alternativa: nenhum feedback visual até a etapa 2.

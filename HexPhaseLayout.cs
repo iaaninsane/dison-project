@@ -19,8 +19,11 @@ public readonly record struct HexPhaseSettings(
     float WallThickness,       // Espessura das paredes
     float MaxWallSegmentLength); // Paredes mais longas são divididas (cada trecho tem a sua irritação)
 
-// Um trecho de parede: segmento na borda do piso, o lado de fora (para onde a parede cresce) e o tipo da estrutura dona
-public readonly record struct HexWallSegment(Vector2 Start, Vector2 End, Vector2 Outward, HexStructureKind Kind);
+// Um trecho de parede: segmento na borda do piso, o lado de fora (para onde a parede cresce) e a estrutura dona
+public readonly record struct HexWallSegment(Vector2 Start, Vector2 End, Vector2 Outward, HexStructure Owner)
+{
+    public HexStructureKind Kind => Owner.Kind;
+}
 
 // Uma estrutura da fase: tipo, nome (para o HUD de teste) e contorno interno (piso), em coordenadas da fase
 public class HexStructure
@@ -59,6 +62,7 @@ public class HexPhaseLayout
     private readonly HexPhaseSettings _settings;
     private readonly List<HexStructure> _structures = new(); // Em ordem de prioridade: nós, conectores, placas, painéis
     private readonly List<HexWallSegment> _wallSegments = new();
+    private readonly Dictionary<int, HexStructure> _peripheralNodes = new(); // Pelo índice (0 a 5)
 
     public IReadOnlyList<HexStructure> Structures => _structures;
     public IReadOnlyList<HexWallSegment> WallSegments => _wallSegments;
@@ -107,7 +111,7 @@ public class HexPhaseLayout
         AddNode(HexStructureKind.CentralNode, "Nó central", center);
         foreach (int i in peripherals)
         {
-            AddNode(HexStructureKind.PeripheralNode, $"Nó {i + 1}", PeripheralPosition(i));
+            _peripheralNodes[i] = AddNode(HexStructureKind.PeripheralNode, $"Nó {i + 1}", PeripheralPosition(i));
         }
 
         // 2. Conectores de nós: raios (centro → periférico) e perímetro (periférico → vizinho)
@@ -161,7 +165,7 @@ public class HexPhaseLayout
                 Vector2 outward = OutwardNormal(a, b, centroid);
                 foreach (Vector2[] piece in ClipByOtherStructures(a, b, structure))
                 {
-                    AddWallPieces(piece[0], piece[^1], outward, structure.Kind);
+                    AddWallPieces(piece[0], piece[^1], outward, structure);
                 }
             }
         }
@@ -187,7 +191,7 @@ public class HexPhaseLayout
     }
 
     // Divide o trecho em partes de no máximo MaxWallSegmentLength (cada parte é uma parede com a sua irritação)
-    private void AddWallPieces(Vector2 start, Vector2 end, Vector2 outward, HexStructureKind kind)
+    private void AddWallPieces(Vector2 start, Vector2 end, Vector2 outward, HexStructure owner)
     {
         float length = start.DistanceTo(end);
         if (length < MinWallPieceLength) return;
@@ -197,7 +201,7 @@ public class HexPhaseLayout
         {
             Vector2 from = start.Lerp(end, (float)k / count);
             Vector2 to = start.Lerp(end, (float)(k + 1) / count);
-            _wallSegments.Add(new HexWallSegment(from, to, outward, kind));
+            _wallSegments.Add(new HexWallSegment(from, to, outward, owner));
         }
     }
 
@@ -206,6 +210,45 @@ public class HexPhaseLayout
     {
         Vector2 normal = (b - a).Orthogonal().Normalized();
         return normal.Dot((a + b) / 2f - centroid) >= 0f ? normal : -normal;
+    }
+
+    // Contorno fechado (volta ao primeiro ponto), para tratar a borda como uma linha só
+    private static Vector2[] ClosedPolyline(Vector2[] outline)
+    {
+        var closed = new Vector2[outline.Length + 1];
+        outline.CopyTo(closed, 0);
+        closed[^1] = outline[0];
+        return closed;
+    }
+
+    // Pontas de cada pedaço (uma boca vem em dois pedaços quando cruza o início do contorno)
+    private static List<Vector2> EndPoints(Godot.Collections.Array<Vector2[]> pieces)
+    {
+        var points = new List<Vector2>();
+        foreach (Vector2[] piece in pieces)
+        {
+            points.Add(piece[0]);
+            points.Add(piece[^1]);
+        }
+        return points;
+    }
+
+    // Os dois pontos mais distantes entre si: as bordas da boca
+    private static (Vector2, Vector2) FarthestPair(List<Vector2> points)
+    {
+        (Vector2, Vector2) best = (points[0], points[1]);
+        float bestDistance = -1f;
+        for (int i = 0; i < points.Count; i++)
+        {
+            for (int j = i + 1; j < points.Count; j++)
+            {
+                float distance = points[i].DistanceSquaredTo(points[j]);
+                if (distance <= bestDistance) continue;
+                bestDistance = distance;
+                best = (points[i], points[j]);
+            }
+        }
+        return best;
     }
 
     private static Vector2 Centroid(Vector2[] points)
@@ -236,6 +279,31 @@ public class HexPhaseLayout
         return pairs;
     }
 
+    // Nó periférico pelo número usado nos nomes (1 a 6); se o nó não existe nesta fase, o nó central
+    public HexStructure PeripheralNode(int number) =>
+        _peripheralNodes.TryGetValue(number - 1, out HexStructure node) ? node : _structures[0];
+
+    // Bocas de um nó: onde os corredores entram nele. Cada boca vira um trecho na borda do nó, de uma parede do
+    // corredor à outra, alargado uma espessura de parede de cada lado para encostar nas paredes do corredor.
+    public List<HexWallSegment> ExitsOf(HexStructure node)
+    {
+        var exits = new List<HexWallSegment>();
+        Vector2 center = Centroid(node.Outline);
+        Vector2[] rim = ClosedPolyline(node.Outline);
+        foreach (HexStructure other in _structures)
+        {
+            if (other == node || !other.Bounds.Intersects(node.Bounds, true)) continue;
+
+            List<Vector2> points = EndPoints(Geometry2D.IntersectPolylineWithPolygon(rim, other.Outline));
+            if (points.Count < 2) continue; // Não encosta neste nó
+
+            (Vector2 a, Vector2 b) = FarthestPair(points);
+            Vector2 widen = (b - a).Normalized() * _settings.WallThickness;
+            exits.Add(new HexWallSegment(a - widen, b + widen, OutwardNormal(a, b, center), node));
+        }
+        return exits;
+    }
+
     // Centro do nó periférico pelo número usado nos nomes (1 a 6); se o nó não existe nesta fase, o nó central
     public Vector2 PeripheralNodeCenter(int number)
     {
@@ -249,9 +317,11 @@ public class HexPhaseLayout
     private Vector2 PeripheralPosition(int index) =>
         Vector2.FromAngle(Mathf.DegToRad(FirstPeripheralAngleDegrees + 60f * index)) * _settings.NodeSpacing;
 
-    private void AddNode(HexStructureKind kind, string name, Vector2 position)
+    private HexStructure AddNode(HexStructureKind kind, string name, Vector2 position)
     {
-        _structures.Add(new HexStructure(kind, name, RegularPolygon(position, _settings.NodeRadius, _settings.NodeSides)));
+        var node = new HexStructure(kind, name, RegularPolygon(position, _settings.NodeRadius, _settings.NodeSides));
+        _structures.Add(node);
+        return node;
     }
 
     // O corredor entra uma espessura de parede em cada nó, para não sobrar fresta na emenda

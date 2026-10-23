@@ -102,6 +102,7 @@ Confirmado pelo dev no editor (out/2026):
 4. **D4, logs:** remover o `GD.Print` a cada frame do `AddIrritation` e o "SUCESSO" do `_Ready`; o `PrintErr` de `ColorRect` ausente fica.
 5. **D5, do outro lado da parede:** fora desta spec (ser ejetado da `sala_ninho` leva o jogador para fora da arena, como já acontece hoje). Registrar no backlog como decisão em aberto; toca no "vácuo", adiado para depois da demo.
    - **Atualizado (out/2026):** o rascunho de game design define que a ejeção leva o jogador para fora da estrutura, no espaço (modelo da `dyson-wall.md`, sinal `PlayerEjected`). O espaço não é navegável (o "vácuo como atalho" continua adiado); a **consequência** (morte, dano, volta ao último nó, perda de biomassa) continua em aberto no backlog.
+   - **Decidido (out/2026, `start-chamber.md`, D3):** na fase hexagonal, ficar perdido no espaço é igual à morte (o `EjectionConsequence` rompe o traje; taxa da biomassa e recarga da fase em modo câmara). Nas bancadas sem `StructureTracker` (ex.: `sala_ninho`), a ejeção continua só levando o jogador para fora da arena.
 6. **D6, `EjectionDuration`:** vira `[Export]` no `Player`.
 
 ### Notas de implementação (out/2026)

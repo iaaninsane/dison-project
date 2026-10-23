@@ -13,8 +13,8 @@ public partial class EvolutionTerminal : Area2D
         BodyExited += OnBodyExited;
     }
 
-    // Reage ao EVENTO de interação, não à leitura da tecla: se a interface já usou o aperto
-    // (ex.: o "A" do controle apertou "Fechar" no painel), o evento não chega aqui e o painel não reabre.
+    // Reage ao EVENTO de interação, não à leitura da tecla. O "A" que aperta "Fechar" não reabre o painel porque,
+    // com o painel aberto, o jogo fica pausado (este terminal não recebe eventos) e o Panel.Visible ainda é verdadeiro.
     public override void _UnhandledInput(InputEvent @event)
     {
         if (!@event.IsActionPressed("interact")) return;

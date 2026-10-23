@@ -1,14 +1,15 @@
 using Godot;
 
 // Acompanha em qual estrutura da fase o jogador está e avisa por sinal quando ela muda (Observer).
-// Fica como filho da raiz da hex_phase.tscn. Também aplica a regra provisória do espaço (spec hex-phase.md, seção 10).
+// Fica como filho da raiz da hex_phase.tscn. Também avisa quando o jogador fica perdido no espaço (LostInSpace);
+// a consequência é de quem escuta (hoje, o EjectionConsequence; spec start-chamber.md, D3).
 public partial class StructureTracker : Node
 {
     [Signal] public delegate void StructureChangedEventHandler(string structureName);
     [Signal] public delegate void LostInSpaceEventHandler(); // Ficou no espaço por SpaceReturnDelay
 
     [Export] public HexPhaseBuilder Phase;           // A fase (geometria e jogador), ligada no Inspector
-    [Export] public float SpaceReturnDelay = 2f;     // Provisório: tempo no espaço até voltar à eclusa (s)
+    [Export] public float SpaceReturnDelay = 2f;     // Tempo no espaço até avisar (LostInSpace) (s)
 
     private const string SpaceName = "Espaço";
 
@@ -37,7 +38,7 @@ public partial class StructureTracker : Node
         EmitSignal(SignalName.StructureChanged, found?.Name ?? SpaceName);
     }
 
-    // Regra provisória, até a consequência da ejeção ser decidida: no espaço por SpaceReturnDelay, avisa
+    // No espaço por SpaceReturnDelay, avisa (o jogador morto não conta: a morte já está cuidando dele)
     private void UpdateTimeInSpace(float dt)
     {
         if (Current != null || Phase.Player.IsDead)

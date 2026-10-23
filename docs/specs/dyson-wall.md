@@ -104,7 +104,7 @@ Modelo decidido pelo dev (out/2026): sucção **gradual pela distância**, como 
 - **Intensidade no tempo:** o campo é multiplicado pela intensidade da abertura `k` (seção 2.3) e por uma rajada que começa em `GustMultiplier` quando a fenda começa a abrir e cai até 1 com a constante de tempo `GustDecay`. Com o Esmaecer, o pico fica por volta do fim da fase 1, quando a fenda se completa; na fase 3 a força some junto com `k`.
 - **O jogador mantém o controle** durante a sucção: a força soma à velocidade dele, sem substituí-la (diferente do `ApplyEjection` atual).
 - **Inimigos e orbes de biomassa também são sugados** (decisão do dev, out/2026), com a mesma aceleração multiplicada por `EnemySuctionFactor` e `OrbSuctionFactor`. Ao cruzar a fenda, saem da fase: o inimigo volta ao pool (ou é liberado) **sem soltar biomassa** (proposto); o orbe é perdido. Isso faz da fenda uma ferramenta tática (atrair a horda para perto de uma parede) e um risco (perder a biomassa que está no chão).
-- Quando o jogador cruza a borda externa da parede pela fenda, então é ejetado para o espaço. **O que acontece depois (dano, morte, perda de biomassa, resgate) fica fora desta spec** (decisão em aberto no backlog). Emitir um sinal `PlayerEjected` e parar aí. O espaço não é navegável: o "vácuo como atalho" continua adiado para depois da demo.
+- Quando o jogador cruza a borda externa da parede pela fenda, então é ejetado para o espaço. **O que acontece depois (dano, morte, perda de biomassa, resgate) fica fora desta spec.** Emitir um sinal `PlayerEjected` e parar aí. (**Decidido em out/2026**, `start-chamber.md` D3: ser ejetado é igual à morte. Na fase, quem aplica é o `EjectionConsequence`, hoje ouvinte do `LostInSpace` do `StructureTracker`; o `PlayerEjected` pode ser ligado ao mesmo componente, ou o jogador ejetado cai no `LostInSpace` ao ficar fora das estruturas.) O espaço não é navegável: o "vácuo como atalho" continua adiado para depois da demo.
 - Partículas verde-água saem da fenda em direção ao espaço durante a abertura.
 
 ### 2.7 Iluminação em contraluz (sol ao fundo)
@@ -125,7 +125,7 @@ Do protótipo, para referência e implementação futura: degradê do espaço, h
 
 ## 3. Fora do escopo
 
-- Consequência de ser ejetado (dano, morte, resgate). Só emitir o sinal.
+- Consequência de ser ejetado (dano, morte, resgate). Só emitir o sinal. (Decidida fora desta spec: igual à morte, `start-chamber.md` D3.)
 - Escolha final de quais modos de abertura entram no jogo e onde. Esta spec implementa todos como opções selecionáveis por `[Export]`; a decisão de design vem depois.
 - Estrutura da fase hexagonal e posicionamento das paredes de fronteira em cada estrutura (spec própria; backlog 1.3). Geração procedural fica para depois.
 - Curvatura do anel (a parede é reta na lógica; a curvatura é visual e será tratada na spec do cenário).

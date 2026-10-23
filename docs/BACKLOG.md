@@ -10,20 +10,24 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 
 > **1.3 concluído (out/2026):** fase hexagonal, fases A e B validadas pelo dev (`docs/specs/hex-phase.md`). A câmara leva à fase pela `PortaSaida`; a fase tem eclusa (entrada e extração), transição de tela (`ScreenFade`) em toda troca de cena e recomeça do zero a cada entrada. Os pontos em aberto foram para a seção 2; a fase C da spec (spawners na fase) entra com o 1.4.
 
+> **1.7 concluído (out/2026):** câmara de partida no nó inicial, validada pelo dev (`docs/specs/start-chamber.md`). O jogo começa na fase (cena principal); o nó de entrada é a câmara (portões, paredes inertes, terminais do traje e "Liberar saídas") até o jogador liberar as saídas (sinal `IncursionStarted`); morte, ejeção (igual à morte) e extração pela eclusa recarregam a fase em modo câmara. A `sala_entrada` virou bancada.
+
 ### 1.4 Spawners móveis e objetivo da fase (novo)
 
 - **Contexto:** cerca de 10 spawners por fase circulam pela fase inteira gerando inimigos o tempo todo. O objetivo do jogador é eliminá-los; a cada spawner morto, a dificuldade aumenta.
-- **Ponto de partida:** `NinhoSpawnerPooled.cs` (pool, `MaxConcurrentEnemies`, `MaxTotalEnemies`) e `FractalSwarm.cs` (registro e separação). O ninho fixo da `sala_ninho` dá lugar aos spawners.
-- **Perguntas para a spec:**
-  - Vida do spawner e como matá-lo (pela luz, como os inimigos? por tempo de exposição?).
-  - Movimento: pelas arestas do grafo da fase (sem pathfinding)? Foge da luz?
-  - Curva de dificuldade (sugestão: orçamento global de spawn dividido entre os spawners vivos; ao matar um, os restantes aceleram, sem estourar o teto de física; o último fica frenético).
-  - Rastreabilidade numa fase grande (indicador no HUD, pulso visível) e silhueta própria.
-  - O que acontece quando todos morrem (fase vencida → próxima fase? volta à câmara?).
-  - Tetos globais (`MaxTotalEnemies`) e um pool compartilhado entre os spawners.
-  - Desempenho: reavaliar o problema conhecido da `fractal-enemy-movement.md` (seção 11).
-- **Depende de:** 1.3, concluído (a fase existe inteira numa cena; `hex-phase.md`). Para testar combate na fase antes dos spawners, um ninho temporário funciona (spec, seção 7, item 11).
-- **Spec:** criar (nome a confirmar, ex.: `docs/specs/mobile-spawners.md`).
+- **Spec:** `docs/specs/mobile-spawners.md` (aprovada, out/2026). Decisões do dev (S1 a S9, seção 10 da spec):
+  - **S1:** morre pela luz, com vida alta (300, ~8,6 s) e sem regenerar.
+  - **S2:** iluminado, entra em pânico (acelera e foge do jogador).
+  - **S3:** passeio aleatório pelas rotas de um grafo tirado da geometria (eixos dos corredores; 13 pontos e 30 rotas no hexágono), sem pathfinding.
+  - **S4:** orçamento global de geração repartido entre os vivos + crescimento por morte (o intervalo de cada spawner cai de 6,7 s para 0,35 s).
+  - **S5:** gera só com o jogador perto e recolhe os inimigos longe dele (eles andam a 10 px/s e ficariam espalhados ocupando o teto).
+  - **S6:** contador no HUD + seta na borda da tela para o spawner mais próximo.
+  - **S7:** com todos mortos, "Fase limpa: volte à eclusa"; a extração encerra.
+  - **S8:** sólido e fere (camada 2; empurra o jogador e segue a rota; mesmo golpe do inimigo).
+  - **S9:** valores iniciais da seção 4 da spec aceitos como pontos de partida.
+- **Achado no código:** o estoque de inimigos não pode ser filho do spawner (os filhos herdam a transformação do pai, e os fragmentos nascem no pai): o pool fica num nó parado, compartilhado.
+- **Plano de implementação aprovado** (seção 10 da spec, passos 1 a 7). Próximo: passo 1 (grafo de rotas), depois do commit da câmara de partida (1.7).
+- **Depende de:** 1.3 e 1.7, concluídos (a fase existe inteira numa cena; `hex-phase.md`, `start-chamber.md`). Os spawners começam no sinal `IncursionStarted` da `StartChamber` e não geram inimigos no nó inicial travado. Para testar combate na fase antes dos spawners, um ninho temporário funciona (`hex-phase.md`, seção 7, item 11).
 
 ### 1.5 Parede de fronteira (dyson-wall), fases A e B (novo)
 
@@ -31,7 +35,7 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 - **Sucção (decidida, out/2026):** gradual pela distância, como numa descompressão (raio sem retorno, rajada no rompimento), sem tirar o controle do jogador; afeta também inimigos e orbes. Toca no `Player.cs` (aceleração externa), no `FractalEnemy.cs`/`FractalSwarm.cs` e no `BiomassField.cs` (spec, seções 2.6 e 6).
 - **Spec:** `docs/specs/dyson-wall.md` (proposta). Protótipo de referência: `docs/reference/dyson-wall-prototype.html`.
 - **Ponto de partida:** a fase A (geometria e irritação) pode começar numa cena de teste isolada (`wall_test.tscn`), sem depender do 1.3. A `LightDamageArea` já chama `AddIrritation` nos corpos do grupo `Walls`, mas entrega o corpo inteiro, não as peças (nota na seção 6 da spec).
-- **Para fechar a fase B:** decidir a consequência da ejeção (seção 2) e onde ficam as fronteiras em cada estrutura (`hex-phase.md`; hoje toda parede externa da fase é fronteira). Decisões em aberto da própria spec: renderização (W1/W2), cálculo da luz, posição do sol, se a sucção afeta inimigos, respiração em repouso.
+- **Para fechar a fase B:** a consequência da ejeção já foi decidida (igual à morte, `start-chamber.md` D3; ligar o `PlayerEjected` ao `EjectionConsequence` ou deixar o `LostInSpace` agir); falta decidir onde ficam as fronteiras em cada estrutura (`hex-phase.md`; hoje toda parede externa da fase é fronteira). Decisões em aberto da própria spec: renderização (W1/W2), cálculo da luz, posição do sol, se a sucção afeta inimigos, respiração em repouso.
 
 ### 1.6 Visibilidade sem blecaute nas cenas atuais (pequeno, no editor)
 
@@ -39,25 +43,17 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 - **O que fazer:** o dev escolhe uma cor provisória de `CanvasModulate` para testar as mecânicas sem blecaute. O `ColorRect` de fundo continua obrigatório (sem ele a luz da lanterna não aparece). Arte final na etapa 2.
 - **Spec:** nenhuma (ajuste de cena). Conferir depois se a lanterna continua legível sobre fundos claros.
 
-### 1.7 Câmara de partida no nó inicial (ideia do dev, futura)
-
-- **Contexto:** o jogador nasceria no primeiro nó da fase, com os terminais da câmara e as saídas fechadas; um terminal "Liberar saídas" abre o nó e começa a incursão. Morrer ou ser ejetado recarrega a fase nesse modo; a `sala_entrada` vira bancada.
-- **Estado:** documentada para implementação futura (out/2026). Por ora, fica o fluxo atual (câmara separada, eclusa). Não implementar até o dev decidir.
-- **Spec:** `docs/specs/start-chamber.md` (rascunho, com análise, decisões D1 a D6, plano e os documentos a atualizar).
-- **Ligação com o 1.4:** se adotada, vale fazer antes dos spawners, que escutariam o sinal `IncursionStarted`.
-
 ## 2. Decisões de design em aberto
 
 | Item | Onde está registrado | Observação |
 |---|---|---|
-| Consequência de ser ejetado para o espaço | `dyson-wall.md` (2.6), `reactive-walls.md` (D5), `player-health-death.md` (decisão 7) | O espaço **não é navegável** ("vácuo como atalho" continua adiado). Opções: morte, dano, volta ao último nó, perda de parte da biomassa carregada. Sugestão: fade e volta ao último nó com uma perda. Provisório para testar a fase hexagonal: volta à eclusa sem perdas (`hex-phase.md`, seção 10). A ideia futura da câmara de partida (1.7, `start-chamber.md`, D3) propõe: igual à morte |
 | Deformação final da parede de fronteira | `dyson-wall.md` (seção 10) | Esmaecer é o padrão provisório. Referências sugeridas: exocitose, estômato, esfíncter/íris (Scorn), peristalse |
 | Detalhes da sucção nos inimigos e orbes | `dyson-wall.md` (seção 10) | Inimigo sugado solta biomassa? (proposto: não); spawners são afetados?; fendas viram estratégia dominante contra a horda? |
 | Tiros no ALERTAR | CLAUDE.md (core loop) e HANDOFF | O core loop cita "luz e tiros", mas não existe tiro; os "modos de tiro" do `TerminalModo` são modos da lanterna |
 | Melhoria "Potência da lanterna" | `suit-evolution.md` (decisão 4) | Adiada até ter requisitos; volta junto com o valor no enum `SuitUpgrade.TargetStat` |
 | Salvar progresso em disco | `suit-evolution.md` (decisão 2) | `RunData` já separado do nó; salvar = converter o `RunData` |
 | Velocidade e separação dos fragmentos | `fractal-enemy.md` (fase 2) | Iguais às do pai; testar outras possibilidades (ex.: menor = mais rápido) |
-| Valores definitivos de `MaxConcurrentEnemies` e `MaxTotalEnemies` | `fractal-enemy.md` (seção 10) | Hoje 200 e 350 na `sala_ninho`; decidir com os spawners móveis (1.4). Variantes A2/A3 do teto anotadas |
+| Valores definitivos de `MaxConcurrentEnemies` e `MaxTotalEnemies` | `fractal-enemy.md` (seção 10), `mobile-spawners.md` (seção 4) | Hoje 200 e 350 na `sala_ninho`. Na fase (1.4): `PoolSize` 60 (papel do `MaxConcurrentEnemies`) e `MaxTotalEnemies` 350, como pontos de partida; definitivos depois da medição. Variantes A2/A3 do teto anotadas |
 | Cor do `CanvasModulate` (visibilidade sem blecaute) | HANDOFF v2.0 (3.2), item 1.6 | Provisória na etapa 1; arte na etapa 2 |
 | Neon × tons pastel | HANDOFF v2.0 (seção 5), `fractal-enemy-render-3d.md` | Testar na etapa 2 |
 | Cor da parede irritada | `dyson-wall.md` (seção 10) | Vermelho no `WallSensitive.cs` × verde-água na dyson-wall |
@@ -71,13 +67,12 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 
 | Item | Onde está registrado | Observação |
 |---|---|---|
-| Queda de FPS com o jogador do lado de fora da parede e a horda aglomerada do lado de dentro | `fractal-enemy-movement.md` (seção 11) | Prioridade baixa; começar por instrumentação temporária. Reavaliar com os spawners móveis (1.4) |
+| Queda de FPS com o jogador do lado de fora da parede e a horda aglomerada do lado de dentro | `fractal-enemy-movement.md` (seção 11) | Prioridade baixa; começar por instrumentação temporária. Reavaliado na `mobile-spawners.md` (seção 10): geração por proximidade, recolhimento e tetos devem torná-lo improvável; medir o pior caso no passo 7 do 1.4 |
 | `TakeDamage` soma `_time += 0.2f` a cada frame sob a luz (pulsação acelera e o flash fica sempre ligado) | `fractal-enemy.md` (seção 10) | Revisar junto com o flash de dano |
 | Teste pendente da fase 1 do inimigo: a vida não regenera fora do feixe | `fractal-enemy.md` (seção 8) | Só falta o teste no editor |
 | `Player` em Motion Mode Grounded | `fractal-enemy.md` (seção 10) | Avaliar Floating (afeta como o jogador desliza nas paredes) |
 | Grupo `"Enimies"` (erro de digitação) na cena do inimigo | `fractal-enemy.md` (seção 7) | Nada depende dele hoje |
 | `CollisionShape2D` do inimigo escalado (0.2) em vez de raio ajustado | `fractal-enemy.md` (seção 10) | Boa prática da Godot: ajustar o raio da forma |
-| `TerminalModo` lê a tecla por polling | `suit-evolution.md` (notas) | Só importa se ele ganhar interface; usar `_UnhandledInput` como o `EvolutionTerminal` |
 | Pool de fragmentos | `fractal-enemy.md` (seção 5) | Só se matar muitos inimigos de uma vez causar engasgo |
 | `Player._PhysicsProcess` longo, com três estados (normal, ejetado, morto) em `if/else` | código (`Player.cs`) | Se surgirem mais estados (ex.: ejetado para o espaço), considerar o padrão State. A sucção da dyson-wall não é um estado novo (o jogador mantém o controle): entra como aceleração externa |
 | Entalhes nas quinas convexas das paredes geradas | `hex-phase.md` (seção 5) | Só visual, do lado de fora; resolver na arte (etapa 2) |

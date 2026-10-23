@@ -1,8 +1,8 @@
 # Spec: Fase hexagonal (estruturas interligadas da esfera)
 
-- **Status:** aprovada (out/2026); **fase A validada** (passos 1 a 6, testados pelo dev no editor); **fase B validada** (passos B0 a B5, testados pelo dev no editor, out/2026). A fase C entra com os spawners móveis (backlog 1.4). Decisões na seção 10. Valores em teste.
+- **Status:** aprovada (out/2026); **fase A validada** (passos 1 a 6, testados pelo dev no editor); **fase B validada** (passos B0 a B5, testados pelo dev no editor, out/2026). **A H5 foi revista** pela `docs/specs/start-chamber.md` (câmara de partida no nó inicial, validada em out/2026): a seção 2 descreve o fluxo de hoje, e os itens das seções 7 e 8 ficam como registro do que foi validado na época. A fase C entra com os spawners móveis (backlog 1.4). Decisões na seção 10. Valores em teste.
 - **Etapa:** 1 (mecânica). Fases A e B nesta spec; a fase C entra junto com os spawners móveis (backlog 1.4).
-- **Depende de:** `docs/HANDOFF.md` (v2.0, seção 4), `docs/specs/reactive-walls.md` (paredes atuais), `docs/specs/suit-evolution.md` (câmara inicial e banco), `docs/specs/player-health-death.md` (morte). Futuro: `docs/specs/dyson-wall.md` (paredes de fronteira).
+- **Depende de:** `docs/HANDOFF.md` (v2.0, seção 4), `docs/specs/reactive-walls.md` (paredes atuais), `docs/specs/suit-evolution.md` (terminais e banco), `docs/specs/player-health-death.md` (morte), `docs/specs/start-chamber.md` (câmara de partida, reinício e ejeção). Futuro: `docs/specs/dyson-wall.md` (paredes de fronteira).
 - **Referências:** `docs/reference/dyson-sphere-reference.png` (a malha da esfera) e `docs/reference/connector-cut-mockup.png` (mockup de um conector). Jogos com o mesmo plano: FTL, Heat Signature e Space Haven (estruturas vistas de cima, sem teto, com o espaço em volta); a câmera do Cocoon também olha o mundo de cima.
 
 > **Valores em teste:** como nas demais specs da demo, os `[Export]` e os números desta spec são pontos de partida, não valores definitivos.
@@ -47,33 +47,35 @@ Trocar as salas isoladas por uma **fase**: um hexágono da esfera (de início, u
 - **Primeira versão: setor de teste.** Um triângulo do hexágono: nó central e 2 nós periféricos, 3 conectores de nós, 1 painel e 3 conectores de placa (10 estruturas).
 - **Hexágono completo:** 7 nós, 12 conectores de nós, 6 painéis e 18 conectores de placa (43 estruturas), escolhido pelo parâmetro `Shape`, sem mudar código.
 
-### Câmara inicial e reinício (H5)
+### Câmara de partida e reinício (H5, revista em out/2026)
 
-- A câmara inicial (`sala_entrada`) continua uma cena separada.
-- A `PortaSaida` leva à fase. O jogador nasce na **eclusa** de um nó periférico (`EntryPeripheral`), parado e com a câmera já no lugar. A porta da eclusa (`Airlock`) fica na **parede externa** do nó (o lado oposto ao centro da fase, onde não sai corredor), virada para fora, e o jogador nasce à frente dela, também ao voltar do espaço (B3).
-- A eclusa também leva de volta à câmara (**extração**) **ao tocar a porta**, como a `PortaSaida`: ao chegar, a biomassa carregada é depositada no banco (a `SalaEntrada` já faz isso a cada entrada). Se extrair sem querer virar problema nos testes, passa a exigir `interact`.
-- As trocas de cena usam uma transição de tela (escurecer e clarear, `ScreenFadeDuration`): entre a câmara e a fase e também na morte. O jogo não pausa durante o escurecer.
-- Morrer volta à câmara, como hoje (`RestartOnDeath`).
-- **A fase recomeça do zero a cada entrada:** spawners, inimigos e orbes novos. Banco, níveis das melhorias e modo da lanterna continuam no `GameState`.
-- A integridade começa cheia ao entrar na fase e se mantém entre as estruturas.
+Detalhes na `docs/specs/start-chamber.md`. Antes da revisão, a câmara era uma cena separada (`sala_entrada`), com entrada e extração pela eclusa (fase B); hoje a `sala_entrada` é bancada (a `PortaSaida` dela ainda leva à fase).
+
+- O jogo começa na fase (cena principal). O jogador nasce na **eclusa** do nó periférico de entrada (`EntryPeripheral`), parado e com a câmera já no lugar. A porta da eclusa (`Airlock`) fica na **parede externa** do nó (o lado oposto ao centro da fase, onde não sai corredor), virada para fora, e o jogador nasce à frente dela (B3).
+- O nó de entrada começa como **câmara de partida** (`StartChamber`): portões nas bocas, paredes do nó inertes, terminais do traje e o terminal "Liberar saídas". Liberar abre o nó, que passa a ser um nó comum, e a incursão começa (`IncursionStarted`).
+- **Extração** pela eclusa, ao tocar a porta depois de liberar: a fase recarrega em modo câmara, e a câmara deposita 100% da biomassa carregada. Com o nó travado, a eclusa fica desligada.
+- **Morrer ou ser ejetado** também recarrega a fase em modo câmara, com a taxa da morte.
+- Toda troca de cena usa a transição de tela (escurecer e clarear, `ScreenFadeDuration`). O jogo não pausa durante o escurecer.
+- **A fase recomeça do zero a cada recarga:** spawners, inimigos e orbes novos. Banco, níveis das melhorias e modo da lanterna continuam no `GameState`.
+- A integridade começa cheia a cada recarga e se mantém entre as estruturas.
 
 ### Estrutura atual
 
 - A geometria responde, por conta e sem física, em qual estrutura está um ponto (ou "espaço", se estiver fora de todas). Nas passagens, vale a ordem fixa: nós, depois conectores de nós, depois conectores de placa, depois painéis.
 - O `StructureTracker` pergunta isso a cada passo de física e emite `StructureChanged` **só quando a estrutura muda** (Observer). Ouvintes: o rótulo de teste do HUD (`StructureHud`) e a câmera (`PhaseCamera`). Usos futuros: spawners (1.4), ponto de retorno, mapa.
-- **Regra provisória do espaço** (até a consequência da ejeção ser decidida): fora de todas as estruturas por `SpaceReturnDelay`, o rastreador emite `LostInSpace`, e a fase põe o jogador na eclusa. Para trocar a regra, basta trocar o ouvinte de `LostInSpace`; o rastreador não muda.
+- **Perdido no espaço:** fora de todas as estruturas por `SpaceReturnDelay`, o rastreador emite `LostInSpace`. Quem decide a consequência é o ouvinte: hoje o `EjectionConsequence`, que rompe o traje (ejeção igual à morte, `start-chamber.md` D3). Para trocar a regra, troca-se o ouvinte; o rastreador não muda. (Até out/2026, a regra provisória punha o jogador de volta na eclusa, sem perdas.)
 
 ### Câmera
 
 - Sem limites por sala: os limites são os da fase, com `CameraMargin`.
 - **Zoom por tipo de estrutura** (`PhaseCamera`): afasta nas arenas (nós e painéis) e aproxima nos corredores e, mais ainda, nos conectores de placa, com transição suave (Tween). O primeiro zoom, ao nascer, é instantâneo; no espaço, o zoom não muda.
-- Ao pôr o jogador na eclusa (ao nascer ou voltando do espaço), a fase emite `PlayerPlaced`, e a câmera aplica os limites e reinicia a suavização (`ResetSmoothing`), sem "deslizar" pela fase.
+- Ao pôr o jogador na eclusa (ao nascer), a fase emite `PlayerPlaced`, e a câmera aplica os limites e reinicia a suavização (`ResetSmoothing`), sem "deslizar" pela fase.
 - A suavização de posição continua a do `player.tscn` (Speed 6,0). Fora da fase, o zoom do `player.tscn` é 1×.
 
 ## 3. Fora do escopo
 
 - Spawners móveis, objetivo da fase e simulação por proximidade (backlog 1.4; fase C).
-- A consequência definitiva da ejeção (decisão em aberto; a regra provisória está na seção 2).
+- A consequência da ejeção: decidida e implementada na `start-chamber.md` (D3, igual à morte).
 - A parede de fronteira `DysonWall` (backlog 1.5): aqui as paredes externas usam o `WallSensitive`.
 - Mapa e minimapa, geração procedural, hexágonos vizinhos e progressão entre fases.
 - Conteúdo de cada estrutura além do mínimo para teste (o papel de cada tipo é sugestão; seção 10).
@@ -118,7 +120,7 @@ O padrão do `WallSensitive` é 15 (~3 s). A recuperação (15/s) e a força do 
 | `Player` | — | `HexPhaseBuilder` | Ligado no Inspector |
 | `EntryPeripheral` | 2 | `HexPhaseBuilder` | Número do nó periférico da eclusa (1 a 6, como nos nomes) |
 | `Airlock` | — | `HexPhaseBuilder` | Porta da eclusa (`Area2D` com `DoorTrigger.cs`), montada no editor e ligada no Inspector (B3) |
-| `SpaceReturnDelay` | 2 s | `StructureTracker` | Só da regra provisória do espaço |
+| `SpaceReturnDelay` | 2 s | `StructureTracker` | Tempo no espaço até o `LostInSpace` (a consequência, igual à morte, está na `start-chamber.md`) |
 
 ### Câmera (`PhaseCamera`)
 
@@ -182,7 +184,7 @@ Medido pelo dev no editor, com o hexágono vazio (sem inimigos) e o V-Sync desli
 ## 5. Casos de borda
 
 - **Jogador na passagem entre duas estruturas:** a ordem fixa decide, e o sinal só é emitido quando a estrutura muda, sem "piscar" na fronteira.
-- **Ponto fora de todas as estruturas** (ejetado): a estrutura atual é "espaço". Os vãos entre as estruturas são cercados de paredes: sem a regra provisória, o jogador ejetado fica preso neles.
+- **Ponto fora de todas as estruturas** (ejetado): a estrutura atual é "espaço". Os vãos entre as estruturas são cercados de paredes: o `LostInSpace` encerra a incursão (`start-chamber.md`); sem ele, o jogador ejetado ficaria preso neles.
 - **Frestas nas junções:** os corredores entram uma espessura de parede nos nós e no painel; as passagens saem da regra das paredes, e nenhuma emenda deixa fresta (verificado no motor).
 - **Quinas convexas:** sobra um entalhe pequeno do lado de fora da parede (por dentro, as paredes se encontram sem fresta). É só visual (etapa 2).
 - **Paredes giradas:** o `WallSensitive` já calcula o centro real de paredes giradas (`reactive-walls.md`). As paredes geradas seguem o formato da cena, com o filho `ColorRect` (nome exato) adicionado antes de a parede entrar na árvore (o `_Ready` dela procura o `ColorRect`).
@@ -190,9 +192,9 @@ Medido pelo dev no editor, com o hexágono vazio (sem inimigos) e o V-Sync desli
 - **Parede que dorme:** nasce dormindo (`SetPhysicsProcess(false)` no `_Ready`; a Godot liga o `_PhysicsProcess` antes do `_Ready`, por isso desligar ali vale). A luz a acorda (`AddIrritation`); ela decai e volta a dormir ao zerar, inclusive logo depois de ejetar (volta à cor normal no passo seguinte; antes podia ficar vermelha parada se a luz saísse dela). O tempo até ejetar não mudou (diferença máxima de 1 passo, conforme a ordem dos nós).
 - **Ordem do `_Ready`:** o `StructureTracker` e o `PhaseCamera` são filhos da raiz e ficam prontos antes dela, quando o `Layout` ainda não existe. O rastreador só trabalha no passo de física, com guarda; a câmera assina os avisos no `_Ready` e recebe o primeiro `PlayerPlaced`, emitido no `_Ready` da raiz.
 - **Campo `[Export]` de nó vazio** (ex.: `Phase` do `StructureTracker`): o componente não age, sem erro (as guardas retornam cedo). No teste do passo 4, o rótulo ficou em "Estrutura: -" por isso. Conferir os campos ao montar a cena.
-- **Câmera ao nascer ou ao voltar do espaço:** `ResetSmoothing` evita que ela atravesse a fase deslizando.
+- **Câmera ao nascer:** `ResetSmoothing` evita que ela atravesse a fase deslizando.
 - **Entrar e sair rápido de um corredor:** cada troca de zoom interrompe a anterior (`Kill` no Tween), sem engasgo.
-- **Jogador morto no espaço:** a regra provisória não age; quem age é o `RestartOnDeath`.
+- **Jogador morto no espaço:** o rastreador não avisa de novo (ignora o jogador morto); quem age é o `RestartOnDeath`.
 - **Trocas repetidas entre câmara e fase** (fase B): sem erros e com "Nós Órfãos" = 0 (os registros estáticos `FractalSwarm` e `BiomassField` se limpam no `_ExitTree`).
 - **Morrer durante o escurecer de uma porta** (B2): a porta já pediu a troca e vence (o `ScreenFade` ignora o segundo pedido). A taxa da morte já foi cobrada. O temporizador da morte dispara depois da troca, mas a Godot não chama o método de um nó já liberado: sem erro e sem segunda troca (verificado no descartável).
 - **Corpo deslizando para uma porta** (B2): morto não usa porta (`DoorTrigger` ignora `IsDead`); quem age é o `RestartOnDeath`. Sem a guarda, o corpo poderia "extrair" pela eclusa no lugar de morrer.
@@ -204,8 +206,8 @@ Medido pelo dev no editor, com o hexágono vazio (sem inimigos) e o V-Sync desli
 
 - **Novos** (criados em out/2026, na raiz do projeto, com autorização do dev):
   - `HexPhaseLayout.cs` (classes C# comuns, sem nó): os tipos `HexPhaseShape`, `HexStructureKind`, `HexPhaseSettings`, `HexWallSegment` e `HexStructure`, e a classe `HexPhaseLayout`. Ela cuida da geometria do setor ou do hexágono, da pergunta `FindStructureAt`, do retângulo `Bounds`, dos `WallSegments` (com o tipo da estrutura dona), do `PeripheralNodeCenter` e da checagem do raio mínimo.
-  - `HexPhaseBuilder.cs` (`Node2D`, raiz da cena): monta o fundo, os pisos e as paredes (`WallSensitive`, com `MaxIrritation` por tipo). Põe o jogador na eclusa (`PlacePlayerAtEntry`), emite `PlayerPlaced` e responde a `LostInSpace` (`OnPlayerLostInSpace`).
-  - `StructureTracker.cs` (`Node`): estrutura atual, sinais `StructureChanged` e `LostInSpace` (regra provisória do espaço).
+  - `HexPhaseBuilder.cs` (`Node2D`, raiz da cena): monta o fundo, os pisos e as paredes (`WallSensitive`, com `MaxIrritation` por tipo). Põe o jogador na eclusa (`PlacePlayerAtEntry`) e emite `PlayerPlaced`. (Respondia ao `LostInSpace` com a regra provisória, `OnPlayerLostInSpace`; o método saiu com a câmara de partida.)
+  - `StructureTracker.cs` (`Node`): estrutura atual, sinais `StructureChanged` e `LostInSpace` (a consequência é de quem escuta: hoje, o `EjectionConsequence`).
   - `StructureHud.cs` (`Label`): HUD de teste "Estrutura: …".
   - `PhaseCamera.cs` (`Node`): limites da fase, zoom por tipo de estrutura, `ResetSmoothing`.
   - `hex_phase.tscn`, montada pelo dev, em `res://` (movida de `upgrades/` pelo painel Sistema de Arquivos no passo B0).
@@ -215,10 +217,13 @@ Medido pelo dev no editor, com o hexágono vazio (sem inimigos) e o V-Sync desli
   - Alterados (B2, feito): `DoorTrigger.cs` (troca pelo `ScreenFade`; ignora o jogador morto) e `RestartOnDeath.cs` (troca pelo `ScreenFade`; destino vazio = abrir de novo o arquivo da cena atual).
   - Alterado (B3, feito): `HexPhaseBuilder.cs` (`[Export]` `Airlock`, `AirlockInset` e `AirlockSpawnDistance`; `PlaceAirlock` põe a porta na parede externa do nó de entrada; `PlacePlayerAtEntry` põe o jogador à frente dela).
   - Cenas, montadas pelo dev: `player.tscn` (nó `ScreenFade`), `hex_phase.tscn` (nó `Airlock` com `DoorTrigger.cs`), `sala_entrada.tscn` (a `PortaSaida` leva à `hex_phase.tscn`; a `sala_ninho` fica como bancada).
+- **Câmara de partida (out/2026, `start-chamber.md`):** novos `ExitReleaseTerminal.cs`, `StartChamber.cs` e `EjectionConsequence.cs`; alterados `HexPhaseLayout.cs` (bocas dos nós), `HexPhaseBuilder.cs` (portões, paredes inertes, posição da câmara; sem a regra provisória), `SuitIntegrity.cs` (`Breach`) e `TerminalModo.cs`; cena principal → `hex_phase.tscn`.
 - **Somente leitura:** `Player.cs`, `GameState.cs`, `SalaEntrada.cs`.
-- **Ficam como bancadas:** `sala_ninho.tscn`, `sala_desfiladeiro.tscn` e `arena.tscn` (protótipos do recheio de nós e conectores).
+- **Ficam como bancadas:** `sala_entrada.tscn` (a câmara separada da fase B), `sala_ninho.tscn`, `sala_desfiladeiro.tscn` e `arena.tscn` (protótipos do recheio de nós e conectores).
 
 ## 7. Passos no editor (feitos pelo dev)
+
+Registro do que foi montado em cada fase. Depois, a câmara de partida mudou três ligações: o `LostInSpace` agora vai ao `EjectionConsequence`, a eclusa leva à própria `hex_phase.tscn` e a cena principal é a fase (`start-chamber.md`, seção 7).
 
 Feitos em out/2026 (fase A):
 
@@ -242,6 +247,8 @@ Feitos na fase B:
 Nenhum passo pendente na fase B.
 
 ## 8. Pronto quando
+
+Itens validados com o fluxo da época (regra provisória do espaço; câmara separada na fase B). O fluxo de hoje está validado na `start-chamber.md`.
 
 ### Fase A: o setor navegável
 
@@ -272,10 +279,10 @@ Confirmado pelo dev no editor (out/2026), com o ninho temporário na fase:
 ## 9. Como testar (roteiro manual no editor)
 
 1. F6 na `hex_phase.tscn`: percorra todas as estruturas, confira o rótulo e procure frestas nas junções (encoste nas emendas).
-2. Irrite paredes de nó, de corredor e de placa, contando o tempo até a ejeção (~5 s, ~2 s, ~1,5 s); ejetado, confirme a volta à eclusa em ~2 s, sem a câmera deslizar.
+2. Libere as saídas da câmara de partida e irrite paredes de nó, de corredor e de placa, contando o tempo até a ejeção (~5 s, ~2 s, ~1,5 s); ejetado, a incursão termina como na morte (`start-chamber.md`).
 3. Entre e saia de corredores e placas e confira o zoom (afasta nas arenas, aproxima nos corredores).
 4. **Passo 6:** com `Shape` = Hexagon, repita o passo 1 rapidamente e anote FPS, Processo de Física e Nós (Depurador > Monitores; V-Sync desligado só durante o teste). Referência na seção 4.
-5. (Fase B) F5: câmara → fase → eclusa → câmara (o banco sobe); morra na fase e entre de novo (fase nova); repita 5 vezes olhando o Output e "Nós Órfãos". Enquanto a fase não tem spawners, use um ninho temporário (seção 7, item 11) e apague-o depois: oculto, ele continuaria criando inimigos.
+5. Ciclo da partida: siga a seção 9 da `start-chamber.md` (F5 começa na câmara de partida; morte, ejeção e extração recarregam a fase); repita 5 vezes olhando o Output e "Nós Órfãos". Enquanto a fase não tem spawners, use um ninho temporário (seção 7, item 11) e apague-o depois: oculto, ele continuaria criando inimigos.
 
 ## 10. Decisões e notas
 
@@ -285,7 +292,7 @@ Confirmado pelo dev no editor (out/2026), com o ninho temporário na fase:
 2. **H2, continuidade:** uma cena por fase. Spawners que circulam pela fase inteira precisam que ela exista toda ao mesmo tempo; a integridade e a biomassa passam entre as estruturas sem esforço.
 3. **H3, montagem:** contornos por código a partir da geometria; recheio em cenas pequenas do editor. Ângulos de 60° e encaixes exatos ficam no código; a `DysonWall` é gerada ao longo de segmentos, então os contornos já ficam prontos para ela; o que é design visual continua no editor.
 4. **H4, escopo:** setor de teste primeiro; hexágono completo por parâmetro.
-5. **H5, câmara inicial e reinício:** câmara separada; entrada e extração pela eclusa de um nó periférico; morte volta à câmara; a fase recomeça a cada entrada. Resolve a decisão em aberto 3 da `suit-evolution.md` (voltar vivo à câmara). Consequência aceita: destruir todos os spawners exige uma única incursão.
+5. **H5, câmara inicial e reinício:** câmara separada; entrada e extração pela eclusa de um nó periférico; morte volta à câmara; a fase recomeça a cada entrada. Resolve a decisão em aberto 3 da `suit-evolution.md` (voltar vivo à câmara). Consequência aceita: destruir todos os spawners exige uma única incursão. **Revista em out/2026** (decisão 19): a câmara passou para dentro da fase.
 6. **Orientação (implementação, passo 3b):** o hexágono gira 30° ("deitado"), para todo painel ter um lado horizontal; no setor, o painel aponta para cima. É uma constante (`FirstPeripheralAngleDegrees`), não `[Export]`: é decisão de design, não balanceamento.
 7. **Compressão e alívio (princípio de level design):** a megaestrutura não precisa ser toda grande; precisa de contraste. Corredores estreitos fazem as arenas parecerem enormes, e vice-versa. Na fase: arenas (nós e painéis) amplas; corredores e placas estreitos e longos, com paredes mais sensíveis e câmera mais próxima. Implementados na etapa 1: zoom por tipo (`PhaseCamera`) e sensibilidade por tipo (`HexPhaseBuilder`). Ideias para a etapa 2 (ver também o backlog):
    - paralaxe da megaestrutura vista pelos vãos (hexágonos vizinhos, conectores sumindo na distância, o outro lado da esfera, a estrela; nó `Parallax2D`);
@@ -294,7 +301,7 @@ Confirmado pelo dev no editor (out/2026), com o ninho temporário na fase:
    - referências de escala (maquinário e costelas gigantes nas arenas, hordas de centenas);
    - áudio com eco nas arenas e abafado nos corredores;
    - variações nos corredores com o recheio (gargalos, costelas atravessadas, paredes que "respiram").
-8. **Componentes separados (responsabilidade única):** o construtor monta uma vez; o `StructureTracker` observa a todo passo; o `PhaseCamera` cuida da câmera. Avisos (Observer): `StructureChanged` → HUD e câmera; `LostInSpace` → fase (regra provisória); `PlayerPlaced` → câmera.
+8. **Componentes separados (responsabilidade única):** o construtor monta uma vez; o `StructureTracker` observa a todo passo; o `PhaseCamera` cuida da câmera. Avisos (Observer): `StructureChanged` → HUD e câmera; `LostInSpace` → consequência da ejeção (de início, a regra provisória na fase; hoje, o `EjectionConsequence`); `PlayerPlaced` → câmera.
 9. **Raio mínimo dos nós** (passo 3): `NodeRadius` padrão de 600 para 720, com a checagem `WarnIfCorridorsCollide` no layout (seção 4).
 10. **Divergência do zoom resolvida:** o CLAUDE.md citava zoom de 1,3× a 1,5×, mas o `player.tscn` está em 1×. Na fase, vale o zoom por tipo; fora dela, 1×.
 11. **Medidas padrão: receita 2×** (passo 6): `NodeSpacing` 6200, `NodeRadius` 1100, `PanelGap` 1000, 32 lados. Nós e painéis de ~2200 px e corredores longos (~4000 px nos conectores de nós, ~1500 px nos de placa): o maior contraste de compressão e alívio entre as configurações testadas. Viraram os padrões do código.
@@ -312,19 +319,18 @@ Confirmado pelo dev no editor (out/2026), com o ninho temporário na fase:
 16. **Transição no `player.tscn`, sem autoload:** o jogador está em todas as salas, então todas ganham a transição sem montagem por cena (o HUD já mora lá). Quem pede a troca acha o fade da cena pelo grupo `ScreenFade`; cena sem fade troca direto. A cena que sai termina preta e a que chega nasce preta; a Godot troca a cena antes de desenhar o quadro, então nenhum quadro sai sem cena (verificado no descartável).
 17. **Fade sem Tween** (B1): o quadro em que a fase é montada dura ~130 a 145 ms, e um Tween (que avança pelo tempo real) fazia o preto pular de 96% para 60% de uma vez (medido no descartável). O `ScreenFade` anima a transparência no `_Process`, com o passo limitado a 1/30 s por quadro (`MaxFrameStep`), e só processa durante a transição. Abaixo de 30 FPS, a transição fica um pouco mais longa. Se a cena de destino não abrir, mostra o erro e volta a clarear.
 18. **Porta da eclusa** (B3): a posição sai do código (depende das medidas e do `EntryPeripheral`) e a aparência fica no editor (H3). O construtor recebe a porta como um `Node2D` qualquer, sem saber que é um `DoorTrigger` (baixo acoplamento: a eclusa pode virar uma cena com animação sem mudar o construtor). "Para fora" é o vetor do centro da fase ao centro do nó; a porta fica a `AirlockInset` da parede, girada para fora (eixo X local para o espaço). O nascimento sai da geometria, não da porta: vale sem porta e na volta do espaço. Verificado no descartável nos nós 1 e 2 do setor e 1 a 6 do hexágono (receita 2×): porta dentro do piso do nó, nascimento a 300 px, porta sem disparar no nascimento.
+19. **H5 revista: câmara de partida no nó inicial** (ideia do dev, implementada e validada em out/2026; `start-chamber.md`). O jogo começa na fase; o nó de entrada é a câmara (portões, paredes inertes, terminais) até o jogador liberar as saídas; morte, ejeção e extração recarregam a fase em modo câmara. A ejeção passou a ser igual à morte (`EjectionConsequence`), e a regra provisória do espaço saiu. A `sala_entrada` virou bancada.
 
 ### Em aberto
 
 - **Sensibilidade das paredes por tipo** (25 / 10 / 7,5, seção 4): provisória; o dev vai testar e definir no futuro.
-- **Consequência da ejeção** (backlog, seção 2). A regra provisória (volta à eclusa sem perdas) sai quando ela for decidida; trocar só o ouvinte de `LostInSpace`.
 - **Papel de cada tipo de estrutura** (sugestão): nós = arenas de combate; conectores = corredores com risco de parede; painéis = áreas abertas com muita fronteira; conectores de placa = gargalos; nó central = clímax.
 - **Recheio de cada tipo** e quando entra (pode acompanhar os spawners, 1.4).
 - **Hexágonos vizinhos** e progressão entre fases (provavelmente depois da demo).
-- **Câmara de partida no nó inicial** (ideia do dev, out/2026, para o futuro): `docs/specs/start-chamber.md` (backlog 1.7). Se adotada, revê a H5 (câmara separada), a extração pela eclusa e a regra provisória do espaço.
 
 ### Notas
 
 - Cada passo da fase A foi verificado antes num projeto descartável no scratchpad (Godot 4.7.2 headless): contagem de estruturas, ponto do meio de cada estrutura, frestas e invasões das paredes, ordem dos nós, rastreio, regra do espaço, zoom, sensibilidade e, no passo 6, o custo das paredes (sondas no primeiro e no último nó do passo de física, por prioridade de processamento) e os estados e o tempo até ejetar da parede que dorme. A irritação, a ejeção, a sensação e o desempenho no editor foram testados pelo dev.
 - **Medir no editor:** o Processo de Física dos Monitores é o número que importa para a física; o FPS com V-Sync desligado esconde o custo de algo que só roda no passo de física. No headless, o monitor de física não é confiável (valores inflados): lá, medir com sondas.
-- A `SalaEntrada.cs` e a `SalaDesfiladeiro.cs` repetem a mesma lógica (posicionar o jogador num marcador, zerar a inércia, travar a câmera em 1920×1080). A fase não usa essa lógica; com a câmara como única sala separada, não vale criar um componente comum agora.
+- A `SalaEntrada.cs` e a `SalaDesfiladeiro.cs` repetem a mesma lógica (posicionar o jogador num marcador, zerar a inércia, travar a câmera em 1920×1080). A fase não usa essa lógica; com as duas cenas como bancadas, não vale criar um componente comum.
 - O `PhaseCamera` e o `HexPhaseBuilder` separam arena, corredor e placa em dois `switch` parecidos. Se uma terceira coisa precisar da mesma separação, criar um lugar único.

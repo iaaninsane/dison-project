@@ -68,7 +68,7 @@ Resumo; as regras completas e os valores em teste estão nas specs.
 - **Hoje (`WallSensitive.cs`, spec `reactive-walls.md`):** as paredes do grupo `Walls` acumulam irritação sob a luz e se recuperam fora dela. No limite (`MaxIrritation`), puxam o jogador para o **centro real** da parede (calculado pela transformação global do `ColorRect`) com `EjectionForce`; durante a ejeção, ele atravessa só essa parede e as do grupo `Walls` no caminho até ela (exceção de colisão), e bate em todo o resto. Paredes de titânio (câmara inicial) e pilares ficam fora do grupo.
 - **Modelo-alvo (decisão do dev, out/2026; spec `dyson-wall.md`, proposta):** só as **paredes de fronteira com o espaço** são reativas. Elas são uma membrana de peças geométricas (triângulos de Sierpinski) que, irritada, se deforma, **abre uma fenda** e **suga** o jogador; ao cruzar a fenda, ele é ejetado para o espaço (sinal `PlayerEjected`). A sucção simula uma descompressão: é **gradual pela distância** (fraca longe, avassaladora perto, com um raio "sem retorno" em que ela empata com o empuxo do traje) e tem uma **rajada** no rompimento. O jogador mantém o controle e pode fugir com contra-empuxo. **Inimigos e orbes de biomassa também são sugados**, o que faz da fenda uma ferramenta tática e um risco. Paredes internas entre estruturas são rígidas. O `WallSensitive.cs` é transitório até a `DysonWall` existir.
 - **Deformação:** o modo Esmaecer (as peças encolhem em cascata até sumir) é o padrão **provisório**; a forma final está em aberto (referências sugeridas na spec).
-- **Depois da ejeção:** em aberto (morte, dano, volta ao último nó, perda de biomassa). O espaço não é navegável.
+- **Depois da ejeção (decidido em out/2026, `start-chamber.md` D3):** ficar perdido no espaço é igual à morte. O `StructureTracker` avisa (`LostInSpace`), o `EjectionConsequence` rompe o traje, e o fluxo da morte segue (taxa da biomassa, escurecer, recarga da fase em modo câmara). O espaço não é navegável.
 
 ### 3.4 Inimigo fractal e horda (`FractalEnemy.cs`, `FractalSwarm.cs`)
 
@@ -83,12 +83,13 @@ Resumo; as regras completas e os valores em teste estão nas specs.
 
 ### 3.6 Integridade e morte (componentes no `player.tscn`)
 
-- `PlayerHurtbox` (contato com inimigos), `SuitIntegrity` (golpe, imunidade, piscar, empurrão; sinais `IntegrityChanged` e `Died`), `RestartOnDeath` (cobra a taxa da biomassa e volta à câmara inicial). Spec: `player-health-death.md`.
+- `PlayerHurtbox` (contato com inimigos), `SuitIntegrity` (golpe, imunidade, piscar, empurrão; sinais `IntegrityChanged` e `Died`), `RestartOnDeath` (cobra a taxa da biomassa e, depois de um atraso, recarrega a cena atual: na fase, a própria fase em modo câmara). `SuitIntegrity.Breach()` rompe o traje de uma vez (usado pela ejeção). Specs: `player-health-death.md` e `start-chamber.md`.
 
 ### 3.7 Estado da partida e evolução (`GameState.cs`, `RunData.cs`)
 
 - Autoload `GameState` com um `RunData` (banco, biomassa carregada, níveis das melhorias por `Id`, modo da lanterna), separado do nó para facilitar salvar em disco no futuro.
-- Na câmara inicial (`sala_entrada`): deposita a biomassa carregada no banco; o `EvolutionTerminal` abre o `UpgradePanel`; a `PortaSaida` (`DoorTrigger.cs`) leva à fase hexagonal (`hex_phase.tscn`), e a eclusa da fase traz de volta (extração). Melhorias como recursos `SuitUpgrade` (pasta `upgrades/`), aplicadas pelo `SuitUpgradeApplier`. Spec: `suit-evolution.md`.
+- Na **câmara de partida** (o nó de entrada da fase, `StartChamber`; spec `start-chamber.md`): deposita a biomassa carregada no banco ao carregar a fase; o `TerminalModo` troca o modo da lanterna; o `EvolutionTerminal` abre o `UpgradePanel`; o terminal "Liberar saídas" (`ExitReleaseTerminal`) abre o nó e começa a incursão. A eclusa extrai (recarrega a fase, depositando 100%). Melhorias como recursos `SuitUpgrade` (pasta `upgrades/`), aplicadas pelo `SuitUpgradeApplier`. Spec: `suit-evolution.md`.
+- A `sala_entrada` foi a câmara inicial até out/2026; hoje é bancada (os terminais e a `PortaSaida` → fase continuam lá).
 
 ---
 
@@ -127,7 +128,7 @@ Decidido na `hex-phase.md` (out/2026):
 - **Continuidade:** uma cena por fase; o jogador voa entre as estruturas sem troca de cena.
 - **Montagem:** contornos (piso, paredes, aberturas) gerados por código a partir da geometria; recheio em cenas pequenas feitas no editor.
 - **Escopo:** setor de teste primeiro (um triângulo: 3 nós, 3 conectores de nós, 1 painel, 3 conectores de placa); hexágono completo por parâmetro.
-- **Câmara inicial:** cena separada; entrada e extração pela eclusa de um nó periférico; a morte volta à câmara; a fase recomeça a cada entrada. Implementado (fase B): a porta da eclusa fica na parede externa do nó de entrada, e toda troca de cena escurece e clareia (`ScreenFade`).
+- **Câmara de partida (revista em out/2026, `start-chamber.md`):** o jogo começa na fase; o nó de entrada é a câmara (portões nas bocas, paredes inertes, terminais do traje e "Liberar saídas") até o jogador liberar as saídas, quando vira um nó comum e a incursão começa (`IncursionStarted`). Morte, ejeção (igual à morte) e extração pela eclusa recarregam a fase em modo câmara, e a fase recomeça do zero. Toda troca de cena escurece e clareia (`ScreenFade`). (A primeira versão, na fase B, tinha a câmara como cena separada.)
 - **Medidas:** receita 2× como padrão (nós e painéis de ~2200 px, conectores de nós de ~4000 px). O hexágono completo tem 1268 trechos de parede; a parede calma não processa (Processo de Física da fase vazia ~0,3 ms).
 - **Orientação (implementação):** hexágono "deitado" (giro de 30°): todo painel tem um lado horizontal; no setor de teste, o painel aponta para cima.
 - **Compressão e alívio:** arenas (nós e painéis) amplas e corredores estreitos e longos. A câmera afasta nas arenas e aproxima nos corredores, e as paredes dos corredores e das placas são mais sensíveis: o perigo fica onde está o aperto.
@@ -139,7 +140,8 @@ Sugestões em aberto (backlog, seção 2, e 1.4):
 
 ### 4.5 Cenas atuais
 
-- `sala_entrada.tscn`: câmara inicial (spawn, paredes de titânio fora do grupo `Walls`, `TerminalModo`, `EvolutionTerminal`, `PortaSaida`).
+- `hex_phase.tscn` (**cena principal**): a fase hexagonal, montada por código (`HexPhaseBuilder`), com a câmara de partida no nó de entrada (`StartChamber` e terminais), a eclusa (`Airlock`), o `StructureTracker`, o `PhaseCamera` e o `EjectionConsequence`.
+- `sala_entrada.tscn`: bancada (foi a câmara inicial até out/2026): spawn, paredes de titânio fora do grupo `Walls`, `TerminalModo`, `EvolutionTerminal` e `PortaSaida` → fase.
 - `sala_desfiladeiro.tscn`: corredores em zigue-zague com paredes reativas e janelas para o vácuo (`JanelasVacuo`).
 - `sala_ninho.tscn`: arena circular de segmentos reativos (`wall_segment.tscn`), pilares de cobertura (`cover_pillar.tscn`) e o ninho com pool.
 - `arena.tscn`: protótipo do início do projeto, só bancada de teste.
@@ -195,7 +197,7 @@ Nada disto entra na etapa 1, salvo o que uma spec pedir.
 
 ### 6.7 Transição de cena (`DoorTrigger.cs`)
 
-- `Area2D` com `[Export] TargetScenePath`; ao detectar o `Player` vivo, pede a troca ao `ScreenFade` (`ScreenFade.ChangeScene`): a tela escurece, a troca acontece fora do callback de física e a cena nova clareia. Trava contra troca dupla e aviso se o destino estiver vazio. Usado na `PortaSaida` da câmara e na eclusa da fase (`Airlock`). O `RestartOnDeath` usa o mesmo caminho. Spec: `hex-phase.md` (fase B).
+- `Area2D` com `[Export] TargetScenePath`; ao detectar o `Player` vivo, pede a troca ao `ScreenFade` (`ScreenFade.ChangeScene`): a tela escurece, a troca acontece fora do callback de física e a cena nova clareia. Trava contra troca dupla e aviso se o destino estiver vazio. Usado na eclusa da fase (`Airlock`, extração: recarrega a própria fase; só ativa depois de liberar as saídas) e na `PortaSaida` da `sala_entrada` (bancada). O `RestartOnDeath` usa o mesmo caminho. Specs: `hex-phase.md` (fase B) e `start-chamber.md`.
 
 ### 6.8 Desempenho da horda
 

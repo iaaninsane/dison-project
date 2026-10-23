@@ -17,13 +17,15 @@ public partial class TerminalModo : Area2D
         UpdateModeColor(GameState.Instance.Data.IsManualFire);
     }
 
-    public override void _Process(double delta)
+    // Reage ao EVENTO de interação, não à leitura da tecla (polling): com o jogo pausado (painel de evolução aberto),
+    // o evento não chega aqui; lendo a tecla, um toque rápido que fechava o painel trocava o modo junto (testado no motor)
+    public override void _UnhandledInput(InputEvent @event)
     {
-        // Se o jogador estiver na área e pressionar o botão de interação ("interact" ou Espaço/E)
-        if (_playerInside && Input.IsActionJustPressed("interact"))
-        {
-            AlternarModoTiro();
-        }
+        if (!@event.IsActionPressed("interact")) return;
+        if (!_playerInside) return;
+
+        AlternarModoTiro();
+        GetViewport().SetInputAsHandled(); // Este aperto já foi usado: ninguém mais reage a ele
     }
 
     private void AlternarModoTiro()

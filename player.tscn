@@ -95,7 +95,6 @@ BlinkTarget = NodePath("../Sprite2D")
 
 [node name="RestartOnDeath" type="Node" parent="." unique_id=924423182]
 script = ExtResource("10_n7ghd")
-ReturnScenePath = "uid://qkdv3hvlc3qt"
 
 [node name="SuitUpgradeApplier" type="Node" parent="." unique_id=102462073 node_paths=PackedStringArray("Integrity", "Collector")]
 script = ExtResource("11_ivps1")

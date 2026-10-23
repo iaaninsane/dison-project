@@ -74,6 +74,16 @@ public partial class SuitIntegrity : Node
         TakeHit(enemyPosition);
     }
 
+    // Rompe o traje de uma vez (ex.: jogador perdido no espaço): mesmo caminho da morte por golpes (sinal Died)
+    public void Breach()
+    {
+        if (Current <= 0) return; // Já rompido
+
+        Current = 0;
+        NotifyIntegrity();
+        EmitSignal(SignalName.Died);
+    }
+
     private void TakeHit(Vector2 enemyPosition)
     {
         Current = Mathf.Max(0, Current - ContactDamage);

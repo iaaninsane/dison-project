@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="dison-demo"
-run/main_scene="uid://qkdv3hvlc3qt"
+run/main_scene="uid://bg27ng01eost2"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 

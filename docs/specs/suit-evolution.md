@@ -1,6 +1,7 @@
 # Spec: Evolução do traje (gastar biomassa na câmara inicial)
 
 - **Status:** validada (out/2026). Valores em teste. A melhoria da lanterna está adiada (seção 10).
+- **Atualizado (out/2026, `start-chamber.md`):** a câmara (terminais do traje e depósito no banco) passou para o nó de entrada da fase hexagonal, a **câmara de partida**: o jogo começa nela, e morte, ejeção e extração recarregam a fase nela. A `sala_entrada` virou bancada. As regras de banco, taxa e melhorias não mudaram; os trechos abaixo que citam a `sala_entrada` descrevem como a mecânica foi validada.
 - **Etapa:** 1 (mecânica)
 - **Depende de:** `docs/specs/biomass-collection.md` (contador de biomassa), `docs/specs/player-health-death.md` (morte e fluxo provisório de recarregar a sala).
 
@@ -17,11 +18,11 @@ Fechar o core loop: a biomassa coletada no combate é gasta, na câmara inicial 
 - Existem dois saldos: a **biomassa carregada** (a que o jogador coletou na incursão atual, mostrada no HUD) e o **banco** (a biomassa guardada, usada para comprar melhorias).
 - A biomassa carregada sobrevive à troca de sala dentro da mesma incursão (hoje ela zera, porque o jogador é recriado em cada sala).
 - Quando o jogador morre, então volta à câmara inicial e `DeathKeepFraction` da biomassa carregada (arredondado para baixo) vai para o banco; o resto se perde. A biomassa carregada volta a zero.
-- Quando o jogador entra na câmara inicial vivo (decisão em aberto 3), então toda a biomassa carregada vai para o banco.
+- Quando o jogador entra na câmara inicial vivo (decisão em aberto 3), então toda a biomassa carregada vai para o banco. (Hoje: a extração pela eclusa recarrega a fase, e a câmara de partida deposita 100%.)
 
 ### Morte e saída da câmara
 
-- Quando o jogador morre, então, depois de `DeathRestartDelay`, a cena carregada é a câmara inicial (`sala_entrada.tscn`), em vez de recarregar a sala atual.
+- Quando o jogador morre, então, depois de `DeathRestartDelay`, a cena carregada é a câmara inicial (`sala_entrada.tscn`), em vez de recarregar a sala atual. (Desde out/2026: `ReturnScenePath` vazio, a fase recarrega em modo câmara; `start-chamber.md`.)
 - Quando o jogador entra na porta de saída da câmara (`PortaSaida`), então a cena carregada é a sala de combate configurada no Inspector (desde out/2026, a fase hexagonal `hex_phase.tscn`, com transição de tela; `hex-phase.md`, fase B).
 - Ao entrar em qualquer sala, o traje começa com a integridade cheia (decisão em aberto 6).
 
@@ -57,7 +58,7 @@ Pontos de partida aceitos pelo dev, para ajustar depois.
 | Parâmetro | Valor inicial | Onde fica | Observação |
 |---|---|---|---|
 | `DeathKeepFraction` | 0,5 | estado da partida | Fração da biomassa carregada que vai para o banco na morte |
-| Cena de destino da morte | `sala_entrada.tscn` | componente de morte (`RestartOnDeath`) | Vazio = recarregar a sala atual (comportamento de hoje) |
+| Cena de destino da morte | `sala_entrada.tscn` (desde out/2026, vazio) | componente de morte (`RestartOnDeath`) | Vazio = recarregar a cena atual: na fase, a própria fase em modo câmara |
 | Cena de destino da `PortaSaida` | `sala_ninho.tscn` (desde out/2026, `hex_phase.tscn`) | porta (Inspector) | A `sala_ninho` ficou como bancada |
 | Integridade do traje | +20 por nível, 3 níveis, custos 20 / 40 / 80 | definição da melhoria | 100 → 160 |
 | Ímã de biomassa | +30 px por nível, 3 níveis, custos 15 / 30 / 60 | definição da melhoria | 80 → 170 px |
@@ -85,7 +86,7 @@ Estimativa de ritmo (só para referência): cada ancestral rende 4 de biomassa. 
   - `DoorTrigger.cs` (`Area2D`): troca para a cena do Inspector quando o jogador entra (troca adiada, com trava contra troca dupla).
   - `SuitUpgrade.cs` (`Resource`, `[GlobalClass]`): definição de uma melhoria (`Id`, `DisplayName`, `Target`, `ValuePerLevel`, `Costs`; o nível máximo é o tamanho de `Costs`).
   - `UpgradeCatalog.cs` (`Resource`, `[GlobalClass]`): lista única de melhorias, usada pelo painel e pelo aplicador.
-  - `EvolutionTerminal.cs` (`Area2D`): abre o painel com a ação `interact`, reagindo ao **evento** em `_UnhandledInput` (não por polling), para o aperto que a interface já usou não reabrir o painel.
+  - `EvolutionTerminal.cs` (`Area2D`): abre o painel com a ação `interact`, reagindo ao **evento** em `_UnhandledInput` (não por polling). O "A" que fecha o painel não o reabre porque, com o painel aberto, o jogo fica pausado (o terminal não recebe eventos) e o `Panel.Visible` ainda é verdadeiro.
   - `UpgradePanel.cs` (`PanelContainer`): cria um botão por melhoria a partir do catálogo, mostra o banco, pausa o jogo enquanto aberto (`ProcessMode = Always`), fecha com o botão "Fechar" ou `ui_cancel`; conecta e desconecta os sinais do `GameState`.
   - `SuitUpgradeApplier.cs` (`Node`, filho do `Player`): recalcula do zero `base + nível × valor` ao nascer e a cada compra (idempotente), somando os bônus por alvo.
   - Dados: pasta `upgrades/` com `upgrade_suit_integrity.tres`, `upgrade_magnet.tres` e `upgrade_catalog.tres`.
@@ -146,11 +147,11 @@ Feitos em out/2026:
 
 ### Notas de implementação (out/2026)
 
-- **Controle na interface:** na Godot 4.7, `ui_accept` e `ui_cancel` não têm botões de controle por padrão (verificado direto no motor); foram mapeados no projeto. Com isso, o botão A passa a ser `ui_accept` e `interact` ao mesmo tempo: por isso o terminal reage ao evento em `_UnhandledInput` (a interface consome o aperto que usou) em vez de ler a tecla por polling.
+- **Controle na interface:** na Godot 4.7, `ui_accept` e `ui_cancel` não têm botões de controle por padrão (verificado direto no motor); foram mapeados no projeto. Com isso, o botão A passa a ser `ui_accept` e `interact` ao mesmo tempo: por isso o terminal reage ao evento em `_UnhandledInput` em vez de ler a tecla por polling. **Corrigido (out/2026, verificado no motor 4.7.2; `start-chamber.md`, passo 4):** o botão da interface com foco NÃO consome o aperto do A, que continua até o `_UnhandledInput`. O que protege os terminais é a pausa do painel (um nó pausável não recebe eventos). Por polling, um toque rápido (aperto e soltura no mesmo quadro em que o painel fecha) acionava o `TerminalModo` junto; por isso ele também passou a reagir ao evento.
 - **Ordem do `_Ready`:** filhos ficam prontos antes dos pais. O coletor lê a biomassa do `GameState` só no fim do frame (depois do depósito feito pela `SalaEntrada`), e o aplicador aplica as melhorias de forma adiada (depois do `SuitIntegrity` ficar pronto).
 - **Para salvar em disco no futuro:** converter só o `RunData` (banco, carregada, níveis por `Id` e modo da lanterna); os `Id` das melhorias não devem mudar depois de lançados.
 - **Possível evolução do aplicador:** hoje um `switch` com 2 alvos. Se os alvos crescerem ou ganharem regras próprias, trocar por uma interface por alvo (padrão Strategy).
-- **Impacto do rascunho de game design (out/2026), decidido na `hex-phase.md`:** a câmara inicial continua uma cena separada; a `PortaSaida` passa a levar à fase hexagonal, e a eclusa da fase leva de volta à câmara (extração), o que resolve a decisão em aberto 3 (entrar vivo na câmara deposita a carregada, como já funciona). A decisão 6 passa de "integridade cheia em cada sala" para "cheia ao entrar na fase, mantida entre as estruturas". A morte continua voltando à câmara. Banco, níveis das melhorias e modo da lanterna no `RunData` não mudam.
+- **Impacto do rascunho de game design (out/2026), decidido na `hex-phase.md`:** a câmara inicial continua uma cena separada; a `PortaSaida` passa a levar à fase hexagonal, e a eclusa da fase leva de volta à câmara (extração), o que resolve a decisão em aberto 3 (entrar vivo na câmara deposita a carregada, como já funciona). A decisão 6 passa de "integridade cheia em cada sala" para "cheia ao entrar na fase, mantida entre as estruturas". A morte continua voltando à câmara. Banco, níveis das melhorias e modo da lanterna no `RunData` não mudam. **Revisto depois (out/2026, `start-chamber.md`):** a câmara passou para dentro da fase (nó de entrada), com os mesmos terminais e o depósito feito pela `StartChamber`; a integridade começa cheia a cada recarga da fase.
 - **Modo da lanterna em todas as salas (backlog 1.1, out/2026):** o modo escolhido no `TerminalModo` passou a viver no `RunData` (`IsManualFire`, padrão manual) e só muda por `GameState.ToggleFlashlightMode()`, que emite `FlashlightModeChanged(bool)`. O `Player` lê o modo ao nascer e escuta o sinal (Observer); `IsManualFire` deixou de ser `[Export]` e passou a `private set`. O `TerminalModo` não guarda mais referência ao jogador e, ao carregar a câmara, pinta o quadrado com o modo guardado (ciano = manual, amarelo = automático). Por isso o `TerminalModo.cs` deixou de ser somente leitura (seção 6). Testado pelo dev: troca ao vivo, `sala_ninho` e volta pela morte, sem erros no Output.
 
 ### Alternativas registradas na proposta original
