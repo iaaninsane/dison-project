@@ -75,8 +75,6 @@ script = ExtResource("4_e333e")
 script = ExtResource("5_e333e")
 Phase = NodePath("..")
 Tracker = NodePath("../StructureTracker")
-ArenaZoom = 0.1
-CorridorZoom = 0.1
 
 [node name="StartChamber" type="Node2D" parent="." unique_id=778838981 node_paths=PackedStringArray("Phase", "Airlock")]
 script = ExtResource("7_souy7")
