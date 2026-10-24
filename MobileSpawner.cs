@@ -5,12 +5,18 @@ using System.Linq;
 // Spawner móvel (spec mobile-spawners.md): anda pelas rotas da fase em passeio aleatório, pelo eixo dos corredores.
 // Corpo sólido movido por código (AnimatableBody2D, camada 2, máscara 1): empurra o jogador do caminho antes de andar;
 // os inimigos o atravessam. A luz o fere (ILightDamageable) e, iluminado, ele foge em pânico; encostar fere o traje
-// (IContactHazard).
-// Quem cria e põe na rota é o SpawnerDirector; o spawner só executa.
+// (IContactHazard). Perto do jogador, gera inimigos do estoque da fase (EnemyPool).
+// Quem cria, põe na rota e dá o ritmo (intervalo entre inimigos e velocidade) é o SpawnerDirector; o spawner só executa.
 public partial class MobileSpawner : AnimatableBody2D, ILightDamageable, IContactHazard
 {
-    [Export] public float MoveSpeed = 150f; // Velocidade pela rota (px/s)
+    [Signal] public delegate void DestroyedEventHandler(MobileSpawner spawner); // Morreu (o diretor recalcula o ritmo)
+
+    [Export] public float MoveSpeed = 150f; // Velocidade pela rota (px/s), antes do ritmo do diretor
     [Export] public float MaxHealth = 300f; // Vida (com a lanterna atual, 35/s: ~8,6 s de luz contínua)
+
+    [ExportGroup("Geração de inimigos")]
+    [Export] public float ActivationRadius = 2000f; // Só gera com o jogador a menos disto (px); longe, só anda
+    [Export] public float SpawnScatter = 40f;       // Raio em que os inimigos nascem (px)
 
     [ExportGroup("Pânico (iluminado)")]
     [Export] public float PanicSpeedMultiplier = 2f; // Velocidade em pânico = MoveSpeed × isto
@@ -34,6 +40,7 @@ public partial class MobileSpawner : AnimatableBody2D, ILightDamageable, IContac
     private const int RingSegments = 48;
 
     public bool IsDead { get; private set; } = false; // Morto não fere nem toma dano (IContactHazard)
+    public EnemyPool Pool { get; set; }               // Estoque da fase, dado pelo diretor (vazio = não gera)
 
     private Node2D _phase;     // Dono das coordenadas das rotas (a raiz da fase)
     private Node2D _player;    // De quem foge
@@ -42,6 +49,9 @@ public partial class MobileSpawner : AnimatableBody2D, ILightDamageable, IContac
     private float _distance;   // Quanto já andou na rota, a partir de _from (px)
     private float _health;
     private float _panicTimer; // > 0 = em pânico
+    private float _spawnInterval = 1f;   // Ritmo dado pelo diretor (SetPace)
+    private float _speedMultiplier = 1f;
+    private float _spawnTimer;           // Começa em 0: gera assim que o jogador chega perto
     private float _radius;
     private float _time;
 
@@ -65,6 +75,14 @@ public partial class MobileSpawner : AnimatableBody2D, ILightDamageable, IContac
         _distance = distance;
     }
 
+    // Ritmo dado pelo diretor (curva de dificuldade): intervalo entre inimigos e multiplicador da velocidade
+    public void SetPace(float spawnInterval, float speedMultiplier)
+    {
+        _spawnInterval = spawnInterval;
+        _speedMultiplier = speedMultiplier;
+        _spawnTimer = Mathf.Min(_spawnTimer, spawnInterval); // Ficou mais rápido: não espera o intervalo antigo
+    }
+
     // Chamado pela luz a cada passo em que ele está no feixe (ILightDamageable)
     public void TakeDamage(float amount)
     {
@@ -82,6 +100,7 @@ public partial class MobileSpawner : AnimatableBody2D, ILightDamageable, IContac
         float dt = (float)delta;
         UpdatePanic(dt);
         UpdatePulse(dt);
+        UpdateSpawning(dt);
         if (_route == null) return; // Sem rota (ex.: posto à mão numa cena de teste): fica parado
 
         FleeIfPlayerAhead();
@@ -114,7 +133,21 @@ public partial class MobileSpawner : AnimatableBody2D, ILightDamageable, IContac
         _panicTimer -= dt;
     }
 
-    private float CurrentSpeed() => IsPanicking ? MoveSpeed * PanicSpeedMultiplier : MoveSpeed;
+    private float CurrentSpeed() => MoveSpeed * _speedMultiplier * (IsPanicking ? PanicSpeedMultiplier : 1f);
+
+    // Com o jogador perto, gera um inimigo do estoque a cada _spawnInterval; longe, o relógio para
+    private void UpdateSpawning(float dt)
+    {
+        if (Pool == null || _player == null) return;
+        if (GlobalPosition.DistanceSquaredTo(_player.GlobalPosition) > ActivationRadius * ActivationRadius) return;
+
+        _spawnTimer -= dt;
+        if (_spawnTimer > 0f) return;
+
+        _spawnTimer += _spawnInterval; // Soma (não recomeça): mantém o ritmo exato, sem perder a sobra do passo
+        Vector2 scatter = Vector2.Right.Rotated(GD.Randf() * Mathf.Tau) * GD.Randf() * SpawnScatter;
+        Pool.TrySpawn(GlobalPosition + scatter); // Estoque vazio ou fase no teto: tenta de novo no próximo intervalo
+    }
 
     // Em pânico, com o jogador à frente na rota, dá meia-volta (passa a contar a partir da outra ponta)
     private void FleeIfPlayerAhead()
@@ -165,6 +198,7 @@ public partial class MobileSpawner : AnimatableBody2D, ILightDamageable, IContac
     {
         IsDead = true;
         DropBiomass();
+        EmitSignal(SignalName.Destroyed, this);
         QueueFree();
     }
 

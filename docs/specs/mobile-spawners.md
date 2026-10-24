@@ -1,6 +1,6 @@
 # Spec: Spawners móveis e objetivo da fase
 
-- **Status:** aprovada (decisões S1 a S9 do dev, out/2026; seção 10). Plano de implementação aprovado pelo dev (seção 10); passos 1 e 2 feitos e testados pelo dev; passo 3 aplicado (scripts), aguardando a Mask da cena e o teste do dev. Valores em teste.
+- **Status:** aprovada (decisões S1 a S9 do dev, out/2026; seção 10). Plano de implementação aprovado pelo dev (seção 10); passos 1 a 4 feitos e testados pelo dev; passo 5 (recolhimento por distância) em preparação. Valores em teste.
 - **Etapa:** 1 (mecânica). É a "fase C" da `hex-phase.md` (spawners na fase e simulação por proximidade).
 - **Depende de:** `docs/specs/hex-phase.md` (a fase, o `HexPhaseLayout`), `docs/specs/start-chamber.md` (sinal `IncursionStarted`; nada nasce no nó inicial travado), `docs/specs/fractal-enemy.md` e `docs/specs/fractal-enemy-movement.md` (inimigo, horda, tetos e o problema conhecido de FPS), `docs/specs/biomass-collection.md` (recompensa), `docs/specs/player-health-death.md` (golpe de contato). Relaciona-se com a `docs/specs/dyson-wall.md` (a sucção afeta os spawners? Em aberto lá).
 
@@ -49,7 +49,9 @@ Dar à fase um objetivo: cerca de 10 spawners circulam pelas estruturas do hexá
 - Os inimigos nascem em volta do spawner (até `SpawnScatter` do centro), da geração 0, tirados de um **estoque (pool) compartilhado** por todos os spawners e guardado num nó **parado** (`EnemyPool`).
   - **Por que o estoque fica fora do spawner (achado no código):** hoje os inimigos do pool são filhos do `NinhoSpawnerPooled`, e os fragmentos nascem no mesmo pai, em coordenadas locais (`Position + offset`). Na Godot, o filho herda a transformação do pai: se o pai andasse, a horda inteira andaria junto com ele.
 - Um spawner só gera inimigos quando o jogador está a menos de `ActivationRadius` (S5). Longe do jogador, ele só anda.
-- O spawner não gera quando `FractalSwarm.Count` ≥ `MaxTotalEnemies` (orçamento de física, como no ninho) nem quando o estoque está vazio (`PoolSize`: inimigos da geração 0 vivos na fase inteira). Estoque vazio não é erro: o spawner espera, sem mensagem no Output.
+- O relógio de geração só corre com o jogador perto e começa em zero: o primeiro inimigo nasce assim que o jogador chega. Depois, um a cada intervalo dado pelo diretor (o relógio soma o intervalo, para manter o ritmo exato).
+- O estoque (`EnemyPool`) não solta inimigo quando `FractalSwarm.Count` ≥ `MaxTotalEnemies` (orçamento de física, como no ninho) nem quando está vazio (`PoolSize`: inimigos da geração 0 vivos na fase inteira). Não é erro: o spawner tenta de novo no próximo intervalo, sem mensagem no Output.
+- Inimigos deixados para trás continuam vivos e ocupando o estoque até o recolhimento por distância (passo 5).
 - Inimigo longe do jogador (mais que `DespawnDistance` por `DespawnDelay`) é **recolhido em silêncio** (S5): volta ao estoque (ou é liberado, se for fragmento), sem se dividir e sem soltar biomassa. Acontece fora da tela.
   - **Por que (achado no código):** os inimigos andam a 10 px/s (`Speed` na `fractal_enemy.tscn`) e o jogador voa a 600. Sem recolher, os inimigos ficariam espalhados pelas rotas, longe do jogador, empurrando paredes na direção dele (o cenário do problema conhecido de FPS) e ocupando o teto: o spawner perto do jogador deixaria de gerar.
 
@@ -98,16 +100,16 @@ Dar à fase um objetivo: cerca de 10 spawners circulam pelas estruturas do hexá
 | `BaseSpawnRate` | 1,5 inimigos/s | Soma de todos os spawners (orçamento global) |
 | `SpawnRateGrowthPerKill` | 0,1 | +10% na taxa total por spawner morto |
 | `SpeedGrowthPerKill` | 0,05 | +5% na velocidade dos spawners por spawner morto |
-| `MaxTotalEnemies` | 350 | O mesmo orçamento de física medido no ninho (pico de 380 em massacre, FPS ≥ 100) |
 | `SpawnerScene` | `mobile_spawner.tscn` | Ligado no Inspector |
-| `Phase`, `StartChamber`, `Pool` | — | Ligados no Inspector. `StartChamber` vazio = começa ao carregar |
+| `Phase`, `StartChamber`, `Pool` | — | Ligados no Inspector. `StartChamber` vazio = começa ao carregar; `Pool` vazio = ninguém gera (aviso no Output) |
 
 ### `EnemyPool` (estoque compartilhado, nó parado na fase)
 
 | Parâmetro | Valor inicial | Observação |
 |---|---|---|
 | `EnemyScene` | `fractal_enemy.tscn` | Ligado no Inspector |
-| `PoolSize` | 60 | Teto de inimigos da geração 0 vivos na fase toda (faz na fase o papel do `MaxConcurrentEnemies` do ninho). Com os fragmentos, até 420 em teoria; o `MaxTotalEnemies` corta antes |
+| `PoolSize` | 60 | Teto de inimigos da geração 0 vivos na fase toda (faz na fase o papel do `MaxConcurrentEnemies` do ninho). Com os fragmentos, até 420 em teoria; o `MaxTotalEnemies` corta antes. Criar os 60 leva ~15 ms (descartável), ao carregar a fase |
+| `MaxTotalEnemies` | 350 | O mesmo orçamento de física medido no ninho (pico de 380 em massacre, FPS ≥ 100). Saiu do diretor no passo 4: o "posso criar mais um inimigo?" fica num lugar só |
 
 ### `MobileSpawner` (cena `mobile_spawner.tscn`)
 
@@ -159,7 +161,7 @@ O dano do contato é o do `SuitIntegrity` (`ContactDamage` 10, `KnockbackImpulse
 - **Novos (criar só com autorização):**
   - `MobileSpawner.cs` (`AnimatableBody2D`, o nó da Godot para corpos movidos por código) e a cena `mobile_spawner.tscn` (montada pelo dev): anda pelas rotas, gera inimigos, toma dano da luz, foge, morre e avisa. **Criado no passo 2** (andar pelas rotas e silhueta provisória).
   - `SpawnerDirector.cs` (`Node2D`, filho da raiz da fase): começa no `IncursionStarted`, cria e posiciona os spawners, calcula a curva de dificuldade e emite `SpawnersChanged` e `AllSpawnersDestroyed`. **Criado no passo 2** (começar e posicionar).
-  - `EnemyPool.cs` (`Node2D` parado, filho da raiz da fase): o estoque compartilhado.
+  - `EnemyPool.cs` (`Node2D` parado, filho da raiz da fase): o estoque compartilhado e o orçamento de inimigos (`PoolSize`, `MaxTotalEnemies`). **Criado no passo 4.**
   - `ILightDamageable.cs` (interface C#): "o que a luz fere". **Criado no passo 3.**
   - `IContactHazard.cs` (interface C#): "o que fere o traje ao encostar". **Criado no passo 3.**
   - `SpawnerHud.cs` (`Label`) e `SpawnerIndicator.cs` (`Control`, a seta).
@@ -176,7 +178,7 @@ O dano do contato é o do `SuitIntegrity` (`ContactDamage` 10, `KnockbackImpulse
 
 1. **Build** depois de cada script com `[Export]` ou `[Signal]` novo.
 2. `mobile_spawner.tscn`: raiz **`MobileSpawner`** (`AnimatableBody2D`, `MobileSpawner.cs`) com **`CollisionShape2D`** (círculo de raio 40); Collision **Layer** só 2; **Mask** só 1 (vazia no passo 2; a 1 entrou no passo 3, para o spawner enxergar o jogador e empurrá-lo).
-3. `hex_phase.tscn`: **`EnemyPool`** (`Node2D`, `EnemyPool.cs`, campo **Enemy Scene**) e **`SpawnerDirector`** (`Node2D`, `SpawnerDirector.cs`) como filhos da raiz `HexPhase`, em (0, 0); campos do diretor a ligar: **Phase**, **Start Chamber**, **Pool** e **Spawner Scene**.
+3. `hex_phase.tscn`: **`SpawnerDirector`** (`Node2D`, `SpawnerDirector.cs`; passo 2) e **`EnemyPool`** (`Node2D`, `EnemyPool.cs`, campo **Enemy Scene**; passo 4) como filhos da raiz `HexPhase`, em (0, 0), nessa ordem e logo acima do `Player` (inimigos desenhados sobre os spawners e sob o jogador); campos do diretor a ligar: **Phase**, **Start Chamber**, **Spawner Scene** e **Pool** (passo 4).
 4. `PhaseHud` > **`SpawnerLabel`** (`Label`, `SpawnerHud.cs`) e **`SpawnerIndicator`** (`Control`, `SpawnerIndicator.cs`, campo **Director**); sinais `SpawnersChanged` e `AllSpawnersDestroyed` → `SpawnerLabel`.
 5. `fractal_enemy.tscn`: **Despawn Distance** = 3000.
 6. `player.tscn` > raiz **`Player`** > CharacterBody2D > Moving Platform > **Floor Layers**: sem a camada 2 (passo 2).
@@ -258,16 +260,18 @@ Cada passo: verificação antes no descartável (Godot headless), apresentação
 2. **Spawner que anda** (novos `MobileSpawner.cs` e `SpawnerDirector.cs`; cena `mobile_spawner.tscn`): o diretor cria os spawners no `IncursionStarted`, longe do nó de entrada; passeio aleatório; silhueta provisória; corpo sólido na camada 2. Teste: os spawners circulam pela fase; o jogador bate neles e é empurrado. **Feito e testado pelo dev** (out/2026: spawners andando pelas rotas, empurrando sem "carona", sem erros no Output; montagem conferida no disco):
    - `HexRoute.PointAt` no layout; `MobileSpawner` anda `MoveSpeed` px por passo e, ao passar da ponta, sorteia outra rota (menos a de onde veio), sem perder o que sobrou do passo; desenha o corpo e o anel com o raio da `CollisionShape2D`. `SpawnerDirector` se inscreve no `IncursionStarted` (ou começa adiado, sem câmara), embaralha as rotas que não tocam o nó de entrada e põe cada spawner no ponto sorteado **antes** de ele entrar na árvore (com o Sync to Physics, a posição vale no passo seguinte; um "pulo" da origem viraria velocidade na física);
    - verificado no descartável (0 falhas): nada antes de liberar; ao liberar, 10 spawners em 10 rotas distintas, nenhuma tocando o nó 2, entre 25% e 74% da rota, já no ponto certo; 60 s a 3000 px/s: 36.110 amostras sem sair do piso, sem salto, 398 trocas de rota sem voltar pela mesma, sem tocar parede, 30 de 30 rotas visitadas; setor sem câmara começa sozinho (10 spawners nas 3 rotas elegíveis); `Area2D` com máscara 2 percebe o spawner (com máscara 1, não); inimigo (máscara 1) atravessado; "carona" confirmada e corrigida pelo Floor Layers (seção 5).
-3. **Luz e contato** (novos `ILightDamageable.cs` e `IContactHazard.cs`; alterados `LightDamageArea.cs`, `PlayerHurtbox.cs` e `FractalEnemy.cs`; mais vida, pânico e morte no `MobileSpawner`): a luz fere e mata o spawner, que foge e solta biomassa; encostar fere. Teste: matar spawners; `sala_ninho` igual a antes. **Scripts aplicados** (out/2026), aguardando a Mask 1 na `mobile_spawner.tscn` e o teste do dev:
+3. **Luz e contato** (novos `ILightDamageable.cs` e `IContactHazard.cs`; alterados `LightDamageArea.cs`, `PlayerHurtbox.cs` e `FractalEnemy.cs`; mais vida, pânico e morte no `MobileSpawner`): a luz fere e mata o spawner, que foge e solta biomassa; encostar fere. Teste: matar spawners; `sala_ninho` igual a antes. **Feito e testado pelo dev** (out/2026: a luz mata o spawner, ele foge e solta biomassa, o contato fere sem colar, `sala_ninho` igual, sem erros):
    - também corrige a "cola" do passo 2 (seção 5): o spawner empurra o jogador antes de andar (`PushBlocker`, com `TestMove` e `MoveAndCollide`) e espera se ele estiver encurralado;
    - verificado no descartável (0 falhas; cópias reais de `LightDamageArea`, `PlayerHurtbox`, `SuitIntegrity` e `FractalEnemy`): a luz mata o spawner parado em 8,62 s (esperado 8,57), com 20 orbes, e ele sai da árvore sem erros; regressão: a mesma luz mata o inimigo e os fragmentos (4 orbes); em pânico, meia-volta com o jogador à frente e 300 px/s, sem virar com o jogador atrás, de volta a 150 px/s 2 s depois da luz; no ponto, em pânico, a rota mais longe do jogador e, calmo, sorteio; contato: golpes de 10 com 0,8 s de imunidade e empurrão para longe; regressão: inimigo encostado fere; a verificação do passo 2 (rotas, máscaras, "carona") refeita com o spawner novo, sem falhas.
-4. **Geração e curva** (novo `EnemyPool.cs`; geração no `MobileSpawner`; curva e contagem no `SpawnerDirector`): inimigos nascem perto do jogador; o intervalo encurta a cada spawner morto; tetos de estoque e de física.
+4. **Geração e curva** (novo `EnemyPool.cs`; geração no `MobileSpawner`; curva e contagem no `SpawnerDirector`): inimigos nascem perto do jogador; o intervalo encurta a cada spawner morto; tetos de estoque e de física. **Feito e testado pelo dev** (out/2026: inimigos nascem perto dos spawners e ficam para trás, os restantes aceleram a cada morte, sem erros, "Nós Órfãos" = 0; montagem conferida no disco):
+   - `EnemyPool` (estoque de 60 criado ao carregar; `TrySpawn` respeita `PoolSize` e `MaxTotalEnemies`, que saiu do diretor); `MobileSpawner` com o sinal `Destroyed`, `ActivationRadius`, `SpawnScatter`, `Pool` e `SetPace` (intervalo e velocidade dados pelo diretor); `SpawnerDirector` conta vivos e mortos e reparte o orçamento (`ApplyPace`) ao criar e a cada `Destroyed`;
+   - verificado no descartável (0 falhas): ritmo igual em todos os vivos e conforme a fórmula nos 10 níveis (6,667 s e ×1,00 com 10 vivos; 0,351 s e ×1,45 com o último); nenhum inimigo com o jogador longe; o último gerou 29 inimigos em 10 s a 217,4 px/s; numa reta, o primeiro na hora e depois um a cada 1,00 s, a até 39,6 px do spawner, parando com o jogador a ~2000 px; os inimigos são filhos do estoque e não acompanham o spawner (o primeiro andou 200 px em 20 s, o spawner ~3000); estoque de 5 esgota sem erro, inimigo morto volta e sai de novo, teto de física barra a geração; estoque de 60 criado em ~15 ms; as verificações dos passos 2 e 3 refeitas com o código novo, sem falhas.
 5. **Recolhimento por distância** (`FractalEnemy.cs`; `DespawnDistance` na `fractal_enemy.tscn`).
 6. **HUD, seta e fase limpa** (novos `SpawnerHud.cs` e `SpawnerIndicator.cs`; sinais `SpawnersChanged` e `AllSpawnersDestroyed`).
 7. **Desempenho e ciclo** (medição do dev, seção 9, itens 8 e 9) e **fechamento**: esta spec, `BACKLOG.md`, `hex-phase.md` (fase C), `CLAUDE.md`, `HANDOFF.md` e a mensagem de commit.
 
 ### Relação com outras decisões
 
-- Backlog, seção 2: "Valores definitivos de `MaxConcurrentEnemies` e `MaxTotalEnemies`": na fase, o `PoolSize` do `EnemyPool` (60) faz o papel do `MaxConcurrentEnemies`, e o `MaxTotalEnemies` do diretor continua 350. Definitivos depois da medição (passo 7).
+- Backlog, seção 2: "Valores definitivos de `MaxConcurrentEnemies` e `MaxTotalEnemies`": na fase, o `PoolSize` do `EnemyPool` (60) faz o papel do `MaxConcurrentEnemies`, e o `MaxTotalEnemies` (no `EnemyPool`) continua 350. Definitivos depois da medição (passo 7).
 - `dyson-wall.md`, seção 10: "os spawners são afetados pela sucção?" continua lá (1.5).
 - `hex-phase.md`: esta spec é a fase C; o recheio das estruturas pode vir depois.

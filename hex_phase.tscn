@@ -7,7 +7,9 @@
 [ext_resource type="Script" uid="uid://yej4lv07547j" path="res://StructureTracker.cs" id="3_ie58g"]
 [ext_resource type="Script" uid="uid://cwnicg7cly5qh" path="res://StructureHud.cs" id="4_e333e"]
 [ext_resource type="PackedScene" uid="uid://day8clpbmbfi5" path="res://mobile_spawner.tscn" id="4_x5cs5"]
+[ext_resource type="Script" uid="uid://n22wiiqrmdf4" path="res://EnemyPool.cs" id="5_anlkq"]
 [ext_resource type="Script" uid="uid://b1ju74mhjar6l" path="res://PhaseCamera.cs" id="5_e333e"]
+[ext_resource type="PackedScene" uid="uid://bnsfigjjn7eed" path="res://fractal_enemy.tscn" id="6_56lus"]
 [ext_resource type="Script" uid="uid://bkw1rvj2rdh7h" path="res://StartChamber.cs" id="7_souy7"]
 [ext_resource type="Script" uid="uid://cyse0mxb55rao" path="res://ExitReleaseTerminal.cs" id="8_dmel6"]
 [ext_resource type="Script" uid="uid://dk2htimxcqhfo" path="res://TerminalModo.cs" id="9_5nn04"]
@@ -50,11 +52,16 @@ offset_bottom = 120.0
 mouse_filter = 2
 color = Color(0.7781171, 0.9629982, 7.70092e-07, 1)
 
-[node name="SpawnerDirector" type="Node2D" parent="." unique_id=1093335878 node_paths=PackedStringArray("Phase", "StartChamber")]
+[node name="SpawnerDirector" type="Node2D" parent="." unique_id=1093335878 node_paths=PackedStringArray("Phase", "StartChamber", "Pool")]
 script = ExtResource("3_48hdx")
 Phase = NodePath("..")
 StartChamber = NodePath("../StartChamber")
 SpawnerScene = ExtResource("4_x5cs5")
+Pool = NodePath("../EnemyPool")
+
+[node name="EnemyPool" type="Node2D" parent="." unique_id=1240705134]
+script = ExtResource("5_anlkq")
+EnemyScene = ExtResource("6_56lus")
 
 [node name="Player" parent="." unique_id=2016198778 instance=ExtResource("2_1gulo")]
 

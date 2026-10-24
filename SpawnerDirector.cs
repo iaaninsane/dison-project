@@ -4,17 +4,27 @@ using System.Linq;
 
 // Diretor dos spawners móveis (spec mobile-spawners.md): quando a incursão começa, cria os spawners e os põe nas
 // rotas da fase, longe do nó de entrada. Fica como filho da raiz da hex_phase.tscn.
-// A dificuldade (quanto cada spawner gera, a velocidade) e os avisos de contagem também vão ficar aqui (passos 3 a 6).
+// Dá o ritmo (curva de dificuldade): um orçamento global de geração repartido entre os spawners vivos, que cresce a
+// cada spawner morto, e a velocidade deles. Os spawners só executam. Os avisos de contagem (HUD) entram no passo 6.
 public partial class SpawnerDirector : Node2D
 {
     [Export] public HexPhaseBuilder Phase;     // A fase (rotas e nó de entrada), ligada no Inspector
     [Export] public StartChamber StartChamber; // Câmara de partida (ligada no Inspector); vazio = começa ao carregar a fase
     [Export] public PackedScene SpawnerScene;  // mobile_spawner.tscn (ligada no Inspector)
+    [Export] public EnemyPool Pool;            // Estoque de inimigos da fase (ligado no Inspector); vazio = ninguém gera
     [Export] public int SpawnerCount = 10;     // Spawners por fase
+
+    [ExportGroup("Curva de dificuldade")]
+    [Export] public float BaseSpawnRate = 1.5f;          // Inimigos por segundo, somando todos os spawners vivos
+    [Export] public float SpawnRateGrowthPerKill = 0.1f; // +10% na taxa total por spawner morto
+    [Export] public float SpeedGrowthPerKill = 0.05f;    // +5% na velocidade dos spawners por spawner morto
 
     // Cada spawner começa entre 25% e 75% da rota: no corredor, longe dos nós e dos painéis
     private const float MinStartFraction = 0.25f;
     private const float MaxStartFraction = 0.75f;
+
+    private readonly List<MobileSpawner> _alive = new();
+    private int _killed;
 
     // Os avisos vêm de nós da própria cena; ligar por código usa as mesmas referências do Inspector (um fio só)
     public override void _Ready()
@@ -45,10 +55,32 @@ public partial class SpawnerDirector : Node2D
         List<HexRoute> routes = ShuffledStartRoutes();
         if (routes.Count == 0) return;
 
+        if (Pool == null) GD.PushWarning("[SpawnerDirector]: sem o Pool (EnemyPool), os spawners não geram inimigos.");
+
         for (int i = 0; i < SpawnerCount; i++)
         {
             CreateSpawner(routes[i % routes.Count]); // Rotas diferentes enquanto houver
         }
+        ApplyPace();
+    }
+
+    private void OnSpawnerDestroyed(MobileSpawner spawner)
+    {
+        _alive.Remove(spawner);
+        _killed++;
+        ApplyPace();
+    }
+
+    // Orçamento global: a taxa total cresce a cada spawner morto e é repartida entre os vivos (o último fica frenético).
+    // Taxa total 0: intervalo infinito, ninguém gera.
+    private void ApplyPace()
+    {
+        if (_alive.Count == 0) return;
+
+        float totalRate = BaseSpawnRate * (1f + SpawnRateGrowthPerKill * _killed);
+        float interval = _alive.Count / totalRate;
+        float speed = 1f + SpeedGrowthPerKill * _killed;
+        foreach (MobileSpawner spawner in _alive) spawner.SetPace(interval, speed);
     }
 
     // Rotas que não tocam o nó de entrada (onde o jogador começa), em ordem aleatória
@@ -70,6 +102,9 @@ public partial class SpawnerDirector : Node2D
         var spawner = SpawnerScene.Instantiate<MobileSpawner>();
         spawner.Position = ToLocal(Phase.ToGlobal(route.PointAt(from, distance)));
         spawner.FollowRoute(Phase, route, from, distance);
+        spawner.Pool = Pool;
+        spawner.Destroyed += OnSpawnerDestroyed;
+        _alive.Add(spawner);
         AddChild(spawner);
     }
 }
