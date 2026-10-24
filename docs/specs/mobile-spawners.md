@@ -1,6 +1,6 @@
 # Spec: Spawners móveis e objetivo da fase
 
-- **Status:** aprovada (decisões S1 a S9 do dev, out/2026; seção 10). Plano de implementação aprovado pelo dev (seção 10); passos 1 a 4 feitos e testados pelo dev; passo 5 (recolhimento por distância) em preparação. Valores em teste.
+- **Status:** aprovada (decisões S1 a S9 do dev, out/2026; seção 10). Plano de implementação aprovado pelo dev (seção 10); passos 1 a 4 feitos e testados pelo dev; passo 5 (recolhimento por distância) aplicado, aguardando o Despawn Distance na `fractal_enemy.tscn` e o teste do dev. Valores em teste.
 - **Etapa:** 1 (mecânica). É a "fase C" da `hex-phase.md` (spawners na fase e simulação por proximidade).
 - **Depende de:** `docs/specs/hex-phase.md` (a fase, o `HexPhaseLayout`), `docs/specs/start-chamber.md` (sinal `IncursionStarted`; nada nasce no nó inicial travado), `docs/specs/fractal-enemy.md` e `docs/specs/fractal-enemy-movement.md` (inimigo, horda, tetos e o problema conhecido de FPS), `docs/specs/biomass-collection.md` (recompensa), `docs/specs/player-health-death.md` (golpe de contato). Relaciona-se com a `docs/specs/dyson-wall.md` (a sucção afeta os spawners? Em aberto lá).
 
@@ -51,7 +51,7 @@ Dar à fase um objetivo: cerca de 10 spawners circulam pelas estruturas do hexá
 - Um spawner só gera inimigos quando o jogador está a menos de `ActivationRadius` (S5). Longe do jogador, ele só anda.
 - O relógio de geração só corre com o jogador perto e começa em zero: o primeiro inimigo nasce assim que o jogador chega. Depois, um a cada intervalo dado pelo diretor (o relógio soma o intervalo, para manter o ritmo exato).
 - O estoque (`EnemyPool`) não solta inimigo quando `FractalSwarm.Count` ≥ `MaxTotalEnemies` (orçamento de física, como no ninho) nem quando está vazio (`PoolSize`: inimigos da geração 0 vivos na fase inteira). Não é erro: o spawner tenta de novo no próximo intervalo, sem mensagem no Output.
-- Inimigos deixados para trás continuam vivos e ocupando o estoque até o recolhimento por distância (passo 5).
+- Inimigos deixados para trás são recolhidos ao estoque pelo recolhimento por distância (abaixo): ~`DespawnDelay` depois de o jogador se afastar, o estoque volta a ter de onde tirar.
 - Inimigo longe do jogador (mais que `DespawnDistance` por `DespawnDelay`) é **recolhido em silêncio** (S5): volta ao estoque (ou é liberado, se for fragmento), sem se dividir e sem soltar biomassa. Acontece fora da tela.
   - **Por que (achado no código):** os inimigos andam a 10 px/s (`Speed` na `fractal_enemy.tscn`) e o jogador voa a 600. Sem recolher, os inimigos ficariam espalhados pelas rotas, longe do jogador, empurrando paredes na direção dele (o cenário do problema conhecido de FPS) e ocupando o teto: o spawner perto do jogador deixaria de gerar.
 
@@ -266,9 +266,19 @@ Cada passo: verificação antes no descartável (Godot headless), apresentação
 4. **Geração e curva** (novo `EnemyPool.cs`; geração no `MobileSpawner`; curva e contagem no `SpawnerDirector`): inimigos nascem perto do jogador; o intervalo encurta a cada spawner morto; tetos de estoque e de física. **Feito e testado pelo dev** (out/2026: inimigos nascem perto dos spawners e ficam para trás, os restantes aceleram a cada morte, sem erros, "Nós Órfãos" = 0; montagem conferida no disco):
    - `EnemyPool` (estoque de 60 criado ao carregar; `TrySpawn` respeita `PoolSize` e `MaxTotalEnemies`, que saiu do diretor); `MobileSpawner` com o sinal `Destroyed`, `ActivationRadius`, `SpawnScatter`, `Pool` e `SetPace` (intervalo e velocidade dados pelo diretor); `SpawnerDirector` conta vivos e mortos e reparte o orçamento (`ApplyPace`) ao criar e a cada `Destroyed`;
    - verificado no descartável (0 falhas): ritmo igual em todos os vivos e conforme a fórmula nos 10 níveis (6,667 s e ×1,00 com 10 vivos; 0,351 s e ×1,45 com o último); nenhum inimigo com o jogador longe; o último gerou 29 inimigos em 10 s a 217,4 px/s; numa reta, o primeiro na hora e depois um a cada 1,00 s, a até 39,6 px do spawner, parando com o jogador a ~2000 px; os inimigos são filhos do estoque e não acompanham o spawner (o primeiro andou 200 px em 20 s, o spawner ~3000); estoque de 5 esgota sem erro, inimigo morto volta e sai de novo, teto de física barra a geração; estoque de 60 criado em ~15 ms; as verificações dos passos 2 e 3 refeitas com o código novo, sem falhas.
-5. **Recolhimento por distância** (`FractalEnemy.cs`; `DespawnDistance` na `fractal_enemy.tscn`).
+5. **Recolhimento por distância** (`FractalEnemy.cs`; `DespawnDistance` na `fractal_enemy.tscn`). **Script aplicado** (out/2026), aguardando o Despawn Distance = 3000 na `fractal_enemy.tscn` e o teste do dev:
+   - `TryDespawn` no começo do `_PhysicsProcess`: longe do jogador mais que `DespawnDistance` por `DespawnDelay`, o inimigo sai de cena sem se dividir nem soltar biomassa; perto, o relógio zera. A saída de cena do fim do `Die()` virou o `LeaveScene()` (volta ao estoque ou `QueueFree`), usado pela morte e pelo recolhimento; o `ActivateAt` zera o relógio;
+   - verificado no descartável (0 falhas): com um perto e dois longe, aos 2,9 s todos vivos e aos 3,1 s os dois longe de volta ao estoque, sem orbes nem fragmentos; reaproveitado perto não some; 2 s longe e de volta continua vivo, 3,1 s longe é recolhido; fragmento longe sai da árvore; com `DespawnDistance` 0, nunca; com um spawner gerando, 3,2 s depois de o jogador ir embora o estoque está cheio de novo (10 de 10) e, com ele de volta, gera de novo; as verificações dos passos 3 e 4 refeitas com o inimigo novo, sem falhas.
 6. **HUD, seta e fase limpa** (novos `SpawnerHud.cs` e `SpawnerIndicator.cs`; sinais `SpawnersChanged` e `AllSpawnersDestroyed`).
 7. **Desempenho e ciclo** (medição do dev, seção 9, itens 8 e 9) e **fechamento**: esta spec, `BACKLOG.md`, `hex-phase.md` (fase C), `CLAUDE.md`, `HANDOFF.md` e a mensagem de commit.
+
+### Ideias para depois
+
+- **"Horda que persegue"** (ideia do dev, out/2026; implementação futura, sem data). Em vez de recolher ao estoque o inimigo que fica longe (passo 5), reposicioná-lo logo fora da tela, perto do jogador, para a pressão acompanhá-lo para onde ele for.
+  - **Referência:** no Vampire Survivors, os inimigos comuns somem quando o jogador se afasta (como no passo 5), mas os chefes são teleportados de volta para a tela. A sensação de horda constante lá vem de inimigos novos nascendo o tempo todo na borda da tela, em volta do jogador.
+  - **Hoje:** os inimigos só nascem perto de um spawner (S5), e quem fica para trás é recolhido. Longe dos spawners a pressão cai, o que combina com a compressão e o alívio da fase (corredores sem spawner ficam calmos).
+  - **Como poderia ser:** no `TryDespawn`, em vez do `LeaveScene`, achar um ponto válido no piso logo fora da tela, por exemplo sobre uma rota do grafo, na estrutura do jogador ou numa vizinha, a uns 1600 a 2000 px dele, sem parede no meio. O inimigo manteria a vida e a geração.
+  - **Pontos a decidir antes:** muda a S5 (a pressão longe dos spawners) e o ritmo de compressão e alívio; mantém a horda sempre perto do jogador (custo de física, tetos); o ponto precisa ser alcançável (sem parede entre o inimigo e o jogador, para não recriar o problema conhecido de FPS da horda contra a parede); vale para todos os inimigos ou só para alguns (como os chefes do Vampire Survivors)?
 
 ### Relação com outras decisões
 

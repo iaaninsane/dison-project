@@ -45,6 +45,11 @@ public partial class FractalEnemy : CharacterBody2D, ILightDamageable, IContactH
     [Export] public float BiomassOrbLifetime = 30f;         // Tempo até um orbe não coletado sumir (s)
     [Export] public int MaxBiomassOrbs = 300;               // Teto de orbes na cena; o mais antigo some primeiro
 
+    // --- RECOLHIMENTO (inimigo longe do jogador sai de cena em silêncio; spec mobile-spawners.md) ---
+    [Export] public float DespawnDistance = 0f;             // Longe do jogador mais que isto (px) por DespawnDelay: recolhido (0 = nunca)
+    [Export] public float DespawnDelay = 3f;                // Tempo longe antes de recolher (s)
+    private float _farTimer = 0f;
+
        // --- NOVOS ATRIBUTOS DE SISTEMA DE COMBATE ---
     [Export] public float MaxHealth = 100f;
     private float _currentHealth;
@@ -64,7 +69,7 @@ public partial class FractalEnemy : CharacterBody2D, ILightDamageable, IContactH
     private float _redrawTimer = 0f;
 
     // --- SUPORTE A OBJECT POOLING (opcional; não afeta o uso sem pooling) ---
-    // Se um spawner com pooling assinar este callback, Die() avisa em vez de se destruir.
+    // Se um estoque (pool) assinar este callback, a saída de cena (morte ou recolhimento) avisa em vez de destruir.
     // Se ninguém assinar (fluxo atual, sem pooling), o comportamento continua idêntico ao original.
     public Action<FractalEnemy> OnDied;
     private CollisionShape2D _collisionShape;
@@ -108,6 +113,7 @@ public partial class FractalEnemy : CharacterBody2D, ILightDamageable, IContactH
     public override void _PhysicsProcess(double delta)
     {
         float dt = (float)delta;
+        if (TryDespawn(dt)) return; // Longe do jogador há tempo: saiu de cena
         _time += dt;
         UpdateDamageFlash(dt);
         UpdateInvulnerability(dt);
@@ -261,7 +267,32 @@ public partial class FractalEnemy : CharacterBody2D, ILightDamageable, IContactH
         FractalSwarm.Unregister(this); // Sai do registro na hora, sem esperar o fim do frame
         bool divided = SpawnFragments(); // Divisão celular (se ainda não for a última geração)
         if (!divided) DropBiomass();     // Quem não se divide solta biomassa
+        LeaveScene();
+    }
 
+    // Longe do jogador por DespawnDelay: sai de cena sem se dividir nem soltar biomassa (fora da tela, o jogador não vê).
+    // Devolve true se saiu (o resto do passo não roda)
+    private bool TryDespawn(float dt)
+    {
+        if (DespawnDistance <= 0f || _player == null) return false;
+        if (GlobalPosition.DistanceSquaredTo(_player.GlobalPosition) <= DespawnDistance * DespawnDistance)
+        {
+            _farTimer = 0f; // Perto: o relógio volta a zero
+            return false;
+        }
+
+        _farTimer += dt;
+        if (_farTimer < DespawnDelay) return false;
+
+        _isDead = true;
+        FractalSwarm.Unregister(this);
+        LeaveScene();
+        return true;
+    }
+
+    // Saída de cena (morte ou recolhimento): volta ao estoque, se houver um esperando, ou sai da árvore
+    private void LeaveScene()
+    {
         if (OnDied != null)
         {
             // Tem um pool "escutando" — devolve o inimigo pro estoque em vez de destruir
@@ -324,6 +355,7 @@ public partial class FractalEnemy : CharacterBody2D, ILightDamageable, IContactH
         Velocity = Vector2.Zero;
         _restTimer = 0f;                     // Reaproveitado do pool começa acordado
         _blockedDirection = Vector2.Zero;
+        _farTimer = 0f;                      // E com o relógio do recolhimento zerado
 
         FractalSwarm.Register(this);
 

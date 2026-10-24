@@ -14,6 +14,7 @@ RecursionDepth = 4
 BaseBranchLength = 8.0
 SeparationRadius = 32.0
 SeparationStrength = 20.0
+DespawnDistance = 3000.0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1625980597 groups=["Enimies"]]
 scale = Vector2(0.2, 0.2)
