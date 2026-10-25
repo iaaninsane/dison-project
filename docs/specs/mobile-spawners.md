@@ -1,6 +1,6 @@
 # Spec: Spawners móveis e objetivo da fase
 
-- **Status:** aprovada (decisões S1 a S9 do dev, out/2026; seção 10). Plano de implementação aprovado pelo dev (seção 10); passos 1 a 4 feitos e testados pelo dev; passo 5 (recolhimento por distância) aplicado, aguardando o Despawn Distance na `fractal_enemy.tscn` e o teste do dev. Valores em teste.
+- **Status:** aprovada (decisões S1 a S9 do dev, out/2026; seção 10). Plano de implementação aprovado pelo dev (seção 10); passos 1 a 5 feitos e testados pelo dev; passo 6 (HUD, seta e fase limpa) aplicado, aguardando a montagem no editor e o teste do dev. Valores em teste.
 - **Etapa:** 1 (mecânica). É a "fase C" da `hex-phase.md` (spawners na fase e simulação por proximidade).
 - **Depende de:** `docs/specs/hex-phase.md` (a fase, o `HexPhaseLayout`), `docs/specs/start-chamber.md` (sinal `IncursionStarted`; nada nasce no nó inicial travado), `docs/specs/fractal-enemy.md` e `docs/specs/fractal-enemy-movement.md` (inimigo, horda, tetos e o problema conhecido de FPS), `docs/specs/biomass-collection.md` (recompensa), `docs/specs/player-health-death.md` (golpe de contato). Relaciona-se com a `docs/specs/dyson-wall.md` (a sucção afeta os spawners? Em aberto lá).
 
@@ -154,6 +154,8 @@ O dano do contato é o do `SuitIntegrity` (`ContactDamage` 10, `KnockbackImpulse
 - **Recargas seguidas:** registros estáticos limpos no `_ExitTree`; conferir "Nós Órfãos" = 0.
 - **Setor de teste:** 3 rotas elegíveis (o nó 2 de entrada toca as outras 3); com 10 spawners, vários dividem a mesma rota.
 - **Seta:** o mais próximo em linha reta pode estar do outro lado de um vão (o caminho é mais longo). Aceito na etapa 1.
+- **Seta depois da fase limpa:** some (não há spawner vivo). Apontar para a eclusa nesse momento seria uma extensão possível; não está nesta spec.
+- **"Spawners: 0/3" antes da fase limpa:** na morte do último, o HUD recebe a contagem (0) e, no mesmo passo, o aviso de fase limpa; o texto final é "Fase limpa: volte à eclusa".
 
 ## 6. Arquivos e cenas
 
@@ -164,7 +166,7 @@ O dano do contato é o do `SuitIntegrity` (`ContactDamage` 10, `KnockbackImpulse
   - `EnemyPool.cs` (`Node2D` parado, filho da raiz da fase): o estoque compartilhado e o orçamento de inimigos (`PoolSize`, `MaxTotalEnemies`). **Criado no passo 4.**
   - `ILightDamageable.cs` (interface C#): "o que a luz fere". **Criado no passo 3.**
   - `IContactHazard.cs` (interface C#): "o que fere o traje ao encostar". **Criado no passo 3.**
-  - `SpawnerHud.cs` (`Label`) e `SpawnerIndicator.cs` (`Control`, a seta).
+  - `SpawnerHud.cs` (`Label`) e `SpawnerIndicator.cs` (`Control`, a seta). **Criados no passo 6.**
 - **Alterados (proposto):**
   - `HexPhaseLayout.cs`: o grafo de rotas (pontos e rotas), montado junto com as estruturas (passo 1); `HexRoute.PointAt` (passo 2).
   - `LightDamageArea.cs`: fere qualquer `ILightDamageable` (inimigo e spawner), em vez de só `FractalEnemy` (passo 3).
@@ -179,7 +181,7 @@ O dano do contato é o do `SuitIntegrity` (`ContactDamage` 10, `KnockbackImpulse
 1. **Build** depois de cada script com `[Export]` ou `[Signal]` novo.
 2. `mobile_spawner.tscn`: raiz **`MobileSpawner`** (`AnimatableBody2D`, `MobileSpawner.cs`) com **`CollisionShape2D`** (círculo de raio 40); Collision **Layer** só 2; **Mask** só 1 (vazia no passo 2; a 1 entrou no passo 3, para o spawner enxergar o jogador e empurrá-lo).
 3. `hex_phase.tscn`: **`SpawnerDirector`** (`Node2D`, `SpawnerDirector.cs`; passo 2) e **`EnemyPool`** (`Node2D`, `EnemyPool.cs`, campo **Enemy Scene**; passo 4) como filhos da raiz `HexPhase`, em (0, 0), nessa ordem e logo acima do `Player` (inimigos desenhados sobre os spawners e sob o jogador); campos do diretor a ligar: **Phase**, **Start Chamber**, **Spawner Scene** e **Pool** (passo 4).
-4. `PhaseHud` > **`SpawnerLabel`** (`Label`, `SpawnerHud.cs`) e **`SpawnerIndicator`** (`Control`, `SpawnerIndicator.cs`, campo **Director**); sinais `SpawnersChanged` e `AllSpawnersDestroyed` → `SpawnerLabel`.
+4. `PhaseHud` > **`SpawnerLabel`** (`Label`, `SpawnerHud.cs`, em (16, 112)) e **`SpawnerIndicator`** (`Control`, `SpawnerIndicator.cs`, Layout Full Rect, Mouse Filter Ignore, campo **Director**); sinais `SpawnersChanged` → `SpawnerLabel.OnSpawnersChanged` e `AllSpawnersDestroyed` → `SpawnerLabel.OnAllSpawnersDestroyed` (passo 6).
 5. `fractal_enemy.tscn`: **Despawn Distance** = 3000.
 6. `player.tscn` > raiz **`Player`** > CharacterBody2D > Moving Platform > **Floor Layers**: sem a camada 2 (passo 2).
 
@@ -266,10 +268,12 @@ Cada passo: verificação antes no descartável (Godot headless), apresentação
 4. **Geração e curva** (novo `EnemyPool.cs`; geração no `MobileSpawner`; curva e contagem no `SpawnerDirector`): inimigos nascem perto do jogador; o intervalo encurta a cada spawner morto; tetos de estoque e de física. **Feito e testado pelo dev** (out/2026: inimigos nascem perto dos spawners e ficam para trás, os restantes aceleram a cada morte, sem erros, "Nós Órfãos" = 0; montagem conferida no disco):
    - `EnemyPool` (estoque de 60 criado ao carregar; `TrySpawn` respeita `PoolSize` e `MaxTotalEnemies`, que saiu do diretor); `MobileSpawner` com o sinal `Destroyed`, `ActivationRadius`, `SpawnScatter`, `Pool` e `SetPace` (intervalo e velocidade dados pelo diretor); `SpawnerDirector` conta vivos e mortos e reparte o orçamento (`ApplyPace`) ao criar e a cada `Destroyed`;
    - verificado no descartável (0 falhas): ritmo igual em todos os vivos e conforme a fórmula nos 10 níveis (6,667 s e ×1,00 com 10 vivos; 0,351 s e ×1,45 com o último); nenhum inimigo com o jogador longe; o último gerou 29 inimigos em 10 s a 217,4 px/s; numa reta, o primeiro na hora e depois um a cada 1,00 s, a até 39,6 px do spawner, parando com o jogador a ~2000 px; os inimigos são filhos do estoque e não acompanham o spawner (o primeiro andou 200 px em 20 s, o spawner ~3000); estoque de 5 esgota sem erro, inimigo morto volta e sai de novo, teto de física barra a geração; estoque de 60 criado em ~15 ms; as verificações dos passos 2 e 3 refeitas com o código novo, sem falhas.
-5. **Recolhimento por distância** (`FractalEnemy.cs`; `DespawnDistance` na `fractal_enemy.tscn`). **Script aplicado** (out/2026), aguardando o Despawn Distance = 3000 na `fractal_enemy.tscn` e o teste do dev:
+5. **Recolhimento por distância** (`FractalEnemy.cs`; `DespawnDistance` na `fractal_enemy.tscn`). **Feito e testado pelo dev** (out/2026: tudo ok; Despawn Distance = 3000 na `fractal_enemy.tscn`, conferido no disco):
    - `TryDespawn` no começo do `_PhysicsProcess`: longe do jogador mais que `DespawnDistance` por `DespawnDelay`, o inimigo sai de cena sem se dividir nem soltar biomassa; perto, o relógio zera. A saída de cena do fim do `Die()` virou o `LeaveScene()` (volta ao estoque ou `QueueFree`), usado pela morte e pelo recolhimento; o `ActivateAt` zera o relógio;
    - verificado no descartável (0 falhas): com um perto e dois longe, aos 2,9 s todos vivos e aos 3,1 s os dois longe de volta ao estoque, sem orbes nem fragmentos; reaproveitado perto não some; 2 s longe e de volta continua vivo, 3,1 s longe é recolhido; fragmento longe sai da árvore; com `DespawnDistance` 0, nunca; com um spawner gerando, 3,2 s depois de o jogador ir embora o estoque está cheio de novo (10 de 10) e, com ele de volta, gera de novo; as verificações dos passos 3 e 4 refeitas com o inimigo novo, sem falhas.
-6. **HUD, seta e fase limpa** (novos `SpawnerHud.cs` e `SpawnerIndicator.cs`; sinais `SpawnersChanged` e `AllSpawnersDestroyed`).
+6. **HUD, seta e fase limpa** (novos `SpawnerHud.cs` e `SpawnerIndicator.cs`; sinais `SpawnersChanged` e `AllSpawnersDestroyed`). **Scripts aplicados** (out/2026), aguardando a montagem no editor e o teste do dev:
+   - `SpawnerDirector` emite `SpawnersChanged(restantes, total)` ao criar os spawners e a cada morte, e `AllSpawnersDestroyed` quando o último morre; expõe `AliveSpawners` (só leitura) para a seta. `SpawnerHud` só escuta (como o `StructureHud`). `SpawnerIndicator` acha o vivo mais próximo do jogador e, se ele estiver fora da tela, desenha um triângulo na borda (a `EdgeMargin`), na direção dele; a posição na tela vem da transformação do canvas (câmera e zoom);
+   - verificado no descartável (0 falhas; tela 1920 × 1080, configurações de exibição do projeto): a seta, comparada com a conta independente "centro da tela + (spawner − jogador) × zoom", acertou a direção (erro de 0,00°) com a ponta na borda em 5 posições fora da tela e sumiu nas 3 posições com o mais próximo na tela, com zoom 1 e 0,7; o HUD passou por "Spawners: 3/3" → "2/3" → "1/3" → "0/3" → "Fase limpa: volte à eclusa", com um único `AllSpawnersDestroyed`, e a seta sumiu sem spawners vivos; a verificação do passo 4 refeita com o diretor novo, sem falhas.
 7. **Desempenho e ciclo** (medição do dev, seção 9, itens 8 e 9) e **fechamento**: esta spec, `BACKLOG.md`, `hex-phase.md` (fase C), `CLAUDE.md`, `HANDOFF.md` e a mensagem de commit.
 
 ### Ideias para depois

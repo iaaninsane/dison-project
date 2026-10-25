@@ -5,9 +5,13 @@ using System.Linq;
 // Diretor dos spawners móveis (spec mobile-spawners.md): quando a incursão começa, cria os spawners e os põe nas
 // rotas da fase, longe do nó de entrada. Fica como filho da raiz da hex_phase.tscn.
 // Dá o ritmo (curva de dificuldade): um orçamento global de geração repartido entre os spawners vivos, que cresce a
-// cada spawner morto, e a velocidade deles. Os spawners só executam. Os avisos de contagem (HUD) entram no passo 6.
+// cada spawner morto, e a velocidade deles. Os spawners só executam. Avisa a contagem e a fase limpa (Observer):
+// o HUD e a seta só escutam.
 public partial class SpawnerDirector : Node2D
 {
+    [Signal] public delegate void SpawnersChangedEventHandler(int remaining, int total); // Ao começar e a cada morte
+    [Signal] public delegate void AllSpawnersDestroyedEventHandler();                   // Fase limpa
+
     [Export] public HexPhaseBuilder Phase;     // A fase (rotas e nó de entrada), ligada no Inspector
     [Export] public StartChamber StartChamber; // Câmara de partida (ligada no Inspector); vazio = começa ao carregar a fase
     [Export] public PackedScene SpawnerScene;  // mobile_spawner.tscn (ligada no Inspector)
@@ -25,6 +29,9 @@ public partial class SpawnerDirector : Node2D
 
     private readonly List<MobileSpawner> _alive = new();
     private int _killed;
+    private int _total;
+
+    public IReadOnlyList<MobileSpawner> AliveSpawners => _alive; // Para a seta (só leitura)
 
     // Os avisos vêm de nós da própria cena; ligar por código usa as mesmas referências do Inspector (um fio só)
     public override void _Ready()
@@ -61,7 +68,9 @@ public partial class SpawnerDirector : Node2D
         {
             CreateSpawner(routes[i % routes.Count]); // Rotas diferentes enquanto houver
         }
+        _total = _alive.Count;
         ApplyPace();
+        NotifyCount();
     }
 
     private void OnSpawnerDestroyed(MobileSpawner spawner)
@@ -69,7 +78,11 @@ public partial class SpawnerDirector : Node2D
         _alive.Remove(spawner);
         _killed++;
         ApplyPace();
+        NotifyCount();
+        if (_alive.Count == 0) EmitSignal(SignalName.AllSpawnersDestroyed);
     }
+
+    private void NotifyCount() => EmitSignal(SignalName.SpawnersChanged, _alive.Count, _total);
 
     // Orçamento global: a taxa total cresce a cada spawner morto e é repartida entre os vivos (o último fica frenético).
     // Taxa total 0: intervalo infinito, ninguém gera.

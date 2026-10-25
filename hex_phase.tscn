@@ -13,7 +13,9 @@
 [ext_resource type="Script" uid="uid://bkw1rvj2rdh7h" path="res://StartChamber.cs" id="7_souy7"]
 [ext_resource type="Script" uid="uid://cyse0mxb55rao" path="res://ExitReleaseTerminal.cs" id="8_dmel6"]
 [ext_resource type="Script" uid="uid://dk2htimxcqhfo" path="res://TerminalModo.cs" id="9_5nn04"]
+[ext_resource type="Script" uid="uid://dhivb4icn04ya" path="res://SpawnerHud.cs" id="10_56lus"]
 [ext_resource type="Script" uid="uid://b01ffb8wlgby" path="res://EvolutionTerminal.cs" id="10_mvtee"]
+[ext_resource type="Script" uid="uid://c8nnsyfn007po" path="res://SpawnerIndicator.cs" id="11_krm7g"]
 [ext_resource type="Script" uid="uid://xnkl64yqg5qb" path="res://UpgradePanel.cs" id="11_o6jdb"]
 [ext_resource type="Resource" uid="uid://ckk8tfaxyiisu" path="res://upgrades/upgrade_catalog.tres" id="12_48hdx"]
 [ext_resource type="Script" uid="uid://dfbuerobfmo3k" path="res://EjectionConsequence.cs" id="13_mvtee"]
@@ -77,6 +79,22 @@ offset_top = 80.0
 offset_right = 56.0
 offset_bottom = 103.0
 script = ExtResource("4_e333e")
+
+[node name="SpawnerLabel" type="Label" parent="PhaseHud" unique_id=1219413555]
+offset_left = 16.0
+offset_top = 112.0
+offset_right = 56.0
+offset_bottom = 135.0
+script = ExtResource("10_56lus")
+
+[node name="SpawnerIndicator" type="Control" parent="PhaseHud" unique_id=1370948496 node_paths=PackedStringArray("Director")]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 2
+script = ExtResource("11_krm7g")
+Director = NodePath("../../SpawnerDirector")
 
 [node name="PhaseCamera" type="Node" parent="." unique_id=1128102368 node_paths=PackedStringArray("Phase", "Tracker")]
 script = ExtResource("5_e333e")
@@ -170,6 +188,8 @@ text = "FECHAR"
 script = ExtResource("13_mvtee")
 Player = NodePath("../Player")
 
+[connection signal="AllSpawnersDestroyed" from="SpawnerDirector" to="PhaseHud/SpawnerLabel" method="OnAllSpawnersDestroyed"]
+[connection signal="SpawnersChanged" from="SpawnerDirector" to="PhaseHud/SpawnerLabel" method="OnSpawnersChanged"]
 [connection signal="LostInSpace" from="StructureTracker" to="EjectionConsequence" method="OnPlayerLostInSpace"]
 [connection signal="StructureChanged" from="StructureTracker" to="PhaseHud/StructureLabel" method="OnStructureChanged"]
 [connection signal="Activated" from="StartChamber/ExitReleaseTerminal" to="StartChamber" method="OnExitsReleased"]
