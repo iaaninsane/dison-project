@@ -35,6 +35,20 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 - **Ponto de partida:** pool de fragmentos: o `FractalEnemy` pede os fragmentos ao `EnemyPool` (que hoje só guarda inimigos da geração 0) em vez de instanciar; cuidar do `PoolSize` (os fragmentos contam?) e do `MaxTotalEnemies`. Alternativa mais simples: espalhar a criação dos fragmentos por alguns quadros (orçamento de criação por quadro). Na `sala_ninho` (sem `EnemyPool`), os fragmentos continuam instanciados.
 - **Spec:** criar quando for feito (ou ampliar a `fractal-enemy.md`, seção 5, "Custo de instanciar"). Medições na `mobile-spawners.md` (seção 10, "Desempenho").
 
+### 1.9 Fase de balanceamento (novo)
+
+- **Contexto:** pedido do dev (out/2026), depois das mecânicas do 1.4: uma passada de balanceamento dos valores para tornar o gameplay mais satisfatório. Os `[Export]` de todas as specs são "valores em teste" (pontos de partida); valores fora do padrão encontrados até lá ficam para esta fase.
+- **Valor fora do padrão conhecido:** `fractal_enemy.tscn` > `Speed`. A linha `Speed = 10.0` saiu da cena no commit `d01d317` (o ↺ do Inspector voltou ao padrão do código, 80), e a correção não chegou ao disco: hoje os inimigos perseguem a 80 px/s em vez de 10. A geração por proximidade e o recolhimento do 1.4 foram pensados com 10 (`mobile-spawners.md`, seção 2), e a medição de desempenho do dev foi feita com 40.
+- **O que revisar** (valores em teste, por spec):
+  - spawners (`mobile-spawners.md`, seção 4): vida 300, velocidade 150, pânico ×2 por 2 s, orçamento de 1,5 inimigo/s +10% por morte, +5% de velocidade por morte, raio de geração 2000, recolhimento a 3000 px por 3 s, estoque 60 e teto 350, 20 orbes na morte;
+  - inimigo (`fractal-enemy.md` e `fractal-enemy-movement.md`, seção 4): velocidade, vida, dano da luz (35/s), gerações e fragmentos, separação;
+  - golpe e integridade (`player-health-death.md`): dano 10, empurrão 200, imunidade 0,8 s;
+  - paredes por tipo (`hex-phase.md`, seção 4: 25, 10 e 7,5) e zooms da câmera;
+  - biomassa e evolução (`biomass-collection.md`, `suit-evolution.md`): ímã, coleta, custos e ganhos das melhorias, taxa da morte;
+  - jogador (`Player.cs`): empuxo 450, velocidade máxima 600, atrito.
+- **Ponto de partida:** definir com o dev o que é "satisfatório" em metas verificáveis (ex.: tempo para matar um spawner, duração de uma incursão, quantos golpes até morrer, ritmo da curva de dificuldade) e um roteiro de teste por meta; ajustar no Inspector, digitando os valores (o ↺ volta ao padrão do script, `CLAUDE.md`), e registrar os escolhidos nas specs.
+- **Spec:** criar (ex.: `docs/specs/balancing.md`), com as metas e a tabela dos valores escolhidos.
+
 ## 2. Decisões de design em aberto
 
 | Item | Onde está registrado | Observação |
@@ -44,13 +58,13 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 | Tiros no ALERTAR | CLAUDE.md (core loop) e HANDOFF | O core loop cita "luz e tiros", mas não existe tiro; os "modos de tiro" do `TerminalModo` são modos da lanterna |
 | Melhoria "Potência da lanterna" | `suit-evolution.md` (decisão 4) | Adiada até ter requisitos; volta junto com o valor no enum `SuitUpgrade.TargetStat` |
 | Salvar progresso em disco | `suit-evolution.md` (decisão 2) | `RunData` já separado do nó; salvar = converter o `RunData` |
-| Velocidade e separação dos fragmentos | `fractal-enemy.md` (fase 2) | Iguais às do pai; testar outras possibilidades (ex.: menor = mais rápido) |
-| Valores definitivos de `MaxConcurrentEnemies` e `MaxTotalEnemies` | `fractal-enemy.md` (seção 10), `mobile-spawners.md` (seção 4) | Hoje 200 e 350 na `sala_ninho`. Na fase (1.4): `PoolSize` 60 (papel do `MaxConcurrentEnemies`) e `MaxTotalEnemies` 350, no `EnemyPool`; no pior caso medido, passo constante de ~4 ms (`mobile-spawners.md`, seção 10). Continuam pontos de partida. Variantes A2/A3 do teto anotadas |
+| Velocidade e separação dos fragmentos | `fractal-enemy.md` (fase 2) | Iguais às do pai; testar outras possibilidades (ex.: menor = mais rápido). Na fase de balanceamento (1.9) |
+| Valores definitivos de `MaxConcurrentEnemies` e `MaxTotalEnemies` | `fractal-enemy.md` (seção 10), `mobile-spawners.md` (seção 4) | Hoje 200 e 350 na `sala_ninho`. Na fase (1.4): `PoolSize` 60 (papel do `MaxConcurrentEnemies`) e `MaxTotalEnemies` 350, no `EnemyPool`; no pior caso medido, passo constante de ~4 ms (`mobile-spawners.md`, seção 10). Continuam pontos de partida; revisar na fase de balanceamento (1.9). Variantes A2/A3 do teto anotadas |
 | Cor do `CanvasModulate` (visibilidade sem blecaute) | HANDOFF v2.0 (3.2), item 1.6 | Provisória na etapa 1; arte na etapa 2 |
 | Neon × tons pastel | HANDOFF v2.0 (seção 5), `fractal-enemy-render-3d.md` | Testar na etapa 2 |
 | Cor da parede irritada | `dyson-wall.md` (seção 10) | Vermelho no `WallSensitive.cs` × verde-água na dyson-wall |
 | Orbe de biomassa com luz própria | `biomass-collection.md` (seção 10) | Sem blecaute, passa a ser só estética (etapa 2); medir o custo antes |
-| Sensibilidade das paredes por tipo de estrutura | `hex-phase.md` (seções 4 e 10) | Hoje 25 (nós e painéis), 10 (conectores de nós) e 7,5 (conectores de placa): provisórios, o dev vai testar e definir |
+| Sensibilidade das paredes por tipo de estrutura | `hex-phase.md` (seções 4 e 10) | Hoje 25 (nós e painéis), 10 (conectores de nós) e 7,5 (conectores de placa): provisórios, o dev vai testar e definir na fase de balanceamento (1.9) |
 | Papel e recheio de cada tipo de estrutura | `hex-phase.md` (seção 10), HANDOFF v2.0 (seção 4) | Sugestão: nós = arenas, conectores = corredores com risco de parede, painéis = áreas abertas, placas = gargalos, nó central = clímax. O recheio (pilares, costelas, gargalos) ainda não existe: o 1.4 foi feito sem ele |
 | "Horda que persegue": reposicionar perto do jogador, logo fora da tela, o inimigo que fica longe, em vez de recolhê-lo | `mobile-spawners.md` (seção 10, "Ideias para depois") | Ideia do dev (out/2026), para implementação futura. Referência: chefes do Vampire Survivors (os comuns somem). Muda a S5 (pressão longe dos spawners) e a compressão e o alívio; o ponto precisa estar no piso e sem parede no meio |
 | Hexágonos vizinhos e progressão entre fases | `hex-phase.md` (seções 3 e 10) | Provavelmente depois da demo. Hoje, com todos os spawners mortos: "Fase limpa: volte à eclusa" e extração (S7, `mobile-spawners.md`) |
