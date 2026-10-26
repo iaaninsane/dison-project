@@ -11,11 +11,20 @@ public partial class LightDamageArea : Area2D
     private readonly List<ILightDamageable> _targetsInLight = new();
     private readonly List<Node2D> _wallsInLight = new();
 
+    // Formato do feixe, para o peso da luz em cada ponto (BeamWeightAt; spec dyson-wall.md, decisão A2)
+    private CollisionPolygon2D _beamShape;
+    private Vector2[] _beamPolygon = Array.Empty<Vector2>(); // Cópia dos vértices (ler do motor a cada pergunta custaria caro)
+    private float _upperEdgeAngle;                           // Ângulo da borda de cada lado do eixo (rad): negativo em cima,
+    private float _lowerEdgeAngle;                           // positivo embaixo
+    private Transform2D _globalToBeam;                       // Do mundo para o feixe, lida do motor uma vez por passo de física
+    private ulong _globalToBeamFrame = ulong.MaxValue;
+
     public override void _Ready()
     {
         // Conecta os sinais de colisão fisicamente de forma programática
         BodyEntered += OnBodyEntered;
         BodyExited += OnBodyExited;
+        CacheBeamShape();
     }
 
     public override void _PhysicsProcess(double delta)
@@ -43,16 +52,27 @@ public partial class LightDamageArea : Area2D
             var wall = _wallsInLight[i];
             if (GodotObject.IsInstanceValid(wall))
             {
-                // Verifica se a parede possui o método de irritação e o executa
-                if (wall.HasMethod("AddIrritation"))
-                {
-                    wall.Call("AddIrritation", WallIrritationPerSecond * dt, GlobalPosition);
-                }
+                IrritateWall(wall, WallIrritationPerSecond * dt);
             }
             else
             {
                 _wallsInLight.RemoveAt(i);
             }
+        }
+    }
+
+    // Parede de fronteira (ILightIrritable): recebe a lanterna e pergunta o peso da luz em cada peça.
+    // WallSensitive (transitório): recebe a parede inteira, pelo nome do método, como antes.
+    private void IrritateWall(Node2D wall, float amount)
+    {
+        if (wall is ILightIrritable irritable)
+        {
+            irritable.AddLightIrritation(amount, this);
+            return;
+        }
+        if (wall.HasMethod("AddIrritation"))
+        {
+            wall.Call("AddIrritation", amount, GlobalPosition);
         }
     }
 
@@ -86,5 +106,51 @@ public partial class LightDamageArea : Area2D
         {
             _wallsInLight.Remove(body);
         }
+    }
+
+    // Peso da luz num ponto do mundo (spec dyson-wall.md, decisão A2): 0 fora do feixe; dentro, 1 no eixo (para onde a
+    // lanterna aponta), caindo até 0 na borda, pelo ângulo. Quem conhece o formato do feixe é a lanterna; a parede só pergunta.
+    public float BeamWeightAt(Vector2 globalPoint)
+    {
+        if (_beamPolygon.Length < 3) return 0f; // Sem o formato do feixe
+
+        Vector2 local = GlobalToBeam() * globalPoint;
+        if (!Geometry2D.IsPointInPolygon(local, _beamPolygon)) return 0f;
+
+        float angle = local.Angle();
+        float edgeAngle = angle < 0f ? _upperEdgeAngle : _lowerEdgeAngle;
+        if (Mathf.IsZeroApprox(edgeAngle)) return 1f; // Feixe sem abertura desse lado
+        return Mathf.Clamp(1f - angle / edgeAngle, 0f, 1f);
+    }
+
+    // Guarda o formato do feixe uma vez: os vértices e o ângulo das bordas, medido a partir do eixo (o X local)
+    private void CacheBeamShape()
+    {
+        _beamShape = GetNodeOrNull<CollisionPolygon2D>("CollisionPolygon2D");
+        if (_beamShape == null)
+        {
+            GD.PushWarning("[LightDamageArea]: sem o nó 'CollisionPolygon2D'; o peso da luz será 0 e as paredes de fronteira não irritam.");
+            return;
+        }
+
+        _beamPolygon = _beamShape.Polygon;
+        foreach (Vector2 vertex in _beamPolygon)
+        {
+            float angle = vertex.Angle();
+            _upperEdgeAngle = Mathf.Min(_upperEdgeAngle, angle);
+            _lowerEdgeAngle = Mathf.Max(_lowerEdgeAngle, angle);
+        }
+    }
+
+    // O feixe se move com o jogador e a mira; a transformação é lida do motor na primeira pergunta de cada passo
+    // (como a "foto" do FractalSwarm) e reaproveitada pelas outras peças
+    private Transform2D GlobalToBeam()
+    {
+        ulong frame = Engine.GetPhysicsFrames();
+        if (frame == _globalToBeamFrame) return _globalToBeam;
+
+        _globalToBeamFrame = frame;
+        _globalToBeam = _beamShape.GlobalTransform.AffineInverse();
+        return _globalToBeam;
     }
 }
