@@ -1,6 +1,6 @@
 # Spec: Parede de fronteira da esfera de Dyson (membrana fractal que abre para o vácuo)
 
-- **Status:** proposta. **Modelo-alvo das paredes de fronteira com o espaço** (decisão do dev, out/2026): quando implementada, substitui nessas paredes o puxão da `reactive-walls.md`. Fase A pode começar já (mecânica); fases C e D são visuais.
+- **Status:** proposta; **decisões da fase A tomadas pelo dev** (out/2026, seção 10, A1 a A4). **Modelo-alvo das paredes de fronteira com o espaço** (decisão do dev, out/2026): quando implementada, substitui nessas paredes o puxão da `reactive-walls.md`. Fase A pode começar já (mecânica); fases C e D são visuais.
 - **Etapa:** fases A e B são etapa 1 (mecânica). Fases C e D são etapa 2 (arte e shaders), exceto se o dev liberar antes.
 - **Depende de:** `LightDamageArea.cs` (já tem `WallIrritationPerSecond`). Relacionada: `docs/specs/reactive-walls.md` (implementação atual da irritação e da ejeção, transitória). Para posicionar as paredes no jogo: a spec da fase hexagonal (backlog 1.3).
 - **Referência visual:** `docs/reference/dyson-wall-prototype.html`. Abrir no navegador e segurar o clique sobre a parede. É um protótipo em JavaScript, **não é código para portar linha a linha**, mas as fórmulas de cada abertura, as curvas de tempo e o modelo de luz devem ser reproduzidos a partir dele. Nomes de funções citados nesta spec (`params`, `local`, `amtAt`, `prism`, etc.) são as funções desse arquivo.
@@ -25,8 +25,9 @@ Serve ao core loop como pressão ambiental: usar a lanterna perto das paredes te
 
 ### 2.2 Irritação
 
-- Enquanto o feixe da lanterna sobrepõe um trecho da parede, então cada peça dentro do feixe acumula irritação de 0 a 1, na taxa `WallIrritationPerSecond` (já existe em `LightDamageArea.cs`; converter a escala para 0–1).
-- Fora do feixe, a irritação decai em `IrritationDecayPerSecond`.
+- Enquanto o feixe da lanterna sobrepõe um trecho da parede, então cada peça (triângulo externo; os sub-triângulos usam a irritação do pai, como no protótipo) com o centro dentro do feixe acumula irritação de 0 a 1: a cada passo, `peso × WallIrritationPerSecond × dt ÷ MaxIrritation`. O `WallIrritationPerSecond` (20/s, em `LightDamageArea.cs`) é a potência da lanterna; o `MaxIrritation` é a sensibilidade da parede, na mesma unidade do `WallSensitive` (decisão A3).
+- **Peso pelo eixo do feixe** (decisão A2): 1 no centro do feixe, caindo até 0 na borda. A fenda abre onde a lanterna mira, e o brilho em degradê mostra o alvo antes. Quem calcula o peso de um ponto é a lanterna, que conhece o formato do feixe; a parede só pergunta.
+- Fora do feixe, a irritação decai em `RecoveryRate ÷ MaxIrritation` por segundo. Dentro do feixe ela não decai, diferente do `WallSensitive`, que se acalma mesmo iluminado (decisão A3).
 - Quando a irritação passa de 0,5, então a peça treme (deslocamento aleatório por quadro proporcional a `(irr − 0,5) × 3` px).
 - A peça irritada ganha brilho verde-água (`IrritationColor`) proporcional à irritação: mistura de até 55% na cor das faces mais um halo aditivo ao redor.
 - Quando alguma peça chega a 1, então dispara uma abertura centrada nela (a de maior irritação, se houver várias). Só uma abertura por segmento de parede por vez.
@@ -80,7 +81,7 @@ A transformação acontece em **dois níveis hierárquicos**: primeiro cada sub-
 | `esmaecer` Esmaecer | Ver 2.5 | Ver 2.5 |
 
 - `virar` e `dobrar` simulam 3D: quando a peça passa de 90°, ela mostra a face de trás, que **está voltada para o sol e portanto é clara** (parâmetro `back`/`dark` em `prism()`, que mistura a cor das faces com âmbar).
-- Todos os modos somam uma "respiração" permanente: `dy += sin(tempo × 1,6 + cx × 0,04) × 0,7 px`.
+- Todos os modos somam uma "respiração" permanente: `dy += sin(tempo × 1,6 + cx × 0,04) × 0,7 px`. **Desligada na etapa 1** (decisão A4): na W1 ela obrigaria a redesenhar toda parede visível a cada quadro; volta com a W2 (etapa 2), por shader.
 
 ### 2.5 Esmaecer (padrão provisório da demo)
 
@@ -144,8 +145,8 @@ Do protótipo, para referência e implementação futura: degradê do espaço, h
 | `OpenRadius` | 64 px | Raio do núcleo da abertura |
 | `FadeRadiusFactor` | 1,15 | Esmaecer: raio = `OpenRadius × fator` |
 | `OpenPhaseDurations` | (0,35; 0,6; 1,4; 0,75) | Esmaecer usa (0,35; 1,1; 1,2; 1,3) |
-| `IrritationThreshold` | 1,0 | Dispara a abertura |
-| `IrritationDecayPerSecond` | 0,25 | Decaimento fora do feixe |
+| `MaxIrritation` | 1,0 na escala 0–1; **60 no jogo** (decisão A3) | Luz acumulada para uma peça chegar a 1 e disparar a abertura: ~3 s no centro do feixe com a lanterna atual (20/s). Na fase, por tipo de estrutura (fase B) |
+| `RecoveryRate` | 0,25/s na escala 0–1; **15/s no jogo** (decisão A3) | Decaimento fora do feixe, na unidade do `MaxIrritation` (15 ÷ 60 = 0,25/s): ~4 s do máximo à calma |
 | `TremorStartIrritation` | 0,5 | Começa a tremer |
 | `NoReturnRadius` | 120 px (proposto) | Distância em que a sucção empata com o empuxo máximo do traje (seção 2.6). Substitui o `SuctionStrength` do protótipo (40 + 160·t px/s) |
 | `SuctionAccelerationAtNoReturn` | 450 px/s² | Igual ao `ThrustForce` do `Player`. Se o empuxo subir (ex.: melhoria futura), o ponto sem retorno real encolhe: `r = NoReturnRadius × √(450 / ThrustForce)` |
@@ -251,22 +252,23 @@ Do protótipo, para referência e implementação futura: degradê do espaço, h
 - Luz em contraluz vinda do sol ao fundo da esfera (seção 2.7).
 - A deformação é visual; a colisão é fixa por segmento e só é desligada na fenda.
 - A irritação vem da lanterna (`WallIrritationPerSecond`).
+- **Fase A, decisões do dev (out/2026):**
+  - **A1, renderização: W1 por enquanto, preparada para a W2.** Desenho por código (`_Draw`), para testar e validar ideias; a W2 (malha + shader) entra quando for a hora (etapa 2, ou antes se a medição de desempenho pedir). "Preparada" quer dizer: geometria (classe pura), estado da parede e desenho separados; o desenho num nó próprio, atrás de um contrato pequeno (Strategy), para trocar quem desenha sem mexer na parede; dados por peça em arrays, o formato que a W2 vai mandar à placa de vídeo. Nada da W2 é escrito agora. Comparativo: a W1 não custa nada com a parede calma (a Godot repete o desenho guardado) e só recalcula, na CPU, as paredes acordadas; a W2 ganha quando muitas paredes se mexem ao mesmo tempo, mas é shader (etapa 2), mais difícil de depurar, e cada modo teria de ser reescrito na linguagem de shader.
+  - **A2, cálculo da luz na irritação: peso pelo eixo do feixe** (seção 2.2). Alternativas descartadas: uniforme no feixe (abertura imprevisível com o feixe varrendo) e eixo + distância (o feixe é curto, ~220 px; mais um valor para balancear).
+  - **A3, ritmo: regra da spec** (sobe só no feixe, decai só fora), com `MaxIrritation` 60 e `RecoveryRate` 15/s. A parede "lembra": varrer várias vezes acumula, e o brilho fica alguns segundos depois de tirar a luz, como aviso. Descartada: a regra do `WallSensitive` (decai mesmo iluminada), que com o peso pelo eixo só deixaria acumular a faixa central do feixe (peso acima de 0,75). Para manter na fase os tempos de hoje (5 s, 2 s e 1,5 s por tipo de estrutura), os valores por tipo seriam 100, 40 e 30.
+  - **A4, respiração em repouso: desligada na etapa 1**; volta com a W2, por shader.
 
 ### Em aberto (perguntar ao dev antes de decidir)
 - **Deformação final da parede** (o Esmaecer é só o padrão provisório). Referências sugeridas (out/2026): **exocitose** (a membrana envolve o corpo estranho numa vesícula e o expele: o organismo expulsando o patógeno, que é a premissa do jogo); **estômato** (duas células-guarda abrem um poro, encaixa em pares de triângulos); **esfíncter/íris** (portas biomecânicas de Scorn; já existe o modo `iris`); **peristalse** (onda que leva o jogador até a fenda; já existe o modo `peri`). Game feel da sucção: a descompressão de Heavenly Bodies.
-- **O que acontece depois da ejeção** (dano, morte, volta ao último nó, perda de biomassa): decisão em aberto no backlog. O espaço não é navegável.
-- **Cor da irritação:** verde-água aqui × vermelho no `WallSensitive.cs` atual. Decidir na spec de arte.
+- **Ligar a ejeção à consequência** (decidir no início da fase B). A consequência já está decidida (igual à morte, `start-chamber.md` D3). Recomendação: a parede emite `PlayerEjected` (para som e câmera no futuro) e o `LostInSpace` que já existe encerra a incursão ~2 s depois, pelo caminho testado. Alternativa: `PlayerEjected` → `EjectionConsequence` (morte imediata ao cruzar). O espaço não é navegável.
+- **Onde ficam as fronteiras na fase** (fase B; `hex-phase.md`, hoje toda parede externa é fronteira). Recomendação: todas as paredes externas viram `DysonWall`, com a sensibilidade por tipo de estrutura e o nó de entrada inerte até liberar as saídas (como hoje); trechos de membrana entre costelas rígidas podem vir depois, com o recheio. Nota de implementação: uma `DysonWall` por aresta reta (entre passagens e quinas), não trechos de 200 px, para a cascata e a regra "uma abertura por parede" funcionarem.
+- **Os spawners móveis (`mobile-spawners.md`; corpo movido por código, que empurra o jogador) são afetados pela sucção?** (fase B). Recomendação: imunes. São o objetivo da fase e andam presos à rota; perder um pela fenda sem o jogador matá-lo seria estranho, e tirá-lo da rota mexe no `MobileSpawner`. Alternativas: pesados (sentem pouco e voltam à rota) ou sugados como os inimigos.
+- **Inimigo sugado pela fenda solta biomassa?** (fase B). Proposto: não (sai da fase "perdido" pelo organismo). Se soltar, os orbes também seriam sugados.
+- **Fendas como arma contra a horda:** consequência das decisões acima. Observar no teste se vira uma estratégia dominante (ex.: irritar a parede de propósito perto da horda); se virar, ajustar `EnemySuctionFactor`.
+- **Iluminação** (fase D, etapa 2): calcular a luz por código em C# (como o protótipo, cores por vértice) ou usar `Light2D` + normal maps procedurais. Por código é previsível e não depende das camadas de luz; `Light2D` integra com a lanterna. Recomendação: por código para o sol (fixo), e decidir depois se a lanterna também deve iluminar a parede. Com a W2, a mesma conta vai para o shader.
+- **Onde fica o sol** (fase D, etapa 2). Na fase, a estrela fica atrás do plano do jogo (`hex-phase.md`, H1), então a posição 2D do sol é uma projeção. Recomendação: um nó `SunAnchor` (`Marker2D`) que a parede consulta; na fase, o construtor o põe no centro do hexágono (onde a estrela atrás do plano se projeta); na `wall_test.tscn`, o dev o move à mão. Alternativas: direção fixa (sol no infinito, luz sempre do mesmo lado da tela) ou seguir a câmera.
+- **Cor da irritação:** verde-água aqui × vermelho no `WallSensitive.cs` atual. Decidir na spec de arte; na fase A, `IrritationColor` é um `[Export]` com o verde-água como padrão.
 - **Cor do sol:** o rascunho pede uma estrela laranja puxando para o avermelhado (temperatura média/baixa); `SunColor` #FFC482 é laranja claro. Avaliar tons mais vermelhos na spec de arte.
-- **Renderização.** Opções:
-  - **W1 (recomendada para começar):** um único nó por segmento de parede desenha todas as peças em `_Draw()` (`DrawPolygon` com cor por vértice para as facetas). Simples e próximo do protótipo. Redesenhar só quando houver irritação ou abertura no segmento; em repouso, só a "respiração".
-  - **W2:** uma `ArrayMesh` por segmento com os triângulos de todas as facetas, deformada por shader (transformações por vértice com índice de peça e sub-peça em atributos). Mais eficiente, mas usa shader (etapa 2).
-  - Medir W1 antes de considerar W2.
-- **Iluminação:** calcular a luz por código em C# (como o protótipo, cores por vértice) ou usar `Light2D` + normal maps procedurais. Por código é previsível e não depende das camadas de luz; `Light2D` integra com a lanterna. Sugestão: por código para o sol (fixo), e decidir depois se a lanterna também deve iluminar a parede.
-- **Onde fica o sol:** um nó global na cena da câmara (`SunAnchor`) que a parede consulta, ou uma posição fixa por câmara.
-- **Inimigo sugado pela fenda solta biomassa?** Proposto: não (sai da fase "perdido" pelo organismo). Se soltar, os orbes também seriam sugados.
-- **Os spawners móveis (`mobile-spawners.md`; corpo movido por código, que empurra o jogador) são afetados pela sucção?** Ex.: pesados, resistem; ou imunes.
-- **Fendas como arma contra a horda:** consequência da decisão acima. Observar no teste se vira uma estratégia dominante (ex.: irritar a parede de propósito perto da horda); se virar, ajustar `EnemySuctionFactor`.
-- **Respiração em repouso:** manter (vida) ou desligar (desempenho)?
 - **Integração com a curvatura do anel:** a parede é reta; a curvatura visual vem depois.
 
 ### Notas
