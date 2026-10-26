@@ -31,7 +31,7 @@ Fronteira de escopo enxuta para a demo.
 4. Irritabilidade das paredes e ejeção do jogador para o espaço.
 5. Coleta de biomassa e evolução do traje.
 6. Troca entre modo manual e automático da lanterna.
-7. **Novo (out/2026):** objetivo da fase: destruir os spawners móveis (seção 4.3; ainda sem spec).
+7. **Novo (out/2026):** objetivo da fase: destruir os spawners móveis (seção 4.3; spec `mobile-spawners.md`, validada em out/2026).
 
 ### Adiadas para depois da demo
 
@@ -59,7 +59,7 @@ Resumo; as regras completas e os valores em teste estão nas specs.
 
 ### 3.2 Lanterna e visibilidade
 
-- `FlashlightAnchor` (`Marker2D`) com um `PointLight2D` e a `LightDamageArea` (`Area2D` em cone de ~220 px), que dá dano aos inimigos (`DamagePerSecond`) e irrita as paredes do grupo `Walls` (`WallIrritationPerSecond`).
+- `FlashlightAnchor` (`Marker2D`) com um `PointLight2D` e a `LightDamageArea` (`Area2D` em cone de ~220 px), que dá dano aos inimigos e aos spawners (`DamagePerSecond`; tudo o que cumpre `ILightDamageable`) e irrita as paredes do grupo `Walls` (`WallIrritationPerSecond`).
 - **Modos:** manual (segue o mouse ou o analógico direito) e automático (segue a direção da velocidade). O modo fica no `RunData` e vale em todas as salas; muda só por `GameState.ToggleFlashlightMode()` (sinal `FlashlightModeChanged`, escutado pelo `Player`), pelo `TerminalModo` da câmara inicial. Hoje o modo é um `bool`; vira padrão Strategy se surgirem mais modos.
 - **Visibilidade (out/2026): não há mais blecaute total.** Cada sala ainda precisa de um `ColorRect` de fundo como primeiro filho (sem ele, a luz da lanterna não tem onde aparecer). A cor do `CanvasModulate` virou decisão de arte; as cenas atuais ainda estão no estado antigo até o ajuste do dev (backlog 1.6). Proposta de linguagem visual: o sol ao fundo deixa tudo em silhueta, e a lanterna é a única luz frontal, que revela cor e volume do que atinge.
 
@@ -74,7 +74,7 @@ Resumo; as regras completas e os valores em teste estão nas specs.
 
 - Árvore fractal binária desenhada em `_Draw` (4 troncos), com o ângulo dos ramos pulsando; morre sob a luz e se divide em fragmentos menores até a geração máxima (divisão celular).
 - `CharacterBody2D` em Motion Mode **Floating**, camada 2 (máscara 1). Os inimigos não colidem entre si: o registro estático `FractalSwarm` calcula uma separação suave e põe para descansar quem está travado.
-- Spawners atuais: `NinhoSpawnerPooled.cs` (com pool; usado na `sala_ninho`) e `NinhoSpawner.cs` (sem pool). Tetos: `MaxConcurrentEnemies` (pressão do ninho) e `MaxTotalEnemies` (orçamento de física, contando fragmentos). Medido: com 200 no ninho e teto 350, FPS ≥ 100 (V-Sync desligado). O ninho fixo dá lugar aos spawners móveis (seção 4.3).
+- Spawners: na fase, os spawners móveis (seção 4.3), com um estoque compartilhado (`EnemyPool`: 60 da geração 0 e teto de 350 contando fragmentos) e o recolhimento dos inimigos longe do jogador (`DespawnDistance`). Nas bancadas: `NinhoSpawnerPooled.cs` (com pool; usado na `sala_ninho`) e `NinhoSpawner.cs` (sem pool), com `MaxConcurrentEnemies` (pressão do ninho) e `MaxTotalEnemies` (orçamento de física). Medido: no ninho, com 200 e teto 350, FPS ≥ 100 (V-Sync desligado); na fase, pior caso de ~4 ms de física por passo, com um engasgo de um quadro quando dezenas se dividem juntos (backlog 1.8).
 - Specs: `fractal-enemy.md`, `fractal-enemy-movement.md`; visual 3D (etapa 2): `fractal-enemy-render-3d.md`.
 
 ### 3.5 Biomassa (`BiomassOrb.cs`, `BiomassField.cs`, `BiomassCollector.cs`)
@@ -83,7 +83,7 @@ Resumo; as regras completas e os valores em teste estão nas specs.
 
 ### 3.6 Integridade e morte (componentes no `player.tscn`)
 
-- `PlayerHurtbox` (contato com inimigos), `SuitIntegrity` (golpe, imunidade, piscar, empurrão; sinais `IntegrityChanged` e `Died`), `RestartOnDeath` (cobra a taxa da biomassa e, depois de um atraso, recarrega a cena atual: na fase, a própria fase em modo câmara). `SuitIntegrity.Breach()` rompe o traje de uma vez (usado pela ejeção). Specs: `player-health-death.md` e `start-chamber.md`.
+- `PlayerHurtbox` (contato com inimigos e spawners, `IContactHazard`), `SuitIntegrity` (golpe, imunidade, piscar, empurrão; sinais `IntegrityChanged` e `Died`), `RestartOnDeath` (cobra a taxa da biomassa e, depois de um atraso, recarrega a cena atual: na fase, a própria fase em modo câmara). `SuitIntegrity.Breach()` rompe o traje de uma vez (usado pela ejeção). Specs: `player-health-death.md` e `start-chamber.md`.
 
 ### 3.7 Estado da partida e evolução (`GameState.cs`, `RunData.cs`)
 
@@ -117,9 +117,14 @@ Substitui a v1.0, que previa salas modulares de 1920×1080 (entrada, desfiladeir
 
 ### 4.3 Spawners móveis e objetivo da fase
 
-- Os inimigos são criados por **spawners** (ex.: 10 por fase) que **circulam pela fase inteira** gerando inimigos o tempo todo.
-- **Objetivo da fase:** eliminar os spawners. A cada spawner morto, a dificuldade aumenta.
-- Em aberto (spec própria, backlog 1.4): vida e como matar um spawner, como ele se move, a curva de dificuldade, o que acontece quando todos morrem.
+Spec `docs/specs/mobile-spawners.md` (validada em out/2026; decisões S1 a S9 do dev).
+
+- Ao liberar as saídas da câmara, **10 spawners** andam pela fase inteira pelas rotas (eixos dos corredores, um grafo tirado da geometria, em passeio aleatório) e geram inimigos **só com o jogador perto** (2000 px).
+- **Objetivo da fase:** destruí-los com a luz (vida 300, ~8,6 s; iluminados, fogem em pânico); cada um solta 20 de biomassa. São sólidos: empurram o jogador e ferem ao encostar.
+- **Dificuldade:** um orçamento global de geração (1,5 inimigo/s, +10% por spawner morto) repartido entre os vivos: o intervalo de cada um cai de 6,7 s para 0,35 s, e a velocidade sobe 5% por morte. O último fica frenético.
+- **Rastreio:** contador no HUD e uma seta na borda da tela para cada spawner fora dela (a do mais próximo em destaque).
+- **Fim:** com todos mortos, "Fase limpa: volte à eclusa"; a extração encerra (100% da biomassa).
+- **Desempenho:** inimigos longe do jogador voltam ao estoque; pior caso medido de ~4 ms de física por passo; engasgo de um quadro quando dezenas se dividem juntos (backlog 1.8).
 
 ### 4.4 Decisões da spec da fase e sugestões em aberto
 
@@ -134,13 +139,14 @@ Decidido na `hex-phase.md` (out/2026):
 - **Compressão e alívio:** arenas (nós e painéis) amplas e corredores estreitos e longos. A câmera afasta nas arenas e aproxima nos corredores, e as paredes dos corredores e das placas são mais sensíveis: o perigo fica onde está o aperto.
 
 Sugestões em aberto (backlog, seção 2, e 1.4):
-- **Grafo da fase:** os spawners andam pelas arestas (sem pathfinding); o mapa sai do grafo; só a sala atual e as vizinhas são simuladas por completo (o orçamento de física medido é de ~350 a 400 inimigos).
+- **Grafo da fase:** feito para os spawners (rotas pelos eixos dos corredores, no `HexPhaseLayout`); um mapa pode sair dele. A simulação por proximidade ficou como geração perto do jogador e recolhimento dos inimigos longe (`mobile-spawners.md`).
 - **Papel de cada estrutura:** nós = arenas de combate; conectores = corredores com risco de parede; painéis = áreas abertas com muita fronteira (muito risco de ejeção); conectores de placa = gargalos; nó central = clímax. As cenas atuais viram protótipos: `sala_desfiladeiro` → conector, `sala_ninho` → nó.
-- **Dificuldade dos spawners:** um orçamento global de spawn dividido entre os spawners vivos; ao matar um, os restantes aceleram (a dificuldade sobe sem estourar o teto de física) e o último fica frenético. Spawners rastreáveis (indicador ou pulso visível) e com silhueta própria.
+- **Dificuldade dos spawners:** decidida e implementada (seção 4.3).
 
 ### 4.5 Cenas atuais
 
-- `hex_phase.tscn` (**cena principal**): a fase hexagonal, montada por código (`HexPhaseBuilder`), com a câmara de partida no nó de entrada (`StartChamber` e terminais), a eclusa (`Airlock`), o `StructureTracker`, o `PhaseCamera` e o `EjectionConsequence`.
+- `hex_phase.tscn` (**cena principal**): a fase hexagonal, montada por código (`HexPhaseBuilder`), com a câmara de partida no nó de entrada (`StartChamber` e terminais), a eclusa (`Airlock`), o `StructureTracker`, o `PhaseCamera`, o `EjectionConsequence`, os spawners (`SpawnerDirector`, `EnemyPool`) e o HUD deles (`SpawnerLabel`, `SpawnerIndicator`).
+- `mobile_spawner.tscn`: o spawner móvel (`AnimatableBody2D`, `MobileSpawner.cs`).
 - `sala_entrada.tscn`: bancada (foi a câmara inicial até out/2026): spawn, paredes de titânio fora do grupo `Walls`, `TerminalModo`, `EvolutionTerminal` e `PortaSaida` → fase.
 - `sala_desfiladeiro.tscn`: corredores em zigue-zague com paredes reativas e janelas para o vácuo (`JanelasVacuo`).
 - `sala_ninho.tscn`: arena circular de segmentos reativos (`wall_segment.tscn`), pilares de cobertura (`cover_pillar.tscn`) e o ninho com pool.
@@ -202,6 +208,7 @@ Nada disto entra na etapa 1, salvo o que uma spec pedir.
 ### 6.8 Desempenho da horda
 
 - O gargalo é a colisão, não o desenho: Motion Mode Floating, camada própria dos inimigos e separação por código. Medições e problema conhecido nas specs `fractal-enemy.md` (seção 11) e `fractal-enemy-movement.md` (seção 11).
+- Na fase com os spawners (out/2026): geração só perto do jogador, recolhimento dos inimigos longe e tetos mantêm a horda perto e limitada; pior caso medido de ~4 ms de física por passo (~270 inimigos). Criar dezenas de fragmentos no mesmo quadro causa um engasgo de um quadro (backlog 1.8). Spec `mobile-spawners.md` (seção 10).
 
 ---
 
@@ -213,6 +220,7 @@ Nada disto entra na etapa 1, salvo o que uma spec pedir.
 4. **Observer (sinais):** paredes, inimigos, HUD e jogador reagem sem referência direta (ex.: `BiomassChanged`, `IntegrityChanged`, `FlashlightModeChanged`).
 5. **Registros estáticos** para sistemas com centenas de elementos (`FractalSwarm`, `BiomassField`): um laço em C#, sem consultas à física.
 6. **Estado da partida separado do nó** (`RunData`), pronto para salvar em disco.
+7. **Interfaces pequenas** para o que vários tipos fazem: `ILightDamageable` (o que a luz fere) e `IContactHazard` (o que fere ao encostar). A lanterna e o traje não conhecem cada tipo.
 
 ---
 
@@ -232,4 +240,4 @@ Nada disto entra na etapa 1, salvo o que uma spec pedir.
 
 ## 9. Próximos passos
 
-A lista de tarefas, decisões em aberto e dívidas técnicas fica no **`docs/BACKLOG.md`** (a v1.0 mantinha os próximos passos aqui). Ordem sugerida: decidir a estrutura da fase hexagonal (backlog 1.3), que destrava os spawners móveis (1.4) e o posicionamento da parede de fronteira (1.5).
+A lista de tarefas, decisões em aberto e dívidas técnicas fica no **`docs/BACKLOG.md`** (a v1.0 mantinha os próximos passos aqui). Feitos em out/2026: a fase hexagonal (1.3), a câmara de partida (1.7) e os spawners móveis (1.4). Seguem no backlog, entre outros: a parede de fronteira (1.5), a visibilidade sem blecaute (1.6) e o engasgo da divisão em massa (1.8).

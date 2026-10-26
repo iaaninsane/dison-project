@@ -1,7 +1,7 @@
 # Spec: Fase hexagonal (estruturas interligadas da esfera)
 
-- **Status:** aprovada (out/2026); **fase A validada** (passos 1 a 6, testados pelo dev no editor); **fase B validada** (passos B0 a B5, testados pelo dev no editor, out/2026). **A H5 foi revista** pela `docs/specs/start-chamber.md` (câmara de partida no nó inicial, validada em out/2026): a seção 2 descreve o fluxo de hoje, e os itens das seções 7 e 8 ficam como registro do que foi validado na época. A fase C entra com os spawners móveis (backlog 1.4). Decisões na seção 10. Valores em teste.
-- **Etapa:** 1 (mecânica). Fases A e B nesta spec; a fase C entra junto com os spawners móveis (backlog 1.4).
+- **Status:** aprovada (out/2026); **fase A validada** (passos 1 a 6, testados pelo dev no editor); **fase B validada** (passos B0 a B5, testados pelo dev no editor, out/2026). **A H5 foi revista** pela `docs/specs/start-chamber.md` (câmara de partida no nó inicial, validada em out/2026): a seção 2 descreve o fluxo de hoje, e os itens das seções 7 e 8 ficam como registro do que foi validado na época. A fase C (spawners na fase) foi feita na `docs/specs/mobile-spawners.md` (validada em out/2026). Decisões na seção 10. Valores em teste.
+- **Etapa:** 1 (mecânica). Fases A e B nesta spec; a fase C ficou na `mobile-spawners.md`.
 - **Depende de:** `docs/HANDOFF.md` (v2.0, seção 4), `docs/specs/reactive-walls.md` (paredes atuais), `docs/specs/suit-evolution.md` (terminais e banco), `docs/specs/player-health-death.md` (morte), `docs/specs/start-chamber.md` (câmara de partida, reinício e ejeção). Futuro: `docs/specs/dyson-wall.md` (paredes de fronteira).
 - **Referências:** `docs/reference/dyson-sphere-reference.png` (a malha da esfera) e `docs/reference/connector-cut-mockup.png` (mockup de um conector). Jogos com o mesmo plano: FTL, Heat Signature e Space Haven (estruturas vistas de cima, sem teto, com o espaço em volta); a câmera do Cocoon também olha o mundo de cima.
 
@@ -9,7 +9,7 @@
 
 ## 1. Objetivo
 
-Trocar as salas isoladas por uma **fase**: um hexágono da esfera (de início, um setor dele) em que as estruturas são interligadas e o jogador voa de uma para outra sem tela de carregamento. Serve ao EXPLORAR (navegação inercial pelas estruturas) e é o palco do COMBATER contra os spawners móveis (backlog 1.4) e das paredes de fronteira (backlog 1.5).
+Trocar as salas isoladas por uma **fase**: um hexágono da esfera (de início, um setor dele) em que as estruturas são interligadas e o jogador voa de uma para outra sem tela de carregamento. Serve ao EXPLORAR (navegação inercial pelas estruturas) e é o palco do COMBATER contra os spawners móveis (`mobile-spawners.md`) e das paredes de fronteira (backlog 1.5).
 
 ## 2. Comportamento esperado
 
@@ -62,7 +62,7 @@ Detalhes na `docs/specs/start-chamber.md`. Antes da revisão, a câmara era uma 
 ### Estrutura atual
 
 - A geometria responde, por conta e sem física, em qual estrutura está um ponto (ou "espaço", se estiver fora de todas). Nas passagens, vale a ordem fixa: nós, depois conectores de nós, depois conectores de placa, depois painéis.
-- O `StructureTracker` pergunta isso a cada passo de física e emite `StructureChanged` **só quando a estrutura muda** (Observer). Ouvintes: o rótulo de teste do HUD (`StructureHud`) e a câmera (`PhaseCamera`). Usos futuros: spawners (1.4), ponto de retorno, mapa.
+- O `StructureTracker` pergunta isso a cada passo de física e emite `StructureChanged` **só quando a estrutura muda** (Observer). Ouvintes: o rótulo de teste do HUD (`StructureHud`) e a câmera (`PhaseCamera`). Usos futuros: ponto de retorno, mapa. (Os spawners andam pelo grafo de rotas do `HexPhaseLayout`, sem o rastreador.)
 - **Perdido no espaço:** fora de todas as estruturas por `SpaceReturnDelay`, o rastreador emite `LostInSpace`. Quem decide a consequência é o ouvinte: hoje o `EjectionConsequence`, que rompe o traje (ejeção igual à morte, `start-chamber.md` D3). Para trocar a regra, troca-se o ouvinte; o rastreador não muda. (Até out/2026, a regra provisória punha o jogador de volta na eclusa, sem perdas.)
 
 ### Câmera
@@ -74,7 +74,7 @@ Detalhes na `docs/specs/start-chamber.md`. Antes da revisão, a câmara era uma 
 
 ## 3. Fora do escopo
 
-- Spawners móveis, objetivo da fase e simulação por proximidade (backlog 1.4; fase C).
+- Spawners móveis, objetivo da fase e simulação por proximidade: a fase C, feita na `mobile-spawners.md`.
 - A consequência da ejeção: decidida e implementada na `start-chamber.md` (D3, igual à morte).
 - A parede de fronteira `DysonWall` (backlog 1.5): aqui as paredes externas usam o `WallSensitive`.
 - Mapa e minimapa, geração procedural, hexágonos vizinhos e progressão entre fases.
@@ -200,7 +200,7 @@ Medido pelo dev no editor, com o hexágono vazio (sem inimigos) e o V-Sync desli
 - **Corpo deslizando para uma porta** (B2): morto não usa porta (`DoorTrigger` ignora `IsDead`); quem age é o `RestartOnDeath`. Sem a guarda, o corpo poderia "extrair" pela eclusa no lugar de morrer.
 - **Porta da eclusa** (B3): a posição e o giro do `Airlock` no editor não valem; o construtor o move ao rodar. Com o campo `Airlock` vazio, a porta não sai do lugar e nada avisa (o nascimento usa o ponto novo mesmo assim). `EntryPeripheral` fora dos nós que existem (1 e 2 no setor, 1 a 6 no hexágono) cai no nó central, onde à direita sai um corredor: não usar.
 - **Pedido de troca dentro de um callback de física** (`BodyEntered`): o pedido só marca o fade para escurecer; a troca de verdade acontece no `_Process` do `ScreenFade`, fora da física.
-- **Inimigos e orbes para teste:** o ninho atual (`NinhoSpawnerPooled`) pode ser colocado num nó só para testar combate na fase, até os spawners móveis existirem.
+- **Inimigos e orbes para teste:** desde os spawners móveis (`mobile-spawners.md`), a fase tem inimigos próprios; o ninho temporário (`NinhoSpawnerPooled`) não é mais necessário.
 
 ## 6. Arquivos e cenas
 
@@ -218,6 +218,7 @@ Medido pelo dev no editor, com o hexágono vazio (sem inimigos) e o V-Sync desli
   - Alterado (B3, feito): `HexPhaseBuilder.cs` (`[Export]` `Airlock`, `AirlockInset` e `AirlockSpawnDistance`; `PlaceAirlock` põe a porta na parede externa do nó de entrada; `PlacePlayerAtEntry` põe o jogador à frente dela).
   - Cenas, montadas pelo dev: `player.tscn` (nó `ScreenFade`), `hex_phase.tscn` (nó `Airlock` com `DoorTrigger.cs`), `sala_entrada.tscn` (a `PortaSaida` leva à `hex_phase.tscn`; a `sala_ninho` fica como bancada).
 - **Câmara de partida (out/2026, `start-chamber.md`):** novos `ExitReleaseTerminal.cs`, `StartChamber.cs` e `EjectionConsequence.cs`; alterados `HexPhaseLayout.cs` (bocas dos nós), `HexPhaseBuilder.cs` (portões, paredes inertes, posição da câmara; sem a regra provisória), `SuitIntegrity.cs` (`Breach`) e `TerminalModo.cs`; cena principal → `hex_phase.tscn`.
+- **Spawners (fase C, `mobile-spawners.md`, out/2026):** o `HexPhaseLayout.cs` ganhou o grafo de rotas (`HexWaypoint`, `HexRoute`: centros dos nós e painéis ligados pelos eixos dos corredores); a `hex_phase.tscn` ganhou `SpawnerDirector`, `EnemyPool` e, no `PhaseHud`, `SpawnerLabel` e `SpawnerIndicator`.
 - **Somente leitura:** `Player.cs`, `GameState.cs`, `SalaEntrada.cs`.
 - **Ficam como bancadas:** `sala_entrada.tscn` (a câmara separada da fase B), `sala_ninho.tscn`, `sala_desfiladeiro.tscn` e `arena.tscn` (protótipos do recheio de nós e conectores).
 
@@ -282,7 +283,7 @@ Confirmado pelo dev no editor (out/2026), com o ninho temporário na fase:
 2. Libere as saídas da câmara de partida e irrite paredes de nó, de corredor e de placa, contando o tempo até a ejeção (~5 s, ~2 s, ~1,5 s); ejetado, a incursão termina como na morte (`start-chamber.md`).
 3. Entre e saia de corredores e placas e confira o zoom (afasta nas arenas, aproxima nos corredores).
 4. **Passo 6:** com `Shape` = Hexagon, repita o passo 1 rapidamente e anote FPS, Processo de Física e Nós (Depurador > Monitores; V-Sync desligado só durante o teste). Referência na seção 4.
-5. Ciclo da partida: siga a seção 9 da `start-chamber.md` (F5 começa na câmara de partida; morte, ejeção e extração recarregam a fase); repita 5 vezes olhando o Output e "Nós Órfãos". Enquanto a fase não tem spawners, use um ninho temporário (seção 7, item 11) e apague-o depois: oculto, ele continuaria criando inimigos.
+5. Ciclo da partida: siga a seção 9 da `start-chamber.md` (F5 começa na câmara de partida; morte, ejeção e extração recarregam a fase); repita 5 vezes olhando o Output e "Nós Órfãos". Desde os spawners móveis, a fase tem inimigos próprios (o ninho temporário da seção 7, item 11, não é mais necessário).
 
 ## 10. Decisões e notas
 
@@ -320,12 +321,13 @@ Confirmado pelo dev no editor (out/2026), com o ninho temporário na fase:
 17. **Fade sem Tween** (B1): o quadro em que a fase é montada dura ~130 a 145 ms, e um Tween (que avança pelo tempo real) fazia o preto pular de 96% para 60% de uma vez (medido no descartável). O `ScreenFade` anima a transparência no `_Process`, com o passo limitado a 1/30 s por quadro (`MaxFrameStep`), e só processa durante a transição. Abaixo de 30 FPS, a transição fica um pouco mais longa. Se a cena de destino não abrir, mostra o erro e volta a clarear.
 18. **Porta da eclusa** (B3): a posição sai do código (depende das medidas e do `EntryPeripheral`) e a aparência fica no editor (H3). O construtor recebe a porta como um `Node2D` qualquer, sem saber que é um `DoorTrigger` (baixo acoplamento: a eclusa pode virar uma cena com animação sem mudar o construtor). "Para fora" é o vetor do centro da fase ao centro do nó; a porta fica a `AirlockInset` da parede, girada para fora (eixo X local para o espaço). O nascimento sai da geometria, não da porta: vale sem porta e na volta do espaço. Verificado no descartável nos nós 1 e 2 do setor e 1 a 6 do hexágono (receita 2×): porta dentro do piso do nó, nascimento a 300 px, porta sem disparar no nascimento.
 19. **H5 revista: câmara de partida no nó inicial** (ideia do dev, implementada e validada em out/2026; `start-chamber.md`). O jogo começa na fase; o nó de entrada é a câmara (portões, paredes inertes, terminais) até o jogador liberar as saídas; morte, ejeção e extração recarregam a fase em modo câmara. A ejeção passou a ser igual à morte (`EjectionConsequence`), e a regra provisória do espaço saiu. A `sala_entrada` virou bancada.
+20. **Fase C feita** (out/2026): spawners móveis, objetivo da fase e simulação por proximidade, na `docs/specs/mobile-spawners.md` (validada). Os spawners andam pelo grafo de rotas do `HexPhaseLayout`.
 
 ### Em aberto
 
 - **Sensibilidade das paredes por tipo** (25 / 10 / 7,5, seção 4): provisória; o dev vai testar e definir no futuro.
 - **Papel de cada tipo de estrutura** (sugestão): nós = arenas de combate; conectores = corredores com risco de parede; painéis = áreas abertas com muita fronteira; conectores de placa = gargalos; nó central = clímax.
-- **Recheio de cada tipo** e quando entra (pode acompanhar os spawners, 1.4).
+- **Recheio de cada tipo** e quando entra (o 1.4 foi feito sem recheio).
 - **Hexágonos vizinhos** e progressão entre fases (provavelmente depois da demo).
 
 ### Notas

@@ -32,7 +32,7 @@ O anticorpo fractal é o inimigo da demo. Ele é desenhado por código como uma 
 - A divisão acontece uma única vez por morte (protegida pela trava `_isDead`).
 - Fragmentos recém-nascidos ficam imunes a dano por `SpawnInvulnerability` segundos. Inimigos do ninho (geração 0) nascem vulneráveis.
 - Ao ser reaproveitado pelo pool (`ActivateAt`), o inimigo volta para a geração 0.
-- Os fragmentos ficam fora do pool e do `MaxConcurrentEnemies`, mas contam no teto total `MaxTotalEnemies` dos spawners (seção 10).
+- Os fragmentos ficam fora do pool e do `MaxConcurrentEnemies`, mas contam no teto total `MaxTotalEnemies` dos spawners (seção 10; na fase hexagonal, no `EnemyPool`, spec `mobile-spawners.md`).
 - Velocidade (`Speed`) e raio de separação (`SeparationRadius`) dos fragmentos: iguais aos do pai por enquanto. **A testar no futuro:** outras possibilidades (ex.: proporcionais à geração, "menor = mais rápido").
 
 ## 3. Fora do escopo
@@ -97,7 +97,7 @@ Com os valores atuais da cena (`RecursionDepth` 4, `BaseBranchLength` 8, `MaxHea
 - Fragmentos que nascem dentro do feixe: imunes por `SpawnInvulnerability`; continuam na lista do feixe (a detecção funciona durante a imunidade) e passam a tomar dano depois.
 - Recurso de colisão compartilhado: o `CircleShape2D` da cena é o mesmo objeto para todas as instâncias. O tamanho por geração escala o **nó** `CollisionShape2D` (individual), nunca o raio do recurso.
 - Troca de sala no mesmo frame de uma divisão: o `AddChild` adiado pode não executar e os fragmentos ficam como nós órfãos (monitor "Nós Órfãos"). Improvável; observar nos testes.
-- Custo de instanciar: cada divisão cria nós novos (mais caro que reaproveitar do pool). Se matar muitos inimigos no mesmo instante causar engasgo, considerar um pool de fragmentos (não implementado).
+- Custo de instanciar: cada divisão cria nós novos (mais caro que reaproveitar do pool). Se matar muitos inimigos no mesmo instante causar engasgo, considerar um pool de fragmentos (não implementado). **Medido no fechamento dos spawners móveis (out/2026):** dividir dezenas no mesmo quadro causa um engasgo de um quadro (~27 ms no editor; 28 a 42 ms no descartável, ~0,15 a 0,3 ms por fragmento). Item 1.8 do backlog.
 - Total de inimigos vivos: os fragmentos não contam no `MaxConcurrentEnemies`; o teto total dos spawners (`MaxTotalEnemies`) pausa o ninho, mas inimigos já vivos continuam se dividindo, então o total pode passar um pouco do teto durante massacres (medido: pico de 380 com teto 350).
 
 ## 6. Arquivos e cenas
@@ -164,12 +164,13 @@ Com os valores atuais da cena (`RecursionDepth` 4, `BaseBranchLength` 8, `MaxHea
 - Motion Mode Floating no inimigo (seção 11).
 - Renderização em lote (R1–R3) adiada: o desenho não é o gargalo hoje (seção 11).
 - Movimento e colisão da horda: separação (B) e descanso de inimigos travados (A) implementados em `docs/specs/fractal-enemy-movement.md`. Os inimigos agora ficam na camada 2 (máscara 1).
+- Desde os spawners móveis (out/2026, `mobile-spawners.md`): o inimigo cumpre as interfaces `ILightDamageable` e `IContactHazard` (a lanterna e o traje o tratam pela interface) e tem o recolhimento por distância (`DespawnDistance` 3000 na cena, `DespawnDelay` 3 s): longe do jogador, volta ao estoque ou sai da árvore, sem se dividir nem soltar biomassa. A saída de cena (morte ou recolhimento) fica no `LeaveScene`.
 
 ### Em aberto
 
 - Quando a transição entre salas diferentes existir: repetir os testes de "trocar de sala" da seção 8 (erros no Output e "Nós Órfãos" = 0, inclusive trocando de sala no meio de uma divisão). O recarregamento da mesma sala, pela morte do jogador, já passou nesses testes.
 
-- Valores definitivos de `MaxConcurrentEnemies` e `MaxTotalEnemies`: decidir na spec dos spawners móveis (backlog 1.4). O rascunho de game design (out/2026) troca o ninho fixo por cerca de 10 spawners que circulam pela fase; o `NinhoSpawnerPooled` (pool e tetos) é o ponto de partida.
+- Valores definitivos de `MaxConcurrentEnemies` e `MaxTotalEnemies`: na fase, definidos na `mobile-spawners.md` (no `EnemyPool`: `PoolSize` 60 e `MaxTotalEnemies` 350, medidos no pior caso; continuam pontos de partida). A `sala_ninho` continua com 200 e 350.
 - O dano por tiros entra numa spec própria ou nesta?
 
 ### Observações do código (sem ação por enquanto)

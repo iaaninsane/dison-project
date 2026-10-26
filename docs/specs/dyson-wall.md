@@ -264,7 +264,7 @@ Do protótipo, para referência e implementação futura: degradê do espaço, h
 - **Iluminação:** calcular a luz por código em C# (como o protótipo, cores por vértice) ou usar `Light2D` + normal maps procedurais. Por código é previsível e não depende das camadas de luz; `Light2D` integra com a lanterna. Sugestão: por código para o sol (fixo), e decidir depois se a lanterna também deve iluminar a parede.
 - **Onde fica o sol:** um nó global na cena da câmara (`SunAnchor`) que a parede consulta, ou uma posição fixa por câmara.
 - **Inimigo sugado pela fenda solta biomassa?** Proposto: não (sai da fase "perdido" pelo organismo). Se soltar, os orbes também seriam sugados.
-- **Os spawners móveis (backlog 1.4) são afetados pela sucção?** Ex.: pesados, resistem; ou imunes.
+- **Os spawners móveis (`mobile-spawners.md`; corpo movido por código, que empurra o jogador) são afetados pela sucção?** Ex.: pesados, resistem; ou imunes.
 - **Fendas como arma contra a horda:** consequência da decisão acima. Observar no teste se vira uma estratégia dominante (ex.: irritar a parede de propósito perto da horda); se virar, ajustar `EnemySuctionFactor`.
 - **Respiração em repouso:** manter (vida) ou desligar (desempenho)?
 - **Integração com a curvatura do anel:** a parede é reta; a curvatura visual vem depois.

@@ -1,6 +1,6 @@
 # Spec: Spawners móveis e objetivo da fase
 
-- **Status:** aprovada (decisões S1 a S9 do dev, out/2026; seção 10). Plano de implementação aprovado pelo dev (seção 10); passos 1 a 6 feitos e testados pelo dev; revisão da seta (uma por spawner, S6 revista) aplicada, aguardando o teste do dev; depois, passo 7. Valores em teste.
+- **Status:** **validada** (out/2026). Decisões S1 a S9 do dev (seção 10; a S6 foi revista depois do teste do passo 6). Plano de implementação (passos 1 a 7) feito e testado pelo dev. Um item do "Pronto quando" ficou parcial: o engasgo de um quadro na divisão em massa, que virou o item 1.8 do backlog. Valores em teste.
 - **Etapa:** 1 (mecânica). É a "fase C" da `hex-phase.md` (spawners na fase e simulação por proximidade).
 - **Depende de:** `docs/specs/hex-phase.md` (a fase, o `HexPhaseLayout`), `docs/specs/start-chamber.md` (sinal `IncursionStarted`; nada nasce no nó inicial travado), `docs/specs/fractal-enemy.md` e `docs/specs/fractal-enemy-movement.md` (inimigo, horda, tetos e o problema conhecido de FPS), `docs/specs/biomass-collection.md` (recompensa), `docs/specs/player-health-death.md` (golpe de contato). Relaciona-se com a `docs/specs/dyson-wall.md` (a sucção afeta os spawners? Em aberto lá).
 
@@ -197,18 +197,20 @@ O dano do contato é o do `SuitIntegrity` (`ContactDamage` 10, `KnockbackImpulse
 
 ## 8. Pronto quando
 
-- [ ] `dotnet build` sem erros a cada passo
-- [ ] Na câmara travada não há spawner nem inimigo; ao liberar as saídas aparecem `SpawnerCount` spawners, longe do nó de entrada, e o HUD mostra "Spawners: 10/10"
-- [ ] Os spawners andam só pelos eixos dos corredores, trocando de rota nos nós e painéis, sem atravessar paredes nem sair da fase
-- [ ] Um spawner só gera inimigos com o jogador perto
-- [ ] O spawner é sólido para o jogador: encostar dá o golpe do inimigo; no caminho dele, o jogador é empurrado, sem "carona" e sem ficar preso na parede; os inimigos o atravessam
-- [ ] A luz fere o spawner; iluminado, ele foge mais rápido; com a vida zerada, some, solta biomassa e o HUD desconta
-- [ ] A cada spawner morto, os restantes geram mais rápido (intervalos da seção 2)
-- [ ] Há uma seta para cada spawner vivo fora da tela, e a do mais próximo fica em destaque; spawner na tela não tem seta
-- [ ] Inimigos longe do jogador somem sem soltar biomassa e voltam ao estoque
-- [ ] Com todos mortos, o HUD mostra "Fase limpa: volte à eclusa" e a eclusa extrai como antes
-- [ ] A `sala_ninho` (bancada) continua funcionando: a luz mata os inimigos e o contato fere
-- [ ] Pior caso (último spawner frenético, massacre): Processo de Física abaixo de 16,67 ms (V-Sync desligado só no teste); "Nós Órfãos" = 0 depois de recargas seguidas
+Confirmado pelo dev no editor (out/2026), passo a passo (seção 10, plano):
+
+- [x] `dotnet build` sem erros a cada passo
+- [x] Na câmara travada não há spawner nem inimigo; ao liberar as saídas aparecem `SpawnerCount` spawners, longe do nó de entrada, e o HUD mostra "Spawners: 10/10"
+- [x] Os spawners andam só pelos eixos dos corredores, trocando de rota nos nós e painéis, sem atravessar paredes nem sair da fase
+- [x] Um spawner só gera inimigos com o jogador perto
+- [x] O spawner é sólido para o jogador: encostar dá o golpe do inimigo; no caminho dele, o jogador é empurrado, sem "carona" e sem ficar preso na parede; os inimigos o atravessam
+- [x] A luz fere o spawner; iluminado, ele foge mais rápido; com a vida zerada, some, solta biomassa e o HUD desconta
+- [x] A cada spawner morto, os restantes geram mais rápido (intervalos da seção 2)
+- [x] Há uma seta para cada spawner vivo fora da tela, e a do mais próximo fica em destaque; spawner na tela não tem seta
+- [x] Inimigos longe do jogador somem sem soltar biomassa e voltam ao estoque
+- [x] Com todos mortos, o HUD mostra "Fase limpa: volte à eclusa" e a eclusa extrai como antes
+- [x] A `sala_ninho` (bancada) continua funcionando: a luz mata os inimigos e o contato fere
+- [ ] **Parcial.** Pior caso (último spawner frenético, massacre): o passo de física constante fica em ~4 ms (dev: 4,05 ms no editor; descartável: ~4 ms com ~270 inimigos), FPS 826 com V-Sync desligado e "Nós Órfãos" = 0 em todas as recargas. Mas há um pico isolado de ~27 ms no quadro em que dezenas de inimigos se dividem ao mesmo tempo (seção 10, "Desempenho"; backlog 1.8)
 
 ## 9. Como testar (roteiro manual no editor)
 
@@ -240,7 +242,7 @@ Todas seguiram a recomendação da análise, menos a S8 (o dev escolheu o spawne
    - **S8b:** o dano do contato é o mesmo golpe do inimigo. Descartado: dano próprio, maior (mudaria o `SuitIntegrity` e o `PlayerHurtbox`).
 9. **S9, valores iniciais:** os da seção 4, como pontos de partida.
 
-### Arquitetura (proposta, com o plano)
+### Arquitetura (implementada)
 
 - **Diretor (`SpawnerDirector`):** decide a dificuldade; os spawners só executam. É a ideia do "AI Director" do *Left 4 Dead*: um ponto central regula o ritmo, e os atores não conhecem a curva. Trocar a curva é mexer num lugar só.
 - **Observer:** o spawner avisa `Destroyed`; o diretor avisa `SpawnersChanged` e `AllSpawnersDestroyed`; HUD e seta só escutam. A `StartChamber` não conhece os spawners (só emite `IncursionStarted`, como já faz).
@@ -252,14 +254,15 @@ Todas seguiram a recomendação da análise, menos a S8 (o dev escolheu o spawne
 
 ### Problema conhecido de FPS (`fractal-enemy-movement.md`, seção 11)
 
-- O cenário era 400 inimigos aglomerados contra uma parede, com o jogador do outro lado. Com a geração por proximidade, o recolhimento por distância e os tetos (`PoolSize`, `MaxTotalEnemies`), a horda fica perto do jogador e limitada; o cenário fica improvável, mas o pior caso (último spawner frenético) precisa ser medido (seção 8).
-- Se ainda pesar: os caminhos da seção 11 daquela spec (instrumentação primeiro) e, aqui, gerar só com o jogador à vista (um raio do spawner ao jogador antes de gerar).
+- O cenário era 400 inimigos aglomerados contra uma parede, com o jogador do outro lado. Com a geração por proximidade, o recolhimento por distância e os tetos (`PoolSize`, `MaxTotalEnemies`), a horda fica perto do jogador e limitada.
+- **Medido no passo 7:** com o último spawner frenético e a horda (~270 inimigos) apertada em volta do jogador num conector de placa, o passo de física constante ficou em ~4 ms (seção "Desempenho"). O cenário da parede fina entre o jogador e a horda não foi medido; a dívida continua no backlog, com prioridade baixa.
+- Se voltar a pesar: os caminhos da seção 11 daquela spec (instrumentação primeiro) e, aqui, gerar só com o jogador à vista (um raio do spawner ao jogador antes de gerar).
 
-### A verificar no descartável, antes de cada passo
+### Verificações no descartável (todas feitas)
 
 - Verificado no passo 2: uma `Area2D` com máscara 2 percebe o `AnimatableBody2D` movido por código na camada 2; o jogador bate nele e é empurrado; a "carona" do modo Grounded acontece e é corrigida pelo Floor Layers (seção 5).
-- O custo de criar o estoque (60 inimigos) no quadro de montagem da fase.
-- O recolhimento devolve ao estoque sem fragmentos nem orbes, e o inimigo reaproveitado renasce normal.
+- Verificado no passo 4: criar o estoque de 60 inimigos leva ~15 ms, no quadro de montagem da fase (escondido pelo escurecer).
+- Verificado no passo 5: o recolhimento devolve ao estoque sem fragmentos nem orbes, e o inimigo reaproveitado renasce normal (não some na hora).
 
 ### Plano de implementação (aprovado pelo dev, out/2026)
 
@@ -281,12 +284,33 @@ Cada passo: verificação antes no descartável (Godot headless), apresentação
 5. **Recolhimento por distância** (`FractalEnemy.cs`; `DespawnDistance` na `fractal_enemy.tscn`). **Feito e testado pelo dev** (out/2026: tudo ok; Despawn Distance = 3000 na `fractal_enemy.tscn`, conferido no disco):
    - `TryDespawn` no começo do `_PhysicsProcess`: longe do jogador mais que `DespawnDistance` por `DespawnDelay`, o inimigo sai de cena sem se dividir nem soltar biomassa; perto, o relógio zera. A saída de cena do fim do `Die()` virou o `LeaveScene()` (volta ao estoque ou `QueueFree`), usado pela morte e pelo recolhimento; o `ActivateAt` zera o relógio;
    - verificado no descartável (0 falhas): com um perto e dois longe, aos 2,9 s todos vivos e aos 3,1 s os dois longe de volta ao estoque, sem orbes nem fragmentos; reaproveitado perto não some; 2 s longe e de volta continua vivo, 3,1 s longe é recolhido; fragmento longe sai da árvore; com `DespawnDistance` 0, nunca; com um spawner gerando, 3,2 s depois de o jogador ir embora o estoque está cheio de novo (10 de 10) e, com ele de volta, gera de novo; as verificações dos passos 3 e 4 refeitas com o inimigo novo, sem falhas.
-6. **HUD, seta e fase limpa** (novos `SpawnerHud.cs` e `SpawnerIndicator.cs`; sinais `SpawnersChanged` e `AllSpawnersDestroyed`). **Feito e testado pelo dev** (out/2026; o `SpawnerIndicator` ficou sem Full Rect, o que não muda nada: a seta desenha descontando a posição do `Control`, e a Godot não corta o desenho fora dele). Depois do teste, o dev pediu uma seta para cada spawner (S6 revista): **revisão aplicada**, aguardando o teste do dev:
+6. **HUD, seta e fase limpa** (novos `SpawnerHud.cs` e `SpawnerIndicator.cs`; sinais `SpawnersChanged` e `AllSpawnersDestroyed`). **Feito e testado pelo dev** (out/2026; o `SpawnerIndicator` ficou sem Full Rect, o que não muda nada: a seta desenha descontando a posição do `Control`, e a Godot não corta o desenho fora dele). Depois do teste, o dev pediu uma seta para cada spawner (S6 revista): **revisão feita e testada pelo dev** (out/2026: uma seta por spawner fora da tela, a do mais próximo em destaque, sem erros):
    - revisão: o `SpawnerIndicator` monta uma lista de setas (`Arrow`: ponta, direção, se é o mais próximo), uma por spawner vivo fora da tela; desenha primeiro as dos outros (`OtherArrowScale` 0,6, `OtherArrowAlpha` 0,5) e por último a do mais próximo, por cima. Verificado no descartável (0 falhas): 31 setas conferidas contra a conta independente em 11 posições (zoom 1 e 0,7), todas com a direção e a ponta na borda certas; spawner na tela sem seta; um único destaque, só com o mais próximo fora da tela; HUD e fase limpa iguais;
    - versão original (uma seta só):
    - `SpawnerDirector` emite `SpawnersChanged(restantes, total)` ao criar os spawners e a cada morte, e `AllSpawnersDestroyed` quando o último morre; expõe `AliveSpawners` (só leitura) para a seta. `SpawnerHud` só escuta (como o `StructureHud`). `SpawnerIndicator` acha o vivo mais próximo do jogador e, se ele estiver fora da tela, desenha um triângulo na borda (a `EdgeMargin`), na direção dele; a posição na tela vem da transformação do canvas (câmera e zoom);
    - verificado no descartável (0 falhas; tela 1920 × 1080, configurações de exibição do projeto): a seta, comparada com a conta independente "centro da tela + (spawner − jogador) × zoom", acertou a direção (erro de 0,00°) com a ponta na borda em 5 posições fora da tela e sumiu nas 3 posições com o mais próximo na tela, com zoom 1 e 0,7; o HUD passou por "Spawners: 3/3" → "2/3" → "1/3" → "0/3" → "Fase limpa: volte à eclusa", com um único `AllSpawnersDestroyed`, e a seta sumiu sem spawners vivos; a verificação do passo 4 refeita com o diretor novo, sem falhas.
-7. **Desempenho e ciclo** (medição do dev, seção 9, itens 8 e 9) e **fechamento**: esta spec, `BACKLOG.md`, `hex-phase.md` (fase C), `CLAUDE.md`, `HANDOFF.md` e a mensagem de commit.
+7. **Desempenho e ciclo** (medição do dev, seção 9, itens 8 e 9) e **fechamento**: esta spec, `BACKLOG.md`, `hex-phase.md` (fase C), `CLAUDE.md`, `HANDOFF.md` e a mensagem de commit. **Feito** (out/2026): medição do dev no editor e de referência no descartável (abaixo, "Desempenho"); o engasgo da divisão em massa virou o item 1.8 do backlog (decisão do dev: fechar o 1.4 e registrar). Documentos fechados: esta spec, `BACKLOG.md` (1.4 concluído, 1.8 novo), `hex-phase.md` (fase C), `fractal-enemy.md`, `fractal-enemy-movement.md`, `player-health-death.md`, `start-chamber.md`, `CLAUDE.md` e `HANDOFF.md`.
+
+### Desempenho (passo 7, out/2026)
+
+**Medição do dev no editor** (Depurador > Monitores, V-Sync desligado só no teste; último spawner frenético e massacre com a lanterna). Feita com valores de teste no inimigo (`Speed` 40 e `BaseBranchLength` 20 na `fractal_enemy.tscn`, revertidos para 10 e 8 depois), com inimigos mais rápidos e maiores que os do jogo:
+
+| Monitor | Valor |
+|---|---|
+| FPS | 826 |
+| Processo de Física | 4,05 ms constante; um pico isolado de ~27 ms (topo do gráfico) |
+| Física 2D > Objetos Ativos | até 91 |
+| Nós / Nós Órfãos | 4104 / 0 (0 em todas as recargas) |
+
+**Referência no descartável** (Godot 4.7.2 headless, build Debug, hexágono com 1268 paredes, estoque 60, teto 350; tempo dos callbacks de física por passo, medido com sondas de prioridade mínima e máxima; o monitor do headless infla os valores):
+
+| Cenário | Inimigos | Callbacks de física por passo |
+|---|---|---|
+| 10 spawners andando, sem inimigos | 0 | média 0,17 a 0,19 ms |
+| Último spawner frenético (num conector de placa), estoque esgotado em volta do jogador | 60 | média 0,30 a 0,35 ms, máx. 0,53 ms |
+| Depois de um massacre (60 → 120 → 240 fragmentos) e o estoque soltando de novo | 246 a 274 | média 3,9 a 4,1 ms, máx. 4,7 a 7,9 ms |
+
+**O pico isolado:** é o quadro em que dezenas de inimigos se dividem ao mesmo tempo. Cada divisão instancia dois fragmentos novos (`Instantiate`, `AddChild` adiado e `_Ready`), e isso entra no quadro de física depois dos callbacks (as chamadas adiadas). Medindo o quadro inteiro no descartável: dividir 60 de uma vez custou 28 a 39 ms; dividir 120, 35 a 42 ms; o quadro seguinte volta a 3 a 8 ms. Com um "aquecimento" antes (o .NET já tendo compilado esses caminhos), o pico continuou, então não é a primeira execução do código: é o custo de criar nós (~0,15 a 0,3 ms por fragmento). Solução proposta no backlog 1.8 (pool de fragmentos).
 
 ### Ideias para depois
 
@@ -298,6 +322,7 @@ Cada passo: verificação antes no descartável (Godot headless), apresentação
 
 ### Relação com outras decisões
 
-- Backlog, seção 2: "Valores definitivos de `MaxConcurrentEnemies` e `MaxTotalEnemies`": na fase, o `PoolSize` do `EnemyPool` (60) faz o papel do `MaxConcurrentEnemies`, e o `MaxTotalEnemies` (no `EnemyPool`) continua 350. Definitivos depois da medição (passo 7).
+- Backlog, seção 2: "Valores definitivos de `MaxConcurrentEnemies` e `MaxTotalEnemies`": na fase, o `PoolSize` do `EnemyPool` (60) faz o papel do `MaxConcurrentEnemies`, e o `MaxTotalEnemies` (no `EnemyPool`) continua 350. Mantidos depois da medição (passo constante de ~4 ms no pior caso); continuam pontos de partida.
 - `dyson-wall.md`, seção 10: "os spawners são afetados pela sucção?" continua lá (1.5).
-- `hex-phase.md`: esta spec é a fase C; o recheio das estruturas pode vir depois.
+- `hex-phase.md`: esta spec é a fase C (concluída); o recheio das estruturas fica para depois.
+- Backlog 1.8: engasgo de um quadro na divisão em massa (pool de fragmentos).

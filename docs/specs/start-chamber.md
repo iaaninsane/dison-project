@@ -2,7 +2,7 @@
 
 - **Status:** **validada** (ideia do dev, out/2026). Decisões D1 a D6 na seção 10; passos 2 a 7 feitos e testados pelo dev no editor, cada um verificado antes no descartável. Revê a decisão H5 da `hex-phase.md` (a câmara separada na `sala_entrada` virou bancada).
 - **Etapa:** 1 (mecânica)
-- **Depende de:** `docs/specs/hex-phase.md` (fases A e B), `docs/specs/suit-evolution.md` (terminais, banco, melhorias), `docs/specs/player-health-death.md` (morte e reinício). Decidiu a consequência da ejeção (backlog, seção 2). Relaciona-se com o backlog 1.4 (spawners móveis, que vão escutar `IncursionStarted`).
+- **Depende de:** `docs/specs/hex-phase.md` (fases A e B), `docs/specs/suit-evolution.md` (terminais, banco, melhorias), `docs/specs/player-health-death.md` (morte e reinício). Decidiu a consequência da ejeção (backlog, seção 2). Relaciona-se com a `docs/specs/mobile-spawners.md` (backlog 1.4, concluído): o `SpawnerDirector` escuta `IncursionStarted`.
 
 > **Valores em teste:** como nas demais specs da demo, os `[Export]` e os números desta spec são pontos de partida, não valores definitivos.
 
@@ -34,7 +34,7 @@ O jogador começa a partida dentro da fase, no primeiro nó, que funciona como c
 
 ## 3. Fora do escopo
 
-- Os spawners móveis e o objetivo da fase (backlog 1.4): esta spec só cria o evento `IncursionStarted` que eles vão escutar.
+- Os spawners móveis e o objetivo da fase (backlog 1.4): esta spec só cria o evento `IncursionStarted` que eles escutam (feito na `mobile-spawners.md`).
 - Arte dos portões, dos terminais e da câmara (etapa 2): visual provisório por código ou `ColorRect`.
 - Salvar progresso em disco.
 - Descartar a `sala_entrada` (fica como bancada; decisão futura).
@@ -64,7 +64,7 @@ O jogador começa a partida dentro da fase, no primeiro nó, que funciona como c
 - **Recarga da fase:** a montagem leva ~0,1 s e fica escondida pelo escurecer. Os registros estáticos (`FractalSwarm`, `BiomassField`) se limpam no `_ExitTree`; "Nós Órfãos" = 0 em recargas seguidas (verificado pelo dev e no descartável).
 - **Liberar duas vezes:** a `StartChamber` guarda `HasStarted` e ignora um segundo pedido; o terminal também só emite uma vez.
 - **`StartChamber` sem ligar:** a fase começa aberta, como antes (lição dos campos `[Export]` vazios: o jogador nunca fica selado sem saída).
-- **Spawners (1.4):** não podem gerar inimigos antes de `IncursionStarted`, nem dentro do nó inicial travado.
+- **Spawners (1.4):** não podem gerar inimigos antes de `IncursionStarted`, nem dentro do nó inicial travado. Garantido na `mobile-spawners.md`: o `SpawnerDirector` só cria os spawners no `IncursionStarted`, em rotas que não tocam o nó de entrada.
 - **Bancadas** (`sala_entrada`, `sala_ninho` e outras): com o `RestartOnDeath` de destino vazio, morrer numa bancada recarrega a própria bancada.
 
 ## 6. Arquivos e cenas

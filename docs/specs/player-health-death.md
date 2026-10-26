@@ -69,7 +69,7 @@ O anticorpo fractal passa a ser uma ameaça: encostar na horda danifica o traje 
   - `FractalEnemy.cs`: uma linha, `public bool IsDead`, para a área de contato ignorar inimigos mortos ou guardados no pool (desvio aprovado: a spec listava o arquivo como somente leitura).
   - `player.tscn`: nós novos e conexões de sinal (seção 7).
 - Novos:
-  - `PlayerHurtbox.cs` (`Area2D`, filha do `Player`): lista os inimigos encostados (entrou/saiu), limpa a cada passo os mortos e liberados, e responde qual é o inimigo encostado mais próximo.
+  - `PlayerHurtbox.cs` (`Area2D`, filha do `Player`): lista os inimigos encostados (entrou/saiu), limpa a cada passo os mortos e liberados, e responde qual é o inimigo encostado mais próximo. Desde os spawners móveis (out/2026), lista qualquer `IContactHazard` (inimigos e spawners, com o mesmo golpe; `mobile-spawners.md`).
   - `SuitIntegrity.cs` (`Node`, filho do `Player`): integridade, golpe com imunidade, piscar, empurrão; sinais `IntegrityChanged(int)` e `Died()`. Recebe a área de contato e o sprite por `[Export]`; o estado inicial é emitido de forma adiada.
   - `RestartOnDeath.cs` (`Node`, filho do `Player`): ouvinte do `Died`; cobra a taxa da biomassa e, depois de `DeathRestartDelay` (`SceneTreeTimer`), troca para `ReturnScenePath` ou recarrega a sala se o campo estiver vazio. Alterado pela spec `suit-evolution.md`.
   - `IntegrityHud.cs` (`Label`): HUD de teste "Traje: N".

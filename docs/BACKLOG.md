@@ -1,6 +1,6 @@
 # Backlog do projeto
 
-Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atualizada em 2026-10-22.
+Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atualizada em 2026-10-26.
 
 > **Como usar:** cada item aponta para a spec relacionada e traz um "ponto de partida" técnico. O ponto de partida é uma **leitura inicial do código, não uma solução aprovada**: antes de implementar, seguir o fluxo do CLAUDE.md (ler spec e código, propor plano, esperar aprovação). Ao concluir um item, removê-lo daqui e registrar o resultado na spec.
 
@@ -8,26 +8,11 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 
 ## 1. Refinamentos do gameplay atual (prioridade do dev)
 
-> **1.3 concluído (out/2026):** fase hexagonal, fases A e B validadas pelo dev (`docs/specs/hex-phase.md`). A câmara leva à fase pela `PortaSaida`; a fase tem eclusa (entrada e extração), transição de tela (`ScreenFade`) em toda troca de cena e recomeça do zero a cada entrada. Os pontos em aberto foram para a seção 2; a fase C da spec (spawners na fase) entra com o 1.4.
+> **1.3 concluído (out/2026):** fase hexagonal, fases A e B validadas pelo dev (`docs/specs/hex-phase.md`). A câmara leva à fase pela `PortaSaida`; a fase tem eclusa (entrada e extração), transição de tela (`ScreenFade`) em toda troca de cena e recomeça do zero a cada entrada. Os pontos em aberto foram para a seção 2; a fase C da spec (spawners na fase) foi feita no 1.4.
 
 > **1.7 concluído (out/2026):** câmara de partida no nó inicial, validada pelo dev (`docs/specs/start-chamber.md`). O jogo começa na fase (cena principal); o nó de entrada é a câmara (portões, paredes inertes, terminais do traje e "Liberar saídas") até o jogador liberar as saídas (sinal `IncursionStarted`); morte, ejeção (igual à morte) e extração pela eclusa recarregam a fase em modo câmara. A `sala_entrada` virou bancada.
 
-### 1.4 Spawners móveis e objetivo da fase (novo)
-
-- **Contexto:** cerca de 10 spawners por fase circulam pela fase inteira gerando inimigos o tempo todo. O objetivo do jogador é eliminá-los; a cada spawner morto, a dificuldade aumenta.
-- **Spec:** `docs/specs/mobile-spawners.md` (aprovada, out/2026). Decisões do dev (S1 a S9, seção 10 da spec):
-  - **S1:** morre pela luz, com vida alta (300, ~8,6 s) e sem regenerar.
-  - **S2:** iluminado, entra em pânico (acelera e foge do jogador).
-  - **S3:** passeio aleatório pelas rotas de um grafo tirado da geometria (eixos dos corredores; 13 pontos e 30 rotas no hexágono), sem pathfinding.
-  - **S4:** orçamento global de geração repartido entre os vivos + crescimento por morte (o intervalo de cada spawner cai de 6,7 s para 0,35 s).
-  - **S5:** gera só com o jogador perto e recolhe os inimigos longe dele (eles andam a 10 px/s e ficariam espalhados ocupando o teto).
-  - **S6:** contador no HUD + setas na borda da tela, uma para cada spawner fora da tela, com a do mais próximo em destaque (revista pelo dev depois do teste do passo 6; antes era só a do mais próximo).
-  - **S7:** com todos mortos, "Fase limpa: volte à eclusa"; a extração encerra.
-  - **S8:** sólido e fere (camada 2; empurra o jogador e segue a rota; mesmo golpe do inimigo).
-  - **S9:** valores iniciais da seção 4 da spec aceitos como pontos de partida.
-- **Achado no código:** o estoque de inimigos não pode ser filho do spawner (os filhos herdam a transformação do pai, e os fragmentos nascem no pai): o pool fica num nó parado, compartilhado.
-- **Plano de implementação aprovado** (seção 10 da spec, passos 1 a 7). Passos 1 (grafo de rotas no `HexPhaseLayout`) e 2 (spawner que anda; Floor Layers do `Player` sem a camada 2, contra a "carona" achada no motor) feitos e testados pelo dev. Passo 3 (luz e contato) feito e testado pelo dev; corrigiu uma "cola" do jogador no spawner do passo 2, achada no motor (o spawner agora empurra antes de andar). Passo 4 (geração e curva; novo `EnemyPool`, que também guarda o `MaxTotalEnemies`) feito e testado pelo dev. Passo 5 (recolhimento por distância no `FractalEnemy`) feito e testado pelo dev. Passo 6 (HUD, seta e fase limpa) feito e testado pelo dev; revisão da seta (uma por spawner) aplicada, aguardando o teste. Depois: passo 7 (medição do pior caso e fechamento).
-- **Depende de:** 1.3 e 1.7, concluídos (a fase existe inteira numa cena; `hex-phase.md`, `start-chamber.md`). Os spawners começam no sinal `IncursionStarted` da `StartChamber` e não geram inimigos no nó inicial travado. Para testar combate na fase antes dos spawners, um ninho temporário funciona (`hex-phase.md`, seção 7, item 11).
+> **1.4 concluído (out/2026):** spawners móveis e objetivo da fase, validados pelo dev (`docs/specs/mobile-spawners.md`; decisões S1 a S9, com a S6 revista: uma seta por spawner). Ao liberar as saídas, 10 spawners andam pelas rotas da fase (grafo tirado da geometria), geram inimigos só com o jogador perto, a partir de um estoque compartilhado (`EnemyPool`), num ritmo que acelera a cada spawner morto (`SpawnerDirector`); a luz os mata (fogem em pânico) e soltam biomassa; encostar fere; inimigos longe do jogador são recolhidos; HUD com a contagem, setas na borda e "Fase limpa: volte à eclusa". Pior caso medido: passo de física constante de ~4 ms; o engasgo isolado na divisão em massa virou o item 1.8. Corrigidos no caminho: a "cola" do jogador no spawner e a "carona" do modo Grounded (Floor Layers do `Player` sem a camada 2).
 
 ### 1.5 Parede de fronteira (dyson-wall), fases A e B (novo)
 
@@ -43,6 +28,13 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 - **O que fazer:** o dev escolhe uma cor provisória de `CanvasModulate` para testar as mecânicas sem blecaute. O `ColorRect` de fundo continua obrigatório (sem ele a luz da lanterna não aparece). Arte final na etapa 2.
 - **Spec:** nenhuma (ajuste de cena). Conferir depois se a lanterna continua legível sobre fundos claros.
 
+### 1.8 Engasgo de um quadro na divisão em massa (pool de fragmentos) (novo)
+
+- **Contexto:** medido no fechamento do 1.4 (out/2026). Quando dezenas de inimigos se dividem no mesmo quadro (massacre com a lanterna na horda do último spawner), esse quadro passa do orçamento: pico isolado de ~27 ms no Processo de Física no editor (medição do dev, com inimigos de teste a 40 px/s). No descartável, dividir 60 inimigos no mesmo quadro (120 fragmentos) custou 28 a 39 ms, e 120 (240 fragmentos), 35 a 42 ms, com e sem aquecimento do .NET (não é a primeira execução do código). No quadro seguinte volta a 3 a 8 ms; o passo constante fica em ~4 ms.
+- **Causa:** cada divisão instancia nós novos (`FractalEnemy.SpawnFragments`: `Instantiate`, `AddChild` adiado e `_Ready`), ~0,15 a 0,3 ms por fragmento.
+- **Ponto de partida:** pool de fragmentos: o `FractalEnemy` pede os fragmentos ao `EnemyPool` (que hoje só guarda inimigos da geração 0) em vez de instanciar; cuidar do `PoolSize` (os fragmentos contam?) e do `MaxTotalEnemies`. Alternativa mais simples: espalhar a criação dos fragmentos por alguns quadros (orçamento de criação por quadro). Na `sala_ninho` (sem `EnemyPool`), os fragmentos continuam instanciados.
+- **Spec:** criar quando for feito (ou ampliar a `fractal-enemy.md`, seção 5, "Custo de instanciar"). Medições na `mobile-spawners.md` (seção 10, "Desempenho").
+
 ## 2. Decisões de design em aberto
 
 | Item | Onde está registrado | Observação |
@@ -53,28 +45,27 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 | Melhoria "Potência da lanterna" | `suit-evolution.md` (decisão 4) | Adiada até ter requisitos; volta junto com o valor no enum `SuitUpgrade.TargetStat` |
 | Salvar progresso em disco | `suit-evolution.md` (decisão 2) | `RunData` já separado do nó; salvar = converter o `RunData` |
 | Velocidade e separação dos fragmentos | `fractal-enemy.md` (fase 2) | Iguais às do pai; testar outras possibilidades (ex.: menor = mais rápido) |
-| Valores definitivos de `MaxConcurrentEnemies` e `MaxTotalEnemies` | `fractal-enemy.md` (seção 10), `mobile-spawners.md` (seção 4) | Hoje 200 e 350 na `sala_ninho`. Na fase (1.4): `PoolSize` 60 (papel do `MaxConcurrentEnemies`) e `MaxTotalEnemies` 350, como pontos de partida; definitivos depois da medição. Variantes A2/A3 do teto anotadas |
+| Valores definitivos de `MaxConcurrentEnemies` e `MaxTotalEnemies` | `fractal-enemy.md` (seção 10), `mobile-spawners.md` (seção 4) | Hoje 200 e 350 na `sala_ninho`. Na fase (1.4): `PoolSize` 60 (papel do `MaxConcurrentEnemies`) e `MaxTotalEnemies` 350, no `EnemyPool`; no pior caso medido, passo constante de ~4 ms (`mobile-spawners.md`, seção 10). Continuam pontos de partida. Variantes A2/A3 do teto anotadas |
 | Cor do `CanvasModulate` (visibilidade sem blecaute) | HANDOFF v2.0 (3.2), item 1.6 | Provisória na etapa 1; arte na etapa 2 |
 | Neon × tons pastel | HANDOFF v2.0 (seção 5), `fractal-enemy-render-3d.md` | Testar na etapa 2 |
 | Cor da parede irritada | `dyson-wall.md` (seção 10) | Vermelho no `WallSensitive.cs` × verde-água na dyson-wall |
 | Orbe de biomassa com luz própria | `biomass-collection.md` (seção 10) | Sem blecaute, passa a ser só estética (etapa 2); medir o custo antes |
 | Sensibilidade das paredes por tipo de estrutura | `hex-phase.md` (seções 4 e 10) | Hoje 25 (nós e painéis), 10 (conectores de nós) e 7,5 (conectores de placa): provisórios, o dev vai testar e definir |
-| Papel e recheio de cada tipo de estrutura | `hex-phase.md` (seção 10), HANDOFF v2.0 (seção 4) | Sugestão: nós = arenas, conectores = corredores com risco de parede, painéis = áreas abertas, placas = gargalos, nó central = clímax. O recheio (pilares, costelas, gargalos) pode acompanhar os spawners (1.4) |
+| Papel e recheio de cada tipo de estrutura | `hex-phase.md` (seção 10), HANDOFF v2.0 (seção 4) | Sugestão: nós = arenas, conectores = corredores com risco de parede, painéis = áreas abertas, placas = gargalos, nó central = clímax. O recheio (pilares, costelas, gargalos) ainda não existe: o 1.4 foi feito sem ele |
 | "Horda que persegue": reposicionar perto do jogador, logo fora da tela, o inimigo que fica longe, em vez de recolhê-lo | `mobile-spawners.md` (seção 10, "Ideias para depois") | Ideia do dev (out/2026), para implementação futura. Referência: chefes do Vampire Survivors (os comuns somem). Muda a S5 (pressão longe dos spawners) e a compressão e o alívio; o ponto precisa estar no piso e sem parede no meio |
-| Hexágonos vizinhos e progressão entre fases | `hex-phase.md` (seções 3 e 10) | Provavelmente depois da demo; ligado ao "o que acontece quando todos os spawners morrem" (1.4) |
+| Hexágonos vizinhos e progressão entre fases | `hex-phase.md` (seções 3 e 10) | Provavelmente depois da demo. Hoje, com todos os spawners mortos: "Fase limpa: volte à eclusa" e extração (S7, `mobile-spawners.md`) |
 | Referência de cenário em corte | HANDOFF v2.0 (seções 5 e 8) | Citada no rascunho como "Heavyness body"; registrada como Heavenly Bodies (2Pt Interactive, 2021), a confirmar |
 
 ## 3. Dívidas técnicas
 
 | Item | Onde está registrado | Observação |
 |---|---|---|
-| Queda de FPS com o jogador do lado de fora da parede e a horda aglomerada do lado de dentro | `fractal-enemy-movement.md` (seção 11) | Prioridade baixa; começar por instrumentação temporária. Reavaliado na `mobile-spawners.md` (seção 10): geração por proximidade, recolhimento e tetos devem torná-lo improvável; medir o pior caso no passo 7 do 1.4 |
+| Queda de FPS com o jogador do lado de fora da parede e a horda aglomerada do lado de dentro | `fractal-enemy-movement.md` (seção 11) | Prioridade baixa; começar por instrumentação temporária. Reavaliado no 1.4 (`mobile-spawners.md`, seção 10): com geração por proximidade, recolhimento e tetos, a horda fica perto do jogador e limitada; o pior caso medido (último spawner, ~270 inimigos num conector de placa) ficou em ~4 ms por passo. O cenário da parede fina entre jogador e horda não foi medido |
 | `TakeDamage` soma `_time += 0.2f` a cada frame sob a luz (pulsação acelera e o flash fica sempre ligado) | `fractal-enemy.md` (seção 10) | Revisar junto com o flash de dano |
 | Teste pendente da fase 1 do inimigo: a vida não regenera fora do feixe | `fractal-enemy.md` (seção 8) | Só falta o teste no editor |
 | `Player` em Motion Mode Grounded | `fractal-enemy.md` (seção 10) | Avaliar Floating (afeta como o jogador desliza nas paredes) |
 | Grupo `"Enimies"` (erro de digitação) na cena do inimigo | `fractal-enemy.md` (seção 7) | Nada depende dele hoje |
 | `CollisionShape2D` do inimigo escalado (0.2) em vez de raio ajustado | `fractal-enemy.md` (seção 10) | Boa prática da Godot: ajustar o raio da forma |
-| Pool de fragmentos | `fractal-enemy.md` (seção 5) | Só se matar muitos inimigos de uma vez causar engasgo |
 | `Player._PhysicsProcess` longo, com três estados (normal, ejetado, morto) em `if/else` | código (`Player.cs`) | Se surgirem mais estados (ex.: ejetado para o espaço), considerar o padrão State. A sucção da dyson-wall não é um estado novo (o jogador mantém o controle): entra como aceleração externa |
 | Entalhes nas quinas convexas das paredes geradas | `hex-phase.md` (seção 5) | Só visual, do lado de fora; resolver na arte (etapa 2) |
 | Paredes da `sala_desfiladeiro` não são instâncias de uma cena de parede | `reactive-walls.md` (seção 4) | Cada uma tem os próprios `[Export]`: ajustar um valor exige mudar parede por parede ou o padrão no código. Prioridade baixa (as paredes de fronteira serão substituídas pela dyson-wall) |
