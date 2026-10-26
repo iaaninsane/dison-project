@@ -1,6 +1,6 @@
 # Spec: Spawners móveis e objetivo da fase
 
-- **Status:** aprovada (decisões S1 a S9 do dev, out/2026; seção 10). Plano de implementação aprovado pelo dev (seção 10); passos 1 a 5 feitos e testados pelo dev; passo 6 (HUD, seta e fase limpa) aplicado, aguardando a montagem no editor e o teste do dev. Valores em teste.
+- **Status:** aprovada (decisões S1 a S9 do dev, out/2026; seção 10). Plano de implementação aprovado pelo dev (seção 10); passos 1 a 6 feitos e testados pelo dev; revisão da seta (uma por spawner, S6 revista) aplicada, aguardando o teste do dev; depois, passo 7. Valores em teste.
 - **Etapa:** 1 (mecânica). É a "fase C" da `hex-phase.md` (spawners na fase e simulação por proximidade).
 - **Depende de:** `docs/specs/hex-phase.md` (a fase, o `HexPhaseLayout`), `docs/specs/start-chamber.md` (sinal `IncursionStarted`; nada nasce no nó inicial travado), `docs/specs/fractal-enemy.md` e `docs/specs/fractal-enemy-movement.md` (inimigo, horda, tetos e o problema conhecido de FPS), `docs/specs/biomass-collection.md` (recompensa), `docs/specs/player-health-death.md` (golpe de contato). Relaciona-se com a `docs/specs/dyson-wall.md` (a sucção afeta os spawners? Em aberto lá).
 
@@ -75,7 +75,7 @@ Dar à fase um objetivo: cerca de 10 spawners circulam pelas estruturas do hexá
 ### Rastreabilidade (S6)
 
 - HUD de teste: "Spawners: 7/10" (sinal `SpawnersChanged`), que aparece ao começar a incursão, e "Fase limpa: volte à eclusa" no fim.
-- **Seta na borda da tela** apontando para o spawner vivo mais próximo (em linha reta), escondida quando ele está na tela.
+- **Setas na borda da tela**, uma para cada spawner vivo fora da tela, na direção dele (S6 revista pelo dev, out/2026). A do mais próximo do jogador (em linha reta) fica em destaque, maior e opaca; as outras ficam menores e meio transparentes. Spawner na tela não tem seta.
 - **Silhueta provisória** desenhada por código, diferente da do inimigo (círculo grande com um anel pulsando, cor própria). Arte na etapa 2.
 - O rastro de inimigos lentos que o spawner deixa pela rota também ajuda a segui-lo.
 
@@ -134,6 +134,16 @@ O dano do contato é o do `SuitIntegrity` (`ContactDamage` 10, `KnockbackImpulse
 |---|---|---|
 | `DespawnDistance` | 0 no código (desligado); 3000 px na `fractal_enemy.tscn` | Longe da tela em qualquer zoom (meia diagonal a 0,7: ~1570 px). Na `sala_ninho` nunca acontece |
 | `DespawnDelay` | 3 s | Evita recolher quem só passou um instante longe |
+
+### `SpawnerIndicator` (setas, no `PhaseHud`)
+
+| Parâmetro | Valor inicial | Observação |
+|---|---|---|
+| `Director` | — | Ligado no Inspector |
+| `EdgeMargin` | 48 px | Da ponta das setas até a borda da tela |
+| `ArrowSize` | 28 px | Seta do mais próximo (visual provisório) |
+| `OtherArrowScale`, `OtherArrowAlpha` | 0,6 e 0,5 | Setas dos outros: menores e meio transparentes (visual provisório) |
+| `ArrowColor` | a cor do anel do spawner | Visual provisório |
 
 ## 5. Casos de borda
 
@@ -194,7 +204,7 @@ O dano do contato é o do `SuitIntegrity` (`ContactDamage` 10, `KnockbackImpulse
 - [ ] O spawner é sólido para o jogador: encostar dá o golpe do inimigo; no caminho dele, o jogador é empurrado, sem "carona" e sem ficar preso na parede; os inimigos o atravessam
 - [ ] A luz fere o spawner; iluminado, ele foge mais rápido; com a vida zerada, some, solta biomassa e o HUD desconta
 - [ ] A cada spawner morto, os restantes geram mais rápido (intervalos da seção 2)
-- [ ] A seta aponta para o spawner vivo mais próximo e some quando ele está na tela
+- [ ] Há uma seta para cada spawner vivo fora da tela, e a do mais próximo fica em destaque; spawner na tela não tem seta
 - [ ] Inimigos longe do jogador somem sem soltar biomassa e voltam ao estoque
 - [ ] Com todos mortos, o HUD mostra "Fase limpa: volte à eclusa" e a eclusa extrai como antes
 - [ ] A `sala_ninho` (bancada) continua funcionando: a luz mata os inimigos e o contato fere
@@ -202,8 +212,8 @@ O dano do contato é o do `SuitIntegrity` (`ContactDamage` 10, `KnockbackImpulse
 
 ## 9. Como testar (roteiro manual no editor)
 
-1. F5: na câmara não há spawner nem inimigo. Libere as saídas: o HUD mostra 10/10 e a seta aparece.
-2. Siga a seta até um spawner; confira que ele anda pelo eixo do corredor e troca de rota nos nós e painéis.
+1. F5: na câmara não há spawner nem inimigo. Libere as saídas: o HUD mostra 10/10 e aparecem as setas, a do mais próximo em destaque.
+2. Siga a seta em destaque até um spawner (ao entrar na tela, a seta dele some e o destaque passa ao próximo); confira que ele anda pelo eixo do corredor e troca de rota nos nós e painéis.
 3. Aproxime-se e afaste-se: ele só gera inimigos com você perto. Encoste nele (golpe e empurrão), fique parado no caminho dele (empurrado pela rota) e encoste por cima dele (sem ser arrastado).
 4. Ilumine-o: ele foge mais rápido; persiga até matar. Confira a biomassa e o HUD.
 5. Mate vários e repare o intervalo de geração encurtando (para testar rápido: `MaxHealth` baixo e `SpawnerCount` 3 no Inspector).
@@ -223,7 +233,7 @@ Todas seguiram a recomendação da análise, menos a S8 (o dev escolheu o spawne
 3. **S3, movimento:** passeio aleatório pelas rotas, sem voltar pela mesma. Descartadas: circuito fixo; busca no grafo (BFS).
 4. **S4, curva de dificuldade:** orçamento global repartido entre os vivos + crescimento por morte. Descartadas: só o orçamento repartido; taxa fixa por spawner + crescimento.
 5. **S5, simulação por proximidade:** gera só perto do jogador e recolhe os inimigos longe dele. Descartadas: gerar em todo lugar com os inimigos longe "dormindo"; sem regra (medir antes).
-6. **S6, rastreabilidade:** contador no HUD + seta na borda da tela para o mais próximo. Descartados: texto com a estrutura de cada spawner; sonar periódico.
+6. **S6, rastreabilidade:** contador no HUD + seta na borda da tela para o mais próximo. Descartados: texto com a estrutura de cada spawner; sonar periódico. **Revista pelo dev depois do teste do passo 6** (out/2026): uma seta para cada spawner fora da tela, com a do mais próximo em destaque (maior e opaca; as outras menores e meio transparentes). Descartadas: todas iguais (setas sobrepostas sem dizer qual é o mais perto); tamanho caindo aos poucos com a distância.
 7. **S7, quando todos morrem:** "Fase limpa: volte à eclusa"; a extração encerra. Descartadas: extração automática; tela de fim da demo.
 8. **S8, corpo:** sólido e fere (camada 2, a mesma dos inimigos). Descartadas: atravessável sem dano (a recomendação, numa camada 3 só da luz); sólido sem dano.
    - **S8a:** empurra o jogador e segue a rota (`AnimatableBody2D`). Descartada: parar quando bloqueado pelo jogador (`CharacterBody2D`). No passo 3, o "empurrar" passou a ser explícito (o spawner move o jogador antes de andar), porque mover o corpo direto colava o jogador (seção 5); a decisão não mudou.
@@ -271,7 +281,9 @@ Cada passo: verificação antes no descartável (Godot headless), apresentação
 5. **Recolhimento por distância** (`FractalEnemy.cs`; `DespawnDistance` na `fractal_enemy.tscn`). **Feito e testado pelo dev** (out/2026: tudo ok; Despawn Distance = 3000 na `fractal_enemy.tscn`, conferido no disco):
    - `TryDespawn` no começo do `_PhysicsProcess`: longe do jogador mais que `DespawnDistance` por `DespawnDelay`, o inimigo sai de cena sem se dividir nem soltar biomassa; perto, o relógio zera. A saída de cena do fim do `Die()` virou o `LeaveScene()` (volta ao estoque ou `QueueFree`), usado pela morte e pelo recolhimento; o `ActivateAt` zera o relógio;
    - verificado no descartável (0 falhas): com um perto e dois longe, aos 2,9 s todos vivos e aos 3,1 s os dois longe de volta ao estoque, sem orbes nem fragmentos; reaproveitado perto não some; 2 s longe e de volta continua vivo, 3,1 s longe é recolhido; fragmento longe sai da árvore; com `DespawnDistance` 0, nunca; com um spawner gerando, 3,2 s depois de o jogador ir embora o estoque está cheio de novo (10 de 10) e, com ele de volta, gera de novo; as verificações dos passos 3 e 4 refeitas com o inimigo novo, sem falhas.
-6. **HUD, seta e fase limpa** (novos `SpawnerHud.cs` e `SpawnerIndicator.cs`; sinais `SpawnersChanged` e `AllSpawnersDestroyed`). **Scripts aplicados** (out/2026), aguardando a montagem no editor e o teste do dev:
+6. **HUD, seta e fase limpa** (novos `SpawnerHud.cs` e `SpawnerIndicator.cs`; sinais `SpawnersChanged` e `AllSpawnersDestroyed`). **Feito e testado pelo dev** (out/2026; o `SpawnerIndicator` ficou sem Full Rect, o que não muda nada: a seta desenha descontando a posição do `Control`, e a Godot não corta o desenho fora dele). Depois do teste, o dev pediu uma seta para cada spawner (S6 revista): **revisão aplicada**, aguardando o teste do dev:
+   - revisão: o `SpawnerIndicator` monta uma lista de setas (`Arrow`: ponta, direção, se é o mais próximo), uma por spawner vivo fora da tela; desenha primeiro as dos outros (`OtherArrowScale` 0,6, `OtherArrowAlpha` 0,5) e por último a do mais próximo, por cima. Verificado no descartável (0 falhas): 31 setas conferidas contra a conta independente em 11 posições (zoom 1 e 0,7), todas com a direção e a ponta na borda certas; spawner na tela sem seta; um único destaque, só com o mais próximo fora da tela; HUD e fase limpa iguais;
+   - versão original (uma seta só):
    - `SpawnerDirector` emite `SpawnersChanged(restantes, total)` ao criar os spawners e a cada morte, e `AllSpawnersDestroyed` quando o último morre; expõe `AliveSpawners` (só leitura) para a seta. `SpawnerHud` só escuta (como o `StructureHud`). `SpawnerIndicator` acha o vivo mais próximo do jogador e, se ele estiver fora da tela, desenha um triângulo na borda (a `EdgeMargin`), na direção dele; a posição na tela vem da transformação do canvas (câmera e zoom);
    - verificado no descartável (0 falhas; tela 1920 × 1080, configurações de exibição do projeto): a seta, comparada com a conta independente "centro da tela + (spawner − jogador) × zoom", acertou a direção (erro de 0,00°) com a ponta na borda em 5 posições fora da tela e sumiu nas 3 posições com o mais próximo na tela, com zoom 1 e 0,7; o HUD passou por "Spawners: 3/3" → "2/3" → "1/3" → "0/3" → "Fase limpa: volte à eclusa", com um único `AllSpawnersDestroyed`, e a seta sumiu sem spawners vivos; a verificação do passo 4 refeita com o diretor novo, sem falhas.
 7. **Desempenho e ciclo** (medição do dev, seção 9, itens 8 e 9) e **fechamento**: esta spec, `BACKLOG.md`, `hex-phase.md` (fase C), `CLAUDE.md`, `HANDOFF.md` e a mensagem de commit.
