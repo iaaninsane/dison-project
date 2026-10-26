@@ -1,0 +1,40 @@
+[gd_scene format=3 uid="uid://dmbqk6dv0jbww"]
+
+[ext_resource type="Script" uid="uid://dioc8guwr0h4j" path="res://DysonWall.cs" id="1_1mqbt"]
+[ext_resource type="PackedScene" uid="uid://cgy8y45ghbrod" path="res://player.tscn" id="2_3jupn"]
+
+[node name="WallTest" type="Node2D" unique_id=981961521]
+
+[node name="Background" type="ColorRect" parent="." unique_id=2090364398]
+offset_right = 1920.0
+offset_bottom = 1080.0
+mouse_filter = 2
+color = Color(0.12156863, 0.078431375, 0.16078432, 1)
+
+[node name="WallLevel0" type="StaticBody2D" parent="." unique_id=785222762]
+position = Vector2(960, 150)
+script = ExtResource("1_1mqbt")
+SierpinskiLevel = 0
+
+[node name="WallLevel1" type="StaticBody2D" parent="." unique_id=323054075]
+position = Vector2(960, 330)
+script = ExtResource("1_1mqbt")
+SierpinskiLevel = 1
+
+[node name="WallLevel2" type="StaticBody2D" parent="." unique_id=1666381463]
+position = Vector2(960, 510)
+script = ExtResource("1_1mqbt")
+
+[node name="WallLevel3" type="StaticBody2D" parent="." unique_id=413653098]
+position = Vector2(960, 690)
+script = ExtResource("1_1mqbt")
+SierpinskiLevel = 3
+
+[node name="WallTilted" type="StaticBody2D" parent="." unique_id=1533699388]
+position = Vector2(1500, 900)
+rotation = 0.5235988
+script = ExtResource("1_1mqbt")
+Length = 600.0
+
+[node name="Player" parent="." unique_id=2016198778 instance=ExtResource("2_3jupn")]
+position = Vector2(400, 900)
