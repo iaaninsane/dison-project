@@ -65,7 +65,7 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 | Item | Onde está registrado | Observação |
 |---|---|---|
 | Deformação final da parede de fronteira | `dyson-wall.md` (seção 10) | Esmaecer é o padrão provisório. Referências sugeridas: exocitose, estômato, esfíncter/íris (Scorn), peristalse |
-| Detalhes da sucção nos inimigos e orbes | `dyson-wall.md` (seção 10) | Inimigo sugado solta biomassa? (proposto: não); spawners são afetados?; fendas viram estratégia dominante contra a horda? |
+| Fendas como arma contra a horda e os spawners | `dyson-wall.md` (seção 10) | Observar no teste da fase B se vira estratégia dominante; se virar, ajustar `EnemySuctionFactor` e `SpawnerSuctionFactor`. Biomassa do inimigo sugado e sucção dos spawners já decididas (B3 e B4) |
 | Tiros no ALERTAR | CLAUDE.md (core loop) e HANDOFF | O core loop cita "luz e tiros", mas não existe tiro; os "modos de tiro" do `TerminalModo` são modos da lanterna |
 | Melhoria "Potência da lanterna" | `suit-evolution.md` (decisão 4) | Adiada até ter requisitos; volta junto com o valor no enum `SuitUpgrade.TargetStat` |
 | Salvar progresso em disco | `suit-evolution.md` (decisão 2) | `RunData` já separado do nó; salvar = converter o `RunData` |
@@ -78,6 +78,7 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 | Sensibilidade das paredes por tipo de estrutura | `hex-phase.md` (seções 4 e 10) | Hoje 25 (nós e painéis), 10 (conectores de nós) e 7,5 (conectores de placa): provisórios, o dev vai testar e definir na fase de balanceamento (1.9) |
 | Papel e recheio de cada tipo de estrutura | `hex-phase.md` (seção 10), HANDOFF v2.0 (seção 4) | Sugestão: nós = arenas, conectores = corredores com risco de parede, painéis = áreas abertas, placas = gargalos, nó central = clímax. O recheio (pilares, costelas, gargalos) ainda não existe: o 1.4 foi feito sem ele |
 | "Horda que persegue": reposicionar perto do jogador, logo fora da tela, o inimigo que fica longe, em vez de recolhê-lo | `mobile-spawners.md` (seção 10, "Ideias para depois") | Ideia do dev (out/2026), para implementação futura. Referência: chefes do Vampire Survivors (os comuns somem). Muda a S5 (pressão longe dos spawners) e a compressão e o alívio; o ponto precisa estar no piso e sem parede no meio |
+| Voltar à estrutura depois de ejetado (empuxo alto ou "superboost") | `dyson-wall.md` (seção 10, "Ideias para depois") | Ideia do dev (out/2026), para implementação futura. Vencer o empurrão da fenda do lado de fora e voltar por ela. Parente dos "Foguetes de mega propulsão" (adiados para depois da demo) e da melhoria de empuxo (candidata, `suit-evolution.md`, decisão 4). Pede rever o `LostInSpace` de ~2 s (B1) |
 | Hexágonos vizinhos e progressão entre fases | `hex-phase.md` (seções 3 e 10) | Provavelmente depois da demo. Hoje, com todos os spawners mortos: "Fase limpa: volte à eclusa" e extração (S7, `mobile-spawners.md`) |
 | Referência de cenário em corte | HANDOFF v2.0 (seções 5 e 8) | Citada no rascunho como "Heavyness body"; registrada como Heavenly Bodies (2Pt Interactive, 2021), a confirmar |
 

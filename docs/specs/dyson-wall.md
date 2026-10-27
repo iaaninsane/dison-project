@@ -331,6 +331,21 @@ Concluída e validada pelo dev na `wall_test.tscn` (out/2026), nos testes dos pa
 - **Cor do sol:** o rascunho pede uma estrela laranja puxando para o avermelhado (temperatura média/baixa); `SunColor` #FFC482 é laranja claro. Avaliar tons mais vermelhos na spec de arte.
 - **Integração com a curvatura do anel:** a parede é reta; a curvatura visual vem depois.
 
+### Ideias para depois (do dev)
+- **Voltar à estrutura depois de ejetado** (out/2026, para implementação futura).
+  - **A ideia:** do lado de fora, o campo da fenda empurra para o espaço (B5): quem está fora e irrita a parede "por fora" é empurrado para longe. O dev quer manter esse empurrão e acrescentar a volta: com os foguetes de direção (empuxo) num nível bem alto, ou com um "superboost" equipado, o astronauta vence o empurrão e volta pela fenda.
+  - **Números de hoje:** o empuxo só vence o empurrão a mais de `NoReturnRadius × √(força × 450 ÷ ThrustForce)` do centro da fenda (força = intensidade da abertura × rajada).
+    - Com o `ThrustForce` atual (450), isso dá ~140 px no pico da rajada e 120 px com a fenda aberta.
+    - Para chegar até a garganta, o empuxo teria de passar do teto vezes a força: ~4100 px/s² no pico, ~1500 px/s² no meio da fase 3, quando o vão fecha.
+    - Um empuxo de nível alto encurta a distância, mas alcançar o vão ainda aberto pede algo como um impulso (o "superboost").
+  - **Parentes nos documentos:**
+    - "Foguetes de mega propulsão" (HANDOFF, adiado para depois da demo, sem descrição) é o mais próximo do superboost;
+    - a melhoria de empuxo é candidata na `suit-evolution.md` (decisão 4) e já encolhe o ponto sem retorno de dentro (seção 4, `SuctionAccelerationAtNoReturn`);
+    - a B1 já salva quem volta pela fenda antes do `LostInSpace`.
+  - **A decidir quando for feita:** com a B1, o `LostInSpace` encerra a incursão ~2 s depois de sair, menos que o tempo de irritar uma parede por fora (1,5 a 5 s de luz, mais ~1,5 s até a fenda completa).
+    - Para a volta valer, rever o `SpaceReturnDelay` (ex.: oxigênio do traje) ou permitir a volta só pela fenda que ejetou, enquanto ela está aberta.
+    - Até lá, o espaço segue não navegável ("vácuo como atalho", adiado).
+
 ### Notas
 - Os modos `esticar`, `gelatina` e `murchar` reescrevem vértices; os demais são só transformações (posição, rotação, escala, escala por eixo) e podem ser aplicados por matriz.
 - `virar` e `dobrar` usam escala por eixo + escurecimento/clareamento para simular 3D; com o sol atrás, a face revelada é a clara.
