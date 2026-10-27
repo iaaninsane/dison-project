@@ -184,7 +184,7 @@ public partial class DysonWall : AnimatableBody2D, ILightIrritable
 
         // A fenda entra no campo já no aviso, com força zero (k = 0 até o rompimento). "Fora" = -Y local, no global.
         _breach = new SuctionBreach(ToGlobal(new Vector2(_opening.CenterX, 0f)), GlobalTransform.BasisXform(Vector2.Up).Normalized(),
-            new SuctionSettings(NoReturnRadius, SuctionAccelerationAtNoReturn, SuctionFalloffExponent, MaxSuctionAcceleration,
+            WallThickness / 2f, OpenRadius, new SuctionSettings(NoReturnRadius, SuctionAccelerationAtNoReturn, SuctionFalloffExponent, MaxSuctionAcceleration,
                 SuctionMaxRadius, GustMultiplier, GustDecay));
         SuctionField.Register(_breach);
     }

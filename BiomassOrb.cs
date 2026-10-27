@@ -11,6 +11,7 @@ public partial class BiomassOrb : Node2D
     public float Lifetime;  // Tempo até sumir se não for coletado (s)
     public float Age;       // Tempo de vida decorrido (s), avançado pelo BiomassField
     public Vector2 WorldPosition; // Cópia da posição em C#: lida do motor ao registrar, escrita só quando o orbe se move
+    public Vector2 SuctionVelocity; // Velocidade ganha da sucção das fendas (spec dyson-wall.md, 2.6), avançada pelo BiomassField
 
     // Par simétrico: entrou na árvore → inscreve; saiu → remove
     public override void _EnterTree() => BiomassField.Register(this);

@@ -50,6 +50,11 @@ public partial class FractalEnemy : CharacterBody2D, ILightDamageable, IContactH
     [Export] public float DespawnDelay = 3f;                // Tempo longe antes de recolher (s)
     private float _farTimer = 0f;
 
+    // --- SUCÇÃO (fendas da parede de fronteira; spec dyson-wall.md, 2.6 e seção 5) ---
+    [Export] public float SuctionFactor = 1f;          // Quanto este inimigo sente a sucção (EnemySuctionFactor da spec)
+    [Export] public float SuctionVelocityDecay = 300f; // Fora do campo, a velocidade ganha da sucção some neste ritmo (px/s²)
+    private Vector2 _suctionVelocity;                  // Velocidade própria ganha da sucção (o inimigo não tem inércia)
+
        // --- NOVOS ATRIBUTOS DE SISTEMA DE COMBATE ---
     [Export] public float MaxHealth = 100f;
     private float _currentHealth;
@@ -118,8 +123,10 @@ public partial class FractalEnemy : CharacterBody2D, ILightDamageable, IContactH
         UpdateDamageFlash(dt);
         UpdateInvulnerability(dt);
 
-        // 1. Movimento
+        // 1. Movimento (com a sucção das fendas); saiu por uma fenda: deixa a fase
+        UpdateSuction(dt);
         UpdateMovement(dt);
+        if (TryLeaveThroughBreach()) return;
 
         // 2. Animação Orgânica (Pulsação Trigonométrica)
         UpdateBranchPulse();
@@ -137,7 +144,7 @@ public partial class FractalEnemy : CharacterBody2D, ILightDamageable, IContactH
     {
         if (_player == null) return;
 
-        Vector2 desired = ComputeChaseVelocity() + ComputeSeparationVelocity(); // Decidir: perseguir + afastar dos vizinhos
+        Vector2 desired = ComputeChaseVelocity() + ComputeSeparationVelocity() + _suctionVelocity; // Perseguir + afastar dos vizinhos + sucção
         if (ShouldRest(desired, dt))                                            // Parado: sem MoveAndSlide
         {
             Velocity = Vector2.Zero;
@@ -146,7 +153,46 @@ public partial class FractalEnemy : CharacterBody2D, ILightDamageable, IContactH
 
         Velocity = desired;
         MoveAndSlide();          // Executar o movimento
+        SlideSuctionVelocity();
         CheckIfBlocked(desired); // Travou? Começa a descansar
+    }
+
+    // A sucção acumula uma velocidade própria, somada à perseguição e à separação (que são recalculadas a cada passo).
+    // Dentro do campo, ela cresce e acorda o inimigo (a direção desejada mudou); fora, some aos poucos.
+    private void UpdateSuction(float dt)
+    {
+        Vector2 acceleration = SuctionField.AccelerationAt(GlobalPosition) * SuctionFactor;
+        if (acceleration == Vector2.Zero)
+        {
+            _suctionVelocity = _suctionVelocity.MoveToward(Vector2.Zero, SuctionVelocityDecay * dt);
+            return;
+        }
+        _suctionVelocity += acceleration * dt;
+        _restTimer = 0f;
+    }
+
+    // Batendo em algo, a parte da velocidade da sucção que vai contra a superfície se perde, como no MoveAndSlide;
+    // senão ela se acumularia contra a parede e sairia de uma vez quando o caminho abrisse
+    private void SlideSuctionVelocity()
+    {
+        if (_suctionVelocity == Vector2.Zero) return;
+
+        for (int i = 0; i < GetSlideCollisionCount(); i++)
+        {
+            Vector2 normal = GetSlideCollision(i).GetNormal();
+            float into = _suctionVelocity.Dot(normal);
+            if (into < 0f) _suctionVelocity -= normal * into;
+        }
+    }
+
+    // Saiu por uma fenda para o espaço: deixa a fase sem se dividir nem soltar biomassa (decisão B4).
+    // Devolve true se saiu (o resto do passo não roda)
+    private bool TryLeaveThroughBreach()
+    {
+        if (!SuctionField.HasCrossed(GlobalPosition)) return false;
+
+        LeaveSilently();
+        return true;
     }
 
     // Decide se fica parado neste passo (e avança o tempo de descanso)
@@ -284,10 +330,16 @@ public partial class FractalEnemy : CharacterBody2D, ILightDamageable, IContactH
         _farTimer += dt;
         if (_farTimer < DespawnDelay) return false;
 
+        LeaveSilently();
+        return true;
+    }
+
+    // Sai de cena sem se dividir nem soltar biomassa (recolhimento e saída pela fenda)
+    private void LeaveSilently()
+    {
         _isDead = true;
         FractalSwarm.Unregister(this);
         LeaveScene();
-        return true;
     }
 
     // Saída de cena (morte ou recolhimento): volta ao estoque, se houver um esperando, ou sai da árvore
@@ -356,6 +408,7 @@ public partial class FractalEnemy : CharacterBody2D, ILightDamageable, IContactH
         _restTimer = 0f;                     // Reaproveitado do pool começa acordado
         _blockedDirection = Vector2.Zero;
         _farTimer = 0f;                      // E com o relógio do recolhimento zerado
+        _suctionVelocity = Vector2.Zero;     // E sem a sucção da vida anterior
 
         FractalSwarm.Register(this);
 

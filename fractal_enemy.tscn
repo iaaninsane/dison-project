@@ -9,6 +9,7 @@ radius = 30.066593
 collision_layer = 2
 motion_mode = 1
 script = ExtResource("1_v7gp7")
+Speed = 40.0
 RecursionDepth = 4
 BaseBranchLength = 8.0
 SeparationRadius = 32.0

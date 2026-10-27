@@ -18,6 +18,14 @@ public static class SuctionField
 
     public static void Unregister(SuctionBreach breach) => _breaches.Remove(breach);
 
+    // O ponto saiu por alguma fenda aberta? Quem saiu deixa a fase (inimigos, orbes; spec 2.6)
+    public static bool HasCrossed(Vector2 point)
+    {
+        foreach (SuctionBreach breach in _breaches)
+            if (breach.HasCrossed(point)) return true;
+        return false;
+    }
+
     // Soma da sucção de todas as fendas neste ponto (px/s²). Várias fendas abertas: as acelerações se somam (seção 5).
     public static Vector2 AccelerationAt(Vector2 point)
     {
@@ -44,12 +52,16 @@ public class SuctionBreach
     public Vector2 Outward { get; } // Normal da parede para o espaço (global, unitária)
     public float Strength { get; private set; } // Intensidade da abertura × rajada, neste passo (0 = não puxa)
 
+    private readonly float _halfThickness; // Do meio da parede até a face de fora (px)
+    private readonly float _gapHalfWidth;  // Metade da largura do vão na colisão (px)
     private readonly SuctionSettings _settings;
 
-    public SuctionBreach(Vector2 center, Vector2 outward, SuctionSettings settings)
+    public SuctionBreach(Vector2 center, Vector2 outward, float halfThickness, float gapHalfWidth, SuctionSettings settings)
     {
         Center = center;
         Outward = outward;
+        _halfThickness = halfThickness;
+        _gapHalfWidth = gapHalfWidth;
         _settings = settings;
     }
 
@@ -74,6 +86,16 @@ public class SuctionBreach
         bool pastThroat = offset.Dot(Outward) >= 0f;
         Vector2 direction = pastThroat ? Outward : -offset / distance;
         return direction * magnitude * Strength;
+    }
+
+    // Saiu pela fenda: logo depois da face de fora (até meia largura do vão além dela), dentro da largura do vão.
+    // Quem atravessa passa por essa faixa; quem já estava longe, do lado de fora, não conta.
+    public bool HasCrossed(Vector2 point)
+    {
+        Vector2 offset = point - Center;
+        float beyondFace = offset.Dot(Outward) - _halfThickness;
+        if (beyondFace <= 0f || beyondFace > _gapHalfWidth) return false;
+        return Mathf.Abs(offset.Dot(Outward.Orthogonal())) <= _gapHalfWidth;
     }
 
     // Rajada: começa em GustMultiplier quando a fenda rompe e cai até 1 com a constante de tempo GustDecay

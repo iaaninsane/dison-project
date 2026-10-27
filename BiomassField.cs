@@ -30,9 +30,10 @@ public static class BiomassField
 
     public static void Unregister(BiomassOrb orb) => _orbs.Remove(orb);
 
-    // Um único laço por passo de física para todos os orbes: idade, ímã e coleta.
+    // Um único laço por passo de física para todos os orbes: idade, sucção das fendas, ímã e coleta.
     // Devolve a biomassa coletada neste passo.
-    public static int Update(float dt, Vector2 collectorPosition, float pickupRadius, float magnetRadius, float magnetSpeed)
+    public static int Update(float dt, Vector2 collectorPosition, float pickupRadius, float magnetRadius, float magnetSpeed,
+        float suctionFactor, float suctionDecay)
     {
         int collected = 0;
         float pickupSq = pickupRadius * pickupRadius;
@@ -45,6 +46,9 @@ public static class BiomassField
             orb.Age += dt;
             if (orb.Age >= orb.Lifetime) { RemoveAt(i); continue; } // venceu: some
 
+            ApplySuction(orb, dt, suctionFactor, suctionDecay);
+            if (SuctionField.HasCrossed(orb.WorldPosition)) { RemoveAt(i); continue; } // saiu pela fenda: perdido
+
             float distanceSq = (collectorPosition - orb.WorldPosition).LengthSquared();
             if (distanceSq <= pickupSq) { collected += orb.Amount; RemoveAt(i); continue; } // coletado
             if (distanceSq > magnetSq) continue;                                            // longe: fica parado
@@ -54,6 +58,18 @@ public static class BiomassField
         }
 
         return collected;
+    }
+
+    // Sucção das fendas (spec dyson-wall.md, 2.6): como no inimigo, uma velocidade própria que cresce no campo e some fora
+    private static void ApplySuction(BiomassOrb orb, float dt, float factor, float decay)
+    {
+        Vector2 acceleration = SuctionField.AccelerationAt(orb.WorldPosition) * factor;
+        if (acceleration != Vector2.Zero) orb.SuctionVelocity += acceleration * dt;
+        else orb.SuctionVelocity = orb.SuctionVelocity.MoveToward(Vector2.Zero, decay * dt);
+        if (orb.SuctionVelocity == Vector2.Zero) return;
+
+        orb.WorldPosition += orb.SuctionVelocity * dt;
+        orb.GlobalPosition = orb.WorldPosition; // só aqui e no ímã o motor recebe a posição
     }
 
     // Teto de orbes: o mais antigo some primeiro
