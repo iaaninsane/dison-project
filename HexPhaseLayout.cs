@@ -16,8 +16,7 @@ public readonly record struct HexPhaseSettings(
     float ConnectorWidth,      // Largura interna dos conectores de nós
     float PlateConnectorWidth, // Largura interna dos conectores de placa
     float PanelGap,            // Vão (espaço) entre o painel e as paredes dos conectores de nós
-    float WallThickness,       // Espessura das paredes
-    float MaxWallSegmentLength); // Paredes mais longas são divididas (cada trecho tem a sua irritação)
+    float WallThickness);      // Espessura das paredes
 
 // Um trecho de parede: segmento na borda do piso, o lado de fora (para onde a parede cresce) e a estrutura dona
 public readonly record struct HexWallSegment(Vector2 Start, Vector2 End, Vector2 Outward, HexStructure Owner)
@@ -222,7 +221,7 @@ public class HexPhaseLayout
                 Vector2 outward = OutwardNormal(a, b, centroid);
                 foreach (Vector2[] piece in ClipByOtherStructures(a, b, structure))
                 {
-                    AddWallPieces(piece[0], piece[^1], outward, structure);
+                    AddWall(piece[0], piece[^1], outward, structure);
                 }
             }
         }
@@ -247,19 +246,12 @@ public class HexPhaseLayout
         return pieces;
     }
 
-    // Divide o trecho em partes de no máximo MaxWallSegmentLength (cada parte é uma parede com a sua irritação)
-    private void AddWallPieces(Vector2 start, Vector2 end, Vector2 outward, HexStructure owner)
+    // Cada trecho reto entre passagens e quinas é uma parede inteira (DysonWall, decisão B2 da dyson-wall.md): ela
+    // irrita peça a peça, e a fenda e a regra de uma abertura por parede precisam da aresta inteira
+    private void AddWall(Vector2 start, Vector2 end, Vector2 outward, HexStructure owner)
     {
-        float length = start.DistanceTo(end);
-        if (length < MinWallPieceLength) return;
-
-        int count = Mathf.CeilToInt(length / _settings.MaxWallSegmentLength);
-        for (int k = 0; k < count; k++)
-        {
-            Vector2 from = start.Lerp(end, (float)k / count);
-            Vector2 to = start.Lerp(end, (float)(k + 1) / count);
-            _wallSegments.Add(new HexWallSegment(from, to, outward, owner));
-        }
+        if (start.DistanceTo(end) < MinWallPieceLength) return;
+        _wallSegments.Add(new HexWallSegment(start, end, outward, owner));
     }
 
     // Normal da borda apontando para fora do piso (as estruturas são convexas: "fora" é longe do centro)

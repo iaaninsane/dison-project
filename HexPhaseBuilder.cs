@@ -17,14 +17,13 @@ public partial class HexPhaseBuilder : Node2D
     [Export] public float PlateConnectorWidth = 240f; // Largura interna dos conectores de placa
     [Export] public float PanelGap = 1000f;           // Vão entre o painel e as paredes dos conectores
     [Export] public float WallThickness = 40f;        // Espessura das paredes
-    [Export] public float MaxWallSegmentLength = 200f; // Paredes mais longas são divididas (cada trecho tem a sua irritação)
 
     [ExportGroup("Sensibilidade das paredes")]
-    // Irritação máxima por tipo de estrutura (o padrão do WallSensitive é 15). Com a lanterna atual (20/s de
-    // irritação contra 15/s de recuperação), o tempo de luz contínua até ejetar é de ~MaxIrritation / 5 segundos.
-    [Export] public float ArenaWallMaxIrritation = 25f;    // Nós e painéis: ~5 s (longe, raramente iluminadas sem querer)
-    [Export] public float CorridorWallMaxIrritation = 10f; // Conectores de nós: ~2 s
-    [Export] public float PlateWallMaxIrritation = 7.5f;   // Conectores de placa, os mais estreitos: ~1,5 s
+    // MaxIrritation da DysonWall por tipo de estrutura (o padrão dela é 60). Com a lanterna atual (20/s), a peça no
+    // centro do feixe chega a 1 e abre a fenda em ~MaxIrritation / 20 segundos de luz contínua (decisão B2).
+    [Export] public float ArenaWallMaxIrritation = 100f;   // Nós e painéis: ~5 s (longe, raramente iluminadas sem querer)
+    [Export] public float CorridorWallMaxIrritation = 40f; // Conectores de nós: ~2 s
+    [Export] public float PlateWallMaxIrritation = 30f;    // Conectores de placa, os mais estreitos: ~1,5 s
 
     [ExportGroup("Jogador e eclusa")]
     [Export] public Player Player;                    // O jogador da cena (ligado no Inspector)
@@ -40,13 +39,12 @@ public partial class HexPhaseBuilder : Node2D
     [Export] public Color NodeFloorColor = new Color(0.42f, 0.27f, 0.35f);
     [Export] public Color ConnectorFloorColor = new Color(0.36f, 0.23f, 0.30f);
     [Export] public Color PanelFloorColor = new Color(0.30f, 0.19f, 0.26f);
-    [Export] public Color WallColor = new Color(0.59f, 0.29f, 0.24f);
     [Export] public Color GateColor = new Color(0.25f, 0.55f, 0.65f); // Portões da câmara de partida
 
     public HexPhaseLayout Layout { get; private set; } // Geometria da fase, para quem precisar perguntar "onde estou?"
 
-    private const string WallsGroup = "Walls";                // Paredes reativas: a luz irrita, a ejeção atravessa
-    private readonly List<WallSensitive> _entryWalls = new(); // Paredes do nó de entrada, inertes até liberar as saídas
+    private const string WallsGroup = "Walls";            // Paredes reativas: a luz irrita e abre fendas
+    private readonly List<DysonWall> _entryWalls = new(); // Paredes do nó de entrada, inertes até liberar as saídas
     private Node2D _entryGates;                               // Portões nas bocas do nó de entrada (null = liberadas)
 
     public override void _Ready()
@@ -105,13 +103,13 @@ public partial class HexPhaseBuilder : Node2D
 
         _entryGates.QueueFree();
         _entryGates = null;
-        foreach (WallSensitive wall in _entryWalls) wall.AddToGroup(WallsGroup);
+        foreach (DysonWall wall in _entryWalls) wall.AddToGroup(WallsGroup);
         _entryWalls.Clear();
     }
 
     private HexPhaseSettings CreateSettings() => new(
         Shape, NodeSpacing, NodeRadius, NodeWallSegments,
-        ConnectorWidth, PlateConnectorWidth, PanelGap, WallThickness, MaxWallSegmentLength);
+        ConnectorWidth, PlateConnectorWidth, PanelGap, WallThickness);
 
     // Fundo (o espaço) como PRIMEIRO filho da cena: regra do projeto, sem ele a luz da lanterna não aparece
     private void CreateBackground()
@@ -147,7 +145,7 @@ public partial class HexPhaseBuilder : Node2D
         }
     }
 
-    // Paredes externas: fronteira com o espaço, reativas (WallSensitive, grupo Walls). Transitório até a DysonWall.
+    // Paredes externas: fronteira com o espaço, reativas (DysonWall, grupo Walls; decisão B2 da dyson-wall.md).
     // Com a câmara de partida, as do nó de entrada ficam fora do grupo, inertes como titânio, até liberar as saídas.
     private void CreateWalls()
     {
@@ -159,7 +157,7 @@ public partial class HexPhaseBuilder : Node2D
         for (int i = 0; i < Layout.WallSegments.Count; i++)
         {
             HexWallSegment segment = Layout.WallSegments[i];
-            WallSensitive wall = CreateWall(segment, i);
+            DysonWall wall = CreateWall(segment, i);
             walls.AddChild(wall);
 
             if (segment.Owner == lockedNode) _entryWalls.Add(wall);
@@ -183,19 +181,27 @@ public partial class HexPhaseBuilder : Node2D
         }
     }
 
-    private WallSensitive CreateWall(HexWallSegment segment, int index)
+    // Parede de fronteira ao longo de um trecho reto: pivô no centro, crescendo para fora do piso, girada para o lado
+    // de fora dela (-Y local) apontar para o espaço. Colisão e desenho ela monta sozinha, no _Ready. A posição vem
+    // antes de ir para a árvore (é um AnimatableBody2D: a posição definida depois só valeria no passo seguinte).
+    private DysonWall CreateWall(HexWallSegment segment, int index)
     {
-        var wall = new WallSensitive
+        float angle = (segment.End - segment.Start).Angle();
+        if (Vector2.Up.Rotated(angle).Dot(segment.Outward) < 0f) angle += Mathf.Pi; // Vira: o espaço fica em cima
+
+        return new DysonWall
         {
             Name = $"Wall{index}",
+            Length = segment.Start.DistanceTo(segment.End),
+            WallThickness = WallThickness,
             MaxIrritation = WallMaxIrritation(segment.Kind), // O perigo fica onde está o aperto
+            Position = (segment.Start + segment.End) / 2f + segment.Outward * (WallThickness / 2f),
+            Rotation = angle,
         };
-        return CreateSegmentBody(wall, segment, WallColor);
     }
 
-    // Corpo retangular ao longo de um trecho, no formato das paredes das cenas atuais: StaticBody2D com ColorRect
-    // (nome exato) e CollisionShape2D, pivô no centro, crescendo para fora do piso. Os filhos entram antes de o
-    // corpo ir para a árvore, porque o _Ready do WallSensitive procura o ColorRect.
+    // Corpo retangular ao longo de um trecho (hoje, os portões da câmara de partida): StaticBody2D com ColorRect e
+    // CollisionShape2D, pivô no centro, crescendo para fora do piso.
     private T CreateSegmentBody<T>(T body, HexWallSegment segment, Color color) where T : StaticBody2D
     {
         var size = new Vector2(segment.Start.DistanceTo(segment.End), WallThickness);
