@@ -113,8 +113,8 @@ public partial class SpawnerDirector : Node2D
         float distance = route.Length * (float)GD.RandRange(MinStartFraction, MaxStartFraction);
 
         var spawner = SpawnerScene.Instantiate<MobileSpawner>();
-        spawner.Position = ToLocal(Phase.ToGlobal(route.PointAt(from, distance)));
         spawner.FollowRoute(Phase, route, from, distance);
+        spawner.Position = ToLocal(spawner.PathPosition); // No trajeto (afastado do eixo conforme a forma), não no eixo
         spawner.Pool = Pool;
         spawner.Destroyed += OnSpawnerDestroyed;
         _alive.Add(spawner);

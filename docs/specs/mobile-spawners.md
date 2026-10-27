@@ -1,6 +1,6 @@
 # Spec: Spawners móveis e objetivo da fase
 
-- **Status:** **validada** (out/2026). Decisões S1 a S9 do dev (seção 10; a S6 foi revista depois do teste do passo 6). Plano de implementação (passos 1 a 7) feito e testado pelo dev. Um item do "Pronto quando" ficou parcial: o engasgo de um quadro na divisão em massa, que virou o item 1.8 do backlog. Valores em teste.
+- **Status:** **validada** (out/2026). Decisões S1 a S9 do dev (seção 10; a S6 foi revista depois do teste do passo 6). Plano de implementação (passos 1 a 7) feito e testado pelo dev. Um item do "Pronto quando" ficou parcial: o engasgo de um quadro na divisão em massa, que virou o item 1.8 do backlog. Valores em teste. **Revista em out/2026** pela parede de fronteira (`dyson-wall.md`, fase B): decisões S10 (trajeto perto das paredes) e S11 (sucção e volta à rota), em implementação.
 - **Etapa:** 1 (mecânica). É a "fase C" da `hex-phase.md` (spawners na fase e simulação por proximidade).
 - **Depende de:** `docs/specs/hex-phase.md` (a fase, o `HexPhaseLayout`), `docs/specs/start-chamber.md` (sinal `IncursionStarted`; nada nasce no nó inicial travado), `docs/specs/fractal-enemy.md` e `docs/specs/fractal-enemy-movement.md` (inimigo, horda, tetos e o problema conhecido de FPS), `docs/specs/biomass-collection.md` (recompensa), `docs/specs/player-health-death.md` (golpe de contato). Relaciona-se com a `docs/specs/dyson-wall.md` (a sucção afeta os spawners? Em aberto lá).
 
@@ -25,8 +25,19 @@ Dar à fase um objetivo: cerca de 10 spawners circulam pelas estruturas do hexá
   - pontos: o centro de cada nó (7) e o centro de cada painel (6);
   - rotas pelos eixos dos corredores: 12 conectores de nós (de centro a centro de nó, 6200 px) e 18 conectores de placa (do centro do painel ao centro do nó, ~3580 px, em linha reta pelo eixo da placa);
   - hexágono: 13 pontos e 30 rotas (o nó central tem 12 saídas; cada periférico, 5; cada painel, 3). Setor: 4 pontos e 6 rotas, todos com 3 saídas.
-- O spawner anda em linha reta pela rota a `MoveSpeed`. Ao chegar a um ponto, sorteia uma das rotas que saem dali, menos a de onde veio (passeio aleatório, sem pathfinding). Nenhum ponto é beco sem saída (todos têm 3 ou mais rotas).
-- O spawner é movido por código pelo eixo do corredor, sempre dentro do piso; não desvia de nada.
+- O spawner percorre a rota a `MoveSpeed`, pelo trajeto escolhido (S10, abaixo). Ao chegar a um ponto, sorteia uma das rotas que saem dali, menos a de onde veio (passeio aleatório, sem pathfinding). Nenhum ponto é beco sem saída (todos têm 3 ou mais rotas).
+- **Trajeto (S10, out/2026; provisório):** em vez da linha reta pelo eixo, o spawner se afasta do eixo para os lados, perto das paredes, para passar pelas fendas da parede de fronteira (`dyson-wall.md`). A forma é escolhida no Inspector (`PathShape`), para comparar:
+  - **senoide variada:** comprimento de onda e fase sorteados por spawner;
+  - **rente à parede, trocando de lado:** curvas em S em distâncias sorteadas;
+  - **ruído orgânico:** deriva lateral suave (`FastNoiseLite`).
+
+  Em qualquer forma, o afastamento:
+  - nunca passa de meia largura do corredor − raio − folga (110 px nos conectores de nós, 70 px nos de placa);
+  - vai a zero nos pontos de passagem, para a troca de rota não saltar;
+  - é contado a partir da ponta A da rota, para a meia-volta do pânico não espelhar a forma.
+
+  O dev decide depois se ficam as três ou uma.
+- O spawner é movido por código, sempre dentro do piso; não desvia de nada, a não ser pela sucção das fendas (S11).
 - Depois de liberar as saídas, o nó de entrada é um nó comum, e os spawners podem passar por ele.
 
 ### Vida e reação à luz (S1, S2)
@@ -41,7 +52,7 @@ Dar à fase um objetivo: cerca de 10 spawners circulam pelas estruturas do hexá
   - o jogador (máscara 1 e 2) bate nele, e a lanterna (máscara 1 e 2) o enxerga, sem mudar o `player.tscn`;
   - os inimigos (máscara 1) o atravessam: nascem dentro dele sem enroscar;
   - o `PlayerHurtbox` (máscara 2) o percebe; encostar dá o **mesmo golpe do inimigo** (`SuitIntegrity`: `ContactDamage`, empurrão e imunidade; S8b).
-- O spawner **empurra o jogador e segue a rota** (S8a): é um corpo movido por código (`AnimatableBody2D`, camada 2, **máscara 1**). Antes de andar, testa o movimento (`TestMove`); se o jogador está no caminho, move o jogador (`MoveAndCollide`) pela parte do movimento que vai contra ele e só então anda. Assim nunca entra no corpo do jogador (senão o jogador "cola", seção 5). Se o jogador não puder sair (encurralado contra uma parede), o spawner espera. O golpe de contato já joga o jogador para longe. Como o spawner anda no eixo do corredor, sobram ~120 px de cada lado nos conectores de nós e ~80 px nos de placa: o jogador passa ao lado dele.
+- O spawner **empurra o jogador e segue a rota** (S8a): é um corpo movido por código (`AnimatableBody2D`, camada 2, **máscara 1**). Antes de andar, testa o movimento (`TestMove`); se o jogador está no caminho, move o jogador (`MoveAndCollide`) pela parte do movimento que vai contra ele e só então anda. Assim nunca entra no corpo do jogador (senão o jogador "cola", seção 5). Se o jogador não puder sair (encurralado contra uma parede), o spawner espera. O golpe de contato já joga o jogador para longe. No eixo do corredor, sobram ~120 px de cada lado nos conectores de nós e ~80 px nos de placa. Com o trajeto S10, o lado da parede fica mais estreito e o outro mais largo: o jogador passa pelo lado aberto.
 - O jogador **não pega carona** no spawner: empurrado por ele (inclusive de baixo para cima) ou encostado por cima, fica para trás quando o spawner vira. Exige o **Floor Layers** do `Player` sem a camada 2 (seção 5).
 
 ### Geração de inimigos
@@ -241,6 +252,11 @@ Todas seguiram a recomendação da análise, menos a S8 (o dev escolheu o spawne
    - **S8a:** empurra o jogador e segue a rota (`AnimatableBody2D`). Descartada: parar quando bloqueado pelo jogador (`CharacterBody2D`). No passo 3, o "empurrar" passou a ser explícito (o spawner move o jogador antes de andar), porque mover o corpo direto colava o jogador (seção 5); a decisão não mudou.
    - **S8b:** o dano do contato é o mesmo golpe do inimigo. Descartado: dano próprio, maior (mudaria o `SuitIntegrity` e o `PlayerHurtbox`).
 9. **S9, valores iniciais:** os da seção 4, como pontos de partida.
+10. **S10, trajeto perto das paredes** (out/2026, no teste da fase B da `dyson-wall.md`). O dev quer o spawner perto das paredes durante o trajeto, para ele passar pelas fendas. São três formas para comparar no Inspector (seção 2), e a escolha final fica para depois. Descartada por ora: senoide fixa, igual para todos (os spawners andariam em fila na mesma curva).
+11. **S11, sucção e volta à rota** (out/2026; `dyson-wall.md`, B3). O spawner é sugado como os inimigos, mas resiste mais (`SuctionFactor` 0,5).
+    - Desviado, volta à rota por uma **mola com leve balanço**: continua no embalo, curva, cruza a rota de leve e acomoda. Descartadas: mola sem balanço (mais mecânica); direção com aceleração limitada (arco largo, retomando a rota mais adiante).
+    - Ao cruzar a fenda, conta como destruído, sem soltar os orbes.
+    - **Achado no teste do dev (corrige o passo 6):** num `AnimatableBody2D` com Sync to Physics, a posição definida só vale no passo seguinte, e lida logo depois ainda é a antiga. O spawner definia a posição duas vezes por passo (a rota e depois o desvio somado à posição lida), e o desvio apagava o avanço da rota. Enquanto estava desviado, ele parava na tela e, ao zerar o desvio, saltava centenas de pixels (verificado no motor, 4.7.2). Correção: uma escrita só por passo (ponto da rota + trajeto + desvio).
 
 ### Arquitetura (implementada)
 
@@ -323,6 +339,6 @@ Cada passo: verificação antes no descartável (Godot headless), apresentação
 ### Relação com outras decisões
 
 - Backlog, seção 2: "Valores definitivos de `MaxConcurrentEnemies` e `MaxTotalEnemies`": na fase, o `PoolSize` do `EnemyPool` (60) faz o papel do `MaxConcurrentEnemies`, e o `MaxTotalEnemies` (no `EnemyPool`) continua 350. Mantidos depois da medição (passo constante de ~4 ms no pior caso); continuam pontos de partida.
-- `dyson-wall.md`, seção 10: "os spawners são afetados pela sucção?" continua lá (1.5).
+- `dyson-wall.md` (backlog 1.5, fase B): os spawners são sugados (B3), com o trajeto perto das paredes (S10) e a volta à rota com mola (S11).
 - `hex-phase.md`: esta spec é a fase C (concluída); o recheio das estruturas fica para depois.
 - Backlog 1.8: engasgo de um quadro na divisão em massa (pool de fragmentos).

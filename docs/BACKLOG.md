@@ -26,7 +26,7 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
   - **Decisões do dev (out/2026; spec, seção 10, B1 a B6):**
     - ejeção: a parede emite `PlayerEjected`, e o `LostInSpace` encerra a incursão ~2 s depois (voltar pela fenda antes salva);
     - todas as paredes externas da fase viram `DysonWall`, uma por aresta reta, com a sensibilidade 100/40/30 por tipo (os tempos de hoje) e o nó de entrada inerte até liberar;
-    - spawners sugados como os inimigos, mas mais resistentes (`SpawnerSuctionFactor` 0,5 proposto); ao cruzar, contam como destruídos, sem orbes;
+    - spawners sugados como os inimigos, mas mais resistentes (`SpawnerSuctionFactor` 0,5), com trajeto perto das paredes (3 formas para comparar no Inspector) e volta à rota com mola (`mobile-spawners.md`, S10 e S11); ao cruzar, contam como destruídos, sem orbes;
     - inimigo sugado sem biomassa;
     - do lado de fora, o campo empurra pela normal (quem passou não volta puxado);
     - partículas da fenda na etapa 2.
@@ -78,6 +78,7 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 | Sensibilidade das paredes por tipo de estrutura | `hex-phase.md` (seções 4 e 10) | Hoje 25 (nós e painéis), 10 (conectores de nós) e 7,5 (conectores de placa): provisórios, o dev vai testar e definir na fase de balanceamento (1.9) |
 | Papel e recheio de cada tipo de estrutura | `hex-phase.md` (seção 10), HANDOFF v2.0 (seção 4) | Sugestão: nós = arenas, conectores = corredores com risco de parede, painéis = áreas abertas, placas = gargalos, nó central = clímax. O recheio (pilares, costelas, gargalos) ainda não existe: o 1.4 foi feito sem ele |
 | "Horda que persegue": reposicionar perto do jogador, logo fora da tela, o inimigo que fica longe, em vez de recolhê-lo | `mobile-spawners.md` (seção 10, "Ideias para depois") | Ideia do dev (out/2026), para implementação futura. Referência: chefes do Vampire Survivors (os comuns somem). Muda a S5 (pressão longe dos spawners) e a compressão e o alívio; o ponto precisa estar no piso e sem parede no meio |
+| Forma do trajeto dos spawners | `mobile-spawners.md` (S10) | Senoide variada, rente à parede trocando de lado ou ruído orgânico, escolhida no Inspector (`PathShape`). O dev decide depois se ficam as três ou uma |
 | Voltar à estrutura depois de ejetado (empuxo alto ou "superboost") | `dyson-wall.md` (seção 10, "Ideias para depois") | Ideia do dev (out/2026), para implementação futura. Vencer o empurrão da fenda do lado de fora e voltar por ela. Parente dos "Foguetes de mega propulsão" (adiados para depois da demo) e da melhoria de empuxo (candidata, `suit-evolution.md`, decisão 4). Pede rever o `LostInSpace` de ~2 s (B1) |
 | Hexágonos vizinhos e progressão entre fases | `hex-phase.md` (seções 3 e 10) | Provavelmente depois da demo. Hoje, com todos os spawners mortos: "Fase limpa: volte à eclusa" e extração (S7, `mobile-spawners.md`) |
 | Referência de cenário em corte | HANDOFF v2.0 (seções 5 e 8) | Citada no rascunho como "Heavyness body"; registrada como Heavenly Bodies (2Pt Interactive, 2021), a confirmar |

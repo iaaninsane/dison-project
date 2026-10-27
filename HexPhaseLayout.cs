@@ -75,13 +75,15 @@ public class HexRoute
     public HexWaypoint B { get; }
     public HexStructure Corridor { get; } // O corredor que a rota atravessa
     public float Length { get; }
+    public float HalfWidth { get; }       // Meia largura do corredor (px): até onde o trajeto de um spawner pode se afastar do eixo
 
-    public HexRoute(HexWaypoint a, HexWaypoint b, HexStructure corridor)
+    public HexRoute(HexWaypoint a, HexWaypoint b, HexStructure corridor, float halfWidth)
     {
         A = a;
         B = b;
         Corridor = corridor;
         Length = a.Position.DistanceTo(b.Position);
+        HalfWidth = halfWidth;
     }
 
     // A outra ponta, para quem chegou por `from`
@@ -412,7 +414,8 @@ public class HexPhaseLayout
     // Liga dois pontos pelo eixo do corredor; a rota vale nos dois sentidos
     private void AddRoute(HexWaypoint a, HexWaypoint b, HexStructure corridor)
     {
-        var route = new HexRoute(a, b, corridor);
+        float width = corridor.Kind == HexStructureKind.PlateConnector ? _settings.PlateConnectorWidth : _settings.ConnectorWidth;
+        var route = new HexRoute(a, b, corridor, width / 2f);
         _routes.Add(route);
         a.Connect(route);
         b.Connect(route);

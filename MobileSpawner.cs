@@ -2,7 +2,8 @@ using Godot;
 using System.Collections.Generic;
 using System.Linq;
 
-// Spawner móvel (spec mobile-spawners.md): anda pelas rotas da fase em passeio aleatório, pelo eixo dos corredores.
+// Spawner móvel (spec mobile-spawners.md): anda pelas rotas da fase em passeio aleatório, pelos corredores, num trajeto
+// que passa perto das paredes (S10).
 // Corpo sólido movido por código (AnimatableBody2D, camada 2, máscara 1): empurra o jogador do caminho antes de andar;
 // os inimigos o atravessam. A luz o fere (ILightDamageable) e, iluminado, ele foge em pânico; encostar fere o traje
 // (IContactHazard). Perto do jogador, gera inimigos do estoque da fase (EnemyPool).
@@ -28,6 +29,22 @@ public partial class MobileSpawner : AnimatableBody2D, ILightDamageable, IContac
     [Export] public float BiomassOrbLifetime = 30f;  // Como no inimigo
     [Export] public int MaxBiomassOrbs = 300;        // Como no inimigo (o BiomassField usa o último valor informado)
 
+    [ExportGroup("Trajeto (spec mobile-spawners.md, S10; formas para comparar)")]
+    [Export] public SpawnerPathShape PathShape = SpawnerPathShape.Sine; // Senoide variada, rente à parede ou ruído orgânico
+    [Export] public float PathWallClearance = 10f;    // Folga entre o corpo e a parede no ponto mais afastado do eixo (px)
+    [Export] public float PathEndRamp = 600f;         // Perto das pontas da rota (centros de nós e painéis), o afastamento vai a zero ao longo disto (px)
+    [Export] public float SineMinWavelength = 900f;   // Senoide: comprimento de onda sorteado entre estes dois (px)
+    [Export] public float SineMaxWavelength = 1600f;
+    [Export] public float WallHugMinRun = 600f;       // Rente à parede: quanto anda num lado antes de trocar, sorteado entre estes dois (px)
+    [Export] public float WallHugMaxRun = 1500f;
+    [Export] public float WallHugSwitchLength = 400f; // Rente à parede: comprimento da curva em S da troca de lado (px)
+    [Export] public float NoiseWavelength = 1200f;    // Ruído: tamanho típico das ondulações (px)
+
+    [ExportGroup("Sucção das fendas (spec dyson-wall.md, B3; mobile-spawners.md, S11)")]
+    [Export] public float SuctionFactor = 0.5f;      // Quanto sente a sucção: menos que o jogador e os inimigos (SpawnerSuctionFactor da spec)
+    [Export] public float RouteReturnTime = 1.5f;    // Fora do campo, a mola o assenta de novo no trajeto em ~este tempo (s)
+    [Export] public float RouteReturnDamping = 0.7f; // Amortecimento da mola: 1 = sem balanço; 0,7 = passa um pouco do trajeto e acomoda
+
     [ExportGroup("Visual provisório (arte na etapa 2)")]
     [Export] public Color BodyColor = new Color(0.85f, 0.25f, 0.65f);
     [Export] public Color PanicColor = new Color(1f, 0.9f, 0.3f); // Corpo em pânico: mostra que a luz o atingiu
@@ -36,6 +53,8 @@ public partial class MobileSpawner : AnimatableBody2D, ILightDamageable, IContac
     [Export] public float PulseAmplitude = 16f; // Quanto o anel se afasta do corpo no auge do pulso (px)
 
     private const float DefaultRadius = 40f; // Se a cena não tiver um CircleShape2D (o raio de verdade vem da colisão)
+    private const float SettledSq = 0.01f;   // Desvio e velocidade abaixo de 0,1 (ao quadrado): assentou no trajeto
+    private const float InsideWallDepth = 2f; // Sobreposto a uma parede por mais que isto (px): preso dentro dela
     private const float RingWidth = 3f;
     private const int RingSegments = 48;
 
@@ -54,14 +73,20 @@ public partial class MobileSpawner : AnimatableBody2D, ILightDamageable, IContac
     private float _spawnTimer;           // Começa em 0: gera assim que o jogador chega perto
     private float _radius;
     private float _time;
+    private ISpawnerPath _path;       // A forma do trajeto (Strategy), com os sorteios deste spawner
+    private Vector2 _suctionOffset;   // Desvio do trajeto causado pela sucção (px, global)
+    private Vector2 _suctionVelocity; // Velocidade do desvio: a sucção aumenta, a mola traz de volta
+    private CircleShape2D _insideWallProbe; // Círculo um pouco menor que o corpo, para saber se ele está preso numa parede
 
     private bool IsPanicking => _panicTimer > 0f;
 
-    // O desenho usa o raio da colisão: um valor só, ajustado na cena
+    // Onde ele está no trajeto agora (global): o diretor o põe aqui antes de pô-lo na árvore
+    public Vector2 PathPosition => PathPoint(_route, _from, _distance);
+
     public override void _Ready()
     {
-        var shape = GetNodeOrNull<CollisionShape2D>("CollisionShape2D")?.Shape as CircleShape2D;
-        _radius = shape?.Radius ?? DefaultRadius;
+        _radius = ReadRadius();
+        _path ??= CreatePath();
         _health = MaxHealth;
         _player = GetTree().GetFirstNodeInGroup("Player") as Node2D;
     }
@@ -73,6 +98,24 @@ public partial class MobileSpawner : AnimatableBody2D, ILightDamageable, IContac
         _route = route;
         _from = from;
         _distance = distance;
+        _radius = ReadRadius(); // Antes do _Ready: o trajeto precisa do raio para saber o espaço do corredor
+        _path ??= CreatePath();
+    }
+
+    // O raio da colisão: um valor só, ajustado na cena (o desenho e o espaço do trajeto usam)
+    private float ReadRadius() => (GetNodeOrNull<CollisionShape2D>("CollisionShape2D")?.Shape as CircleShape2D)?.Radius ?? DefaultRadius;
+
+    // A forma do trajeto escolhida no Inspector, com sorteios próprios deste spawner
+    private ISpawnerPath CreatePath()
+    {
+        var random = new RandomNumberGenerator();
+        random.Randomize();
+        return PathShape switch
+        {
+            SpawnerPathShape.WallHug => new WallHugPath(random, WallHugMinRun, WallHugMaxRun, WallHugSwitchLength),
+            SpawnerPathShape.Noise => new NoisePath(random, NoiseWavelength),
+            _ => new SinePath(random, SineMinWavelength, SineMaxWavelength),
+        };
     }
 
     // Ritmo dado pelo diretor (curva de dificuldade): intervalo entre inimigos e multiplicador da velocidade
@@ -104,13 +147,96 @@ public partial class MobileSpawner : AnimatableBody2D, ILightDamageable, IContac
         if (_route == null) return; // Sem rota (ex.: posto à mão numa cena de teste): fica parado
 
         FleeIfPlayerAhead();
-        float step = CurrentSpeed() * dt;
-        if (!PushBlocker(NextPosition(step) - GlobalPosition)) return; // Jogador encurralado no caminho: espera
-        Advance(step);
+        UpdateSuction(dt);
+        if (!TryMove(CurrentSpeed() * dt, _suctionVelocity * dt, out Vector2 position)) return; // Jogador encurralado: espera
+        if (SuctionField.HasCrossed(position)) LeaveThroughBreach();
     }
 
-    // Onde o spawner estaria depois de andar `step` px na rota atual (sem passar da ponta)
-    private Vector2 NextPosition(float step) => _phase.ToGlobal(_route.PointAt(_from, Mathf.Min(_distance + step, _route.Length)));
+    // Anda `step` px pelo trajeto e soma o desvio deste passo, numa escrita só da posição: num AnimatableBody2D com Sync
+    // to Physics, a posição definida só vale no passo seguinte (lida logo depois, ainda é a antiga), e uma segunda escrita
+    // no mesmo passo apagaria a primeira (S11). Antes, testa o movimento inteiro: o jogador é empurrado (encurralado, o
+    // spawner espera); uma parede barra (anda só até ela). Depois, a rota acompanha o corpo: o ponto da rota passa a ser
+    // a projeção dele no eixo, e o desvio fica só de lado. Segurado pela sucção, ele não fica "para trás" da rota.
+    private bool TryMove(float step, Vector2 offsetStep, out Vector2 position)
+    {
+        position = GlobalPosition;
+        var (route, from, distance) = (_route, _from, _distance);
+        AdvanceRoute(step);
+        Vector2 motion = PathPoint(_route, _from, _distance) + _suctionOffset + offsetStep - position;
+
+        var hit = new KinematicCollision2D();
+        if (TestMove(GlobalTransform, motion, hit))
+        {
+            if (hit.GetCollider() is not CharacterBody2D)
+            {
+                if (!IsInsideWall()) motion = StopAtWall(hit); // Preso numa fenda que fechou: a mola o tira aos poucos, sem o teste
+            }
+            else if (!PushBlocker(motion))
+            {
+                (_route, _from, _distance) = (route, from, distance); // Não andou: a rota também não
+                return false;
+            }
+        }
+
+        position += motion;
+        _distance = Mathf.Clamp(DistanceAlongRoute(position), 0f, _route.Length);
+        _suctionOffset = position - PathPoint(_route, _from, _distance); // O que sobra entre o corpo e o trajeto: o desvio de lado
+        GlobalPosition = position;
+        return true;
+    }
+
+    // Quanto do ponto já foi percorrido na rota: a projeção dele no eixo, a partir de _from
+    private float DistanceAlongRoute(Vector2 globalPosition)
+    {
+        Vector2 along = (_route.Other(_from).Position - _from.Position).Normalized();
+        return (_phase.ToLocal(globalPosition) - _from.Position).Dot(along);
+    }
+
+    // Preso dentro de uma parede (uma fenda fechou com ele no vão; a parede só empurra para fora corpos CharacterBody2D)?
+    // Um círculo um pouco menor que o corpo ainda encosta nela. Só encostar na face não conta.
+    private bool IsInsideWall()
+    {
+        _insideWallProbe ??= new CircleShape2D();
+        _insideWallProbe.Radius = Mathf.Max(1f, _radius - InsideWallDepth);
+        var query = new PhysicsShapeQueryParameters2D
+        {
+            Shape = _insideWallProbe,
+            Transform = GlobalTransform,
+            CollisionMask = CollisionMask,
+            Exclude = new Godot.Collections.Array<Rid> { GetRid() },
+        };
+        foreach (var hit in GetWorld2D().DirectSpaceState.IntersectShape(query, 4))
+        {
+            if (hit["collider"].As<GodotObject>() is not CharacterBody2D) return true;
+        }
+        return false;
+    }
+
+    // Uma parede no caminho: anda só até ela, e a parte da velocidade do desvio que ia contra ela se perde
+    private Vector2 StopAtWall(KinematicCollision2D hit)
+    {
+        Vector2 normal = hit.GetNormal();
+        float into = _suctionVelocity.Dot(normal);
+        if (into < 0f) _suctionVelocity -= normal * into;
+        return hit.GetTravel();
+    }
+
+    // Ponto do trajeto a `distance` px de `from` na rota: o eixo do corredor + o afastamento da forma escolhida (global)
+    private Vector2 PathPoint(HexRoute route, HexWaypoint from, float distance)
+    {
+        float fromA = from == route.A ? distance : route.Length - distance;
+        Vector2 side = (route.B.Position - route.A.Position).Normalized().Orthogonal();
+        return _phase.ToGlobal(route.PointAt(from, distance) + side * LateralOffset(route, fromA));
+    }
+
+    // Afastamento do eixo (px): a forma (-1 a 1) × o espaço do corredor (meia largura − raio − folga), indo a zero perto
+    // das pontas da rota, para a troca de rota nos nós e painéis não saltar
+    private float LateralOffset(HexRoute route, float fromA)
+    {
+        float room = Mathf.Max(0f, route.HalfWidth - _radius - PathWallClearance);
+        float ends = Mathf.SmoothStep(0f, PathEndRamp, fromA) * Mathf.SmoothStep(0f, PathEndRamp, route.Length - fromA);
+        return _path.LateralAt(route, fromA) * room * ends;
+    }
 
     // Empurra quem estiver no caminho (o jogador) antes de andar, para nunca entrar no corpo dele: um corpo movido por
     // código que entra no jogador o "cola" (o MoveAndSlide do jogador corta a saída). Só a parte do movimento que vai
@@ -119,7 +245,7 @@ public partial class MobileSpawner : AnimatableBody2D, ILightDamageable, IContac
     {
         var hit = new KinematicCollision2D();
         if (!TestMove(GlobalTransform, motion, hit)) return true;       // Caminho livre
-        if (hit.GetCollider() is not CharacterBody2D body) return true; // Parede ou outro: segue (as rotas não tocam paredes)
+        if (hit.GetCollider() is not CharacterBody2D body) return true; // Parede ou outro: quem cuida é o TryMove
 
         Vector2 normal = hit.GetNormal();                                // Do corpo atingido para o spawner
         float into = hit.GetRemainder().Dot(-normal);                    // Quanto do movimento vai contra o corpo
@@ -162,8 +288,9 @@ public partial class MobileSpawner : AnimatableBody2D, ILightDamageable, IContac
         _distance = _route.Length - _distance;
     }
 
-    // Anda `step` px; ao passar da ponta da rota, segue pela próxima sem perder o que sobrou do passo
-    private void Advance(float step)
+    // Anda `step` px na rota (só a conta, sem mexer no corpo); ao passar da ponta, segue pela próxima sem perder o que
+    // sobrou do passo
+    private void AdvanceRoute(float step)
     {
         _distance += step;
         while (_distance >= _route.Length)
@@ -173,7 +300,29 @@ public partial class MobileSpawner : AnimatableBody2D, ILightDamageable, IContac
             _route = ChooseNextRoute(arrived);
             _from = arrived;
         }
-        GlobalPosition = _phase.ToGlobal(_route.PointAt(_from, _distance));
+    }
+
+    // Velocidade do desvio (S11): no campo, a sucção a aumenta; fora dele, uma mola amortecida puxa o desvio de volta ao
+    // trajeto. Com amortecimento menor que 1, o spawner continua no embalo, curva, passa um pouco do trajeto e acomoda.
+    private void UpdateSuction(float dt)
+    {
+        Vector2 acceleration = SuctionField.AccelerationAt(GlobalPosition) * SuctionFactor;
+        if (acceleration == Vector2.Zero) acceleration = SpringAcceleration();
+        _suctionVelocity += acceleration * dt;
+
+        if (_suctionOffset.LengthSquared() > SettledSq || _suctionVelocity.LengthSquared() > SettledSq) return;
+        _suctionOffset = Vector2.Zero; // Assentou no trajeto
+        _suctionVelocity = Vector2.Zero;
+    }
+
+    // Mola amortecida (oscilador harmônico): a = −ω²·desvio − 2·ζ·ω·velocidade, com ζ = RouteReturnDamping. O tempo para
+    // assentar é ~4 / (ζ·ω), daí ω vem do RouteReturnTime.
+    private Vector2 SpringAcceleration()
+    {
+        if (_suctionOffset == Vector2.Zero && _suctionVelocity == Vector2.Zero) return Vector2.Zero;
+
+        float omega = 4f / (RouteReturnDamping * RouteReturnTime);
+        return -omega * omega * _suctionOffset - 2f * RouteReturnDamping * omega * _suctionVelocity;
     }
 
     // Uma das rotas que saem do ponto, menos a de onde veio (todo ponto da fase tem 3 ou mais):
@@ -191,6 +340,14 @@ public partial class MobileSpawner : AnimatableBody2D, ILightDamageable, IContac
     {
         Vector2 player = _phase.ToLocal(_player.GlobalPosition);
         return options.OrderByDescending(route => route.Other(at).Position.DistanceSquaredTo(player)).First();
+    }
+
+    // Saiu pela fenda: deixa a fase e conta como destruído para o objetivo, sem soltar a biomassa (decisão B3)
+    private void LeaveThroughBreach()
+    {
+        IsDead = true;
+        EmitSignal(SignalName.Destroyed, this);
+        QueueFree();
     }
 
     // Vida zerada: solta a biomassa e sai da fase
