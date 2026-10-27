@@ -1,6 +1,6 @@
 # Spec: Parede de fronteira da esfera de Dyson (membrana fractal que abre para o vácuo)
 
-- **Status:** proposta; **decisões da fase A tomadas pelo dev** (out/2026, seção 10, A1 a A4). **Modelo-alvo das paredes de fronteira com o espaço** (decisão do dev, out/2026): quando implementada, substitui nessas paredes o puxão da `reactive-walls.md`. Fase A pode começar já (mecânica); fases C e D são visuais.
+- **Status:** proposta; **decisões da fase A tomadas pelo dev** (out/2026, seção 10, A1 a A6). **Modelo-alvo das paredes de fronteira com o espaço** (decisão do dev, out/2026): quando implementada, substitui nessas paredes o puxão da `reactive-walls.md`. Fase A pode começar já (mecânica); fases C e D são visuais.
 - **Etapa:** fases A e B são etapa 1 (mecânica). Fases C e D são etapa 2 (arte e shaders), exceto se o dev liberar antes.
 - **Depende de:** `LightDamageArea.cs` (já tem `WallIrritationPerSecond`). Relacionada: `docs/specs/reactive-walls.md` (implementação atual da irritação e da ejeção, transitória). Para posicionar as paredes no jogo: a spec da fase hexagonal (backlog 1.3).
 - **Referência visual:** `docs/reference/dyson-wall-prototype.html`. Abrir no navegador e segurar o clique sobre a parede. É um protótipo em JavaScript, **não é código para portar linha a linha**, mas as fórmulas de cada abertura, as curvas de tempo e o modelo de luz devem ser reproduzidos a partir dele. Nomes de funções citados nesta spec (`params`, `local`, `amtAt`, `prism`, etc.) são as funções desse arquivo.
@@ -28,8 +28,8 @@ Serve ao core loop como pressão ambiental: usar a lanterna perto das paredes te
 - Enquanto o feixe da lanterna sobrepõe um trecho da parede, então cada peça (triângulo externo; os sub-triângulos usam a irritação do pai, como no protótipo) com o centro dentro do feixe acumula irritação de 0 a 1: a cada passo, `peso × WallIrritationPerSecond × dt ÷ MaxIrritation`. O `WallIrritationPerSecond` (20/s, em `LightDamageArea.cs`) é a potência da lanterna; o `MaxIrritation` é a sensibilidade da parede, na mesma unidade do `WallSensitive` (decisão A3).
 - **Peso pelo eixo do feixe** (decisão A2): 1 no centro do feixe, caindo até 0 na borda. A fenda abre onde a lanterna mira, e o brilho em degradê mostra o alvo antes. Quem calcula o peso de um ponto é a lanterna, que conhece o formato do feixe; a parede só pergunta.
 - Fora do feixe, a irritação decai em `RecoveryRate ÷ MaxIrritation` por segundo. Dentro do feixe ela não decai, diferente do `WallSensitive`, que se acalma mesmo iluminado (decisão A3).
-- Quando a irritação passa de 0,5, então a peça treme (deslocamento aleatório por quadro proporcional a `(irr − 0,5) × 3` px).
-- A peça irritada ganha brilho verde-água (`IrritationColor`) proporcional à irritação: mistura de até 55% na cor das faces mais um halo aditivo ao redor.
+- Quando a irritação passa de 0,5 (`TremorStartIrritation`), então os sub-triângulos da peça tremem, cada um por conta própria, sem sincronia com os vizinhos: deslocamento aleatório por quadro, sorteado para cada sub-triângulo, proporcional a `(irr − 0,5) × 3` px (`TremorStrength`). A membrana de fundo fica parada, então o fundo não aparece entre as peças (decisão A5; no protótipo, a peça inteira treme junto).
+- A peça irritada ganha brilho verde-água (`IrritationColor`) proporcional à irritação: mistura de até 55% na cor das peças. O halo aditivo ao redor (protótipo) fica para a etapa 2 (decisão A6).
 - Quando alguma peça chega a 1, então dispara uma abertura centrada nela (a de maior irritação, se houver várias). Só uma abertura por segmento de parede por vez.
 
 ### 2.3 Ciclo da abertura
@@ -148,6 +148,7 @@ Do protótipo, para referência e implementação futura: degradê do espaço, h
 | `MaxIrritation` | 1,0 na escala 0–1; **60 no jogo** (decisão A3) | Luz acumulada para uma peça chegar a 1 e disparar a abertura: ~3 s no centro do feixe com a lanterna atual (20/s). Na fase, por tipo de estrutura (fase B) |
 | `RecoveryRate` | 0,25/s na escala 0–1; **15/s no jogo** (decisão A3) | Decaimento fora do feixe, na unidade do `MaxIrritation` (15 ÷ 60 = 0,25/s): ~4 s do máximo à calma |
 | `TremorStartIrritation` | 0,5 | Começa a tremer |
+| `TremorStrength` | 3 | Tremor de cada sub-triângulo: até ±(irr − 0,5) × 3 ÷ 2 px em cada eixo, sorteado a cada quadro (decisão A5) |
 | `NoReturnRadius` | 120 px (proposto) | Distância em que a sucção empata com o empuxo máximo do traje (seção 2.6). Substitui o `SuctionStrength` do protótipo (40 + 160·t px/s) |
 | `SuctionAccelerationAtNoReturn` | 450 px/s² | Igual ao `ThrustForce` do `Player`. Se o empuxo subir (ex.: melhoria futura), o ponto sem retorno real encolhe: `r = NoReturnRadius × √(450 / ThrustForce)` |
 | `SuctionFalloffExponent` | 2 | Queda com a distância (arrasto ~ 1/r² no plano) |
@@ -205,7 +206,7 @@ Do protótipo, para referência e implementação futura: degradê do espaço, h
 ### Fase A: geometria e irritação (etapa 1)
 - [ ] `dotnet build` sem erros
 - [ ] A parede de Sierpinski aparece nos níveis 0 a 3, com a membrana de fundo
-- [ ] O feixe da lanterna irrita as peças; elas brilham em verde-água e tremem acima de 0,5
+- [ ] O feixe da lanterna irrita as peças; elas brilham em verde-água e, acima de 0,5, os sub-triângulos tremem cada um por conta própria, com a membrana parada (A5)
 - [ ] A irritação decai fora do feixe
 
 ### Fase B: abertura, colisão e sucção (etapa 1)
@@ -257,6 +258,17 @@ Do protótipo, para referência e implementação futura: degradê do espaço, h
   - **A2, cálculo da luz na irritação: peso pelo eixo do feixe** (seção 2.2). Alternativas descartadas: uniforme no feixe (abertura imprevisível com o feixe varrendo) e eixo + distância (o feixe é curto, ~220 px; mais um valor para balancear).
   - **A3, ritmo: regra da spec** (sobe só no feixe, decai só fora), com `MaxIrritation` 60 e `RecoveryRate` 15/s. A parede "lembra": varrer várias vezes acumula, e o brilho fica alguns segundos depois de tirar a luz, como aviso. Descartada: a regra do `WallSensitive` (decai mesmo iluminada), que com o peso pelo eixo só deixaria acumular a faixa central do feixe (peso acima de 0,75). Para manter na fase os tempos de hoje (5 s, 2 s e 1,5 s por tipo de estrutura), os valores por tipo seriam 100, 40 e 30.
   - **A4, respiração em repouso: desligada na etapa 1**; volta com a W2, por shader.
+  - **A5, tremor: cada sub-triângulo por conta própria, com a membrana parada** (dev, out/2026, no teste do passo 3; seção 2.2). No protótipo, a peça inteira (membrana e sub-triângulos) treme junto. No teste, isso abria fendas escuras e retas entre as peças e deixava a parede com cara de blocos encaixados, pouco orgânica. Comparados no editor:
+    - peça inteira (protótipo);
+    - membrana e cada sub-triângulo independentes: ainda abria fendas menores entre as peças, porque as membranas vizinhas se afastam;
+    - sub-triângulos independentes com a membrana parada: **escolhido**.
+
+    As membranas se encaixam sem vãos, então nas frestas aparece o tecido quente da membrana, nunca o fundo. É a mesma lógica do Esmaecer (2.5): o triângulo externo fica parado e cada sub-triângulo age sozinho.
+    - **Custo:** um sorteio por sub-triângulo em vez de um por peça, só nas paredes acordadas. Numa parede de 1920 px no nível 2, com todas as peças tremendo, são 0,10 ms por desenho, contra 0,07 ms antes. A placa de vídeo desenha os mesmos triângulos.
+    - **Nível 0:** não tem membrana (não há vãos), então a peça é o próprio sub-triângulo e o fundo ainda aparece entre as peças ao tremer.
+    - **Consequência para a fase D (2.7):** durante o tremor, o vazamento de luz entre as peças fica por conta do tom quente da membrana. O degradê do sol aparece onde a membrana some (a fenda).
+    - **Proposta para a fase B:** o tremor forte do Aviso (2.3) segue o mesmo modo.
+  - **A6, halo da irritação: fica para a etapa 2** (dev, out/2026, passo 3). Na fase A, só o brilho nas peças (mistura de até 55%). Testado: com a mistura normal da Godot, o halo verde-água translúcido sobre o fundo escuro vira uma névoa acinzentada. O aditivo (como o `lighter` do protótipo) fica certo, mas precisa de um nó próprio com `CanvasItemMaterial` em modo Add; é acabamento visual e combina com a W2.
 
 ### Em aberto (perguntar ao dev antes de decidir)
 - **Deformação final da parede** (o Esmaecer é só o padrão provisório). Referências sugeridas (out/2026): **exocitose** (a membrana envolve o corpo estranho numa vesícula e o expele: o organismo expulsando o patógeno, que é a premissa do jogo); **estômato** (duas células-guarda abrem um poro, encaixa em pares de triângulos); **esfíncter/íris** (portas biomecânicas de Scorn; já existe o modo `iris`); **peristalse** (onda que leva o jogador até a fenda; já existe o modo `peri`). Game feel da sucção: a descompressão de Heavenly Bodies.

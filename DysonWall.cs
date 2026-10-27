@@ -21,8 +21,8 @@ public partial class DysonWall : StaticBody2D, ILightIrritable
     [Export] public Color PieceColorA = Color.Color8(92, 58, 76);    // #5C3A4C e #6C4658: cores base das peças,
     [Export] public Color PieceColorB = Color.Color8(108, 70, 88);   // alternando pela paridade
     [Export] public Color IrritationColor = Color.Color8(110, 240, 215); // #6EF0D7: brilho verde-água da peça irritada
-    [Export] public float TremorStartIrritation = 0.5f; // A peça treme acima desta irritação (0 a 1)
-    [Export] public float TremorStrength = 3f;          // Tremor: até ±(irritação − início) × isto ÷ 2 px em cada eixo (spec 2.2)
+    [Export] public float TremorStartIrritation = 0.5f; // Os sub-triângulos da peça tremem acima desta irritação (0 a 1)
+    [Export] public float TremorStrength = 3f;          // Tremor de cada sub-triângulo: até ±(irritação − início) × isto ÷ 2 px em cada eixo (spec 2.2)
 
     private DysonWallGeometry _geometry;
     private IDysonWallView _view; // Quem desenha (hoje, a W1)

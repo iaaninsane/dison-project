@@ -12,13 +12,12 @@ public partial class DysonWallView : Node2D, IDysonWallView
 
     private DysonWallGeometry _geometry;
     private DysonWallStyle _style;
-    private int _membraneCount;                              // Membranas desenhadas (0 no nível 0, que não tem vãos)
-    private Vector2[] _points = Array.Empty<Vector2>();      // Vértices de todos os triângulos, de 3 em 3
-    private Color[] _colors = Array.Empty<Color>();          // Cor de cada vértice
-    private Color[] _subBaseColors = Array.Empty<Color>();   // Cor de cada sub-triângulo com a parede calma
-    private Vector2[] _tileOffsets = Array.Empty<Vector2>(); // Tremor de cada peça neste desenho
-    private float[] _tileIrritation;                         // Irritação de cada peça (array da parede; null = nunca irritada)
-    private readonly Random _random = new();                 // Sorteio do tremor
+    private int _membraneCount;                            // Membranas desenhadas (0 no nível 0, que não tem vãos)
+    private Vector2[] _points = Array.Empty<Vector2>();    // Vértices de todos os triângulos, de 3 em 3
+    private Color[] _colors = Array.Empty<Color>();        // Cor de cada vértice
+    private Color[] _subBaseColors = Array.Empty<Color>(); // Cor de cada sub-triângulo com a parede calma
+    private float[] _tileIrritation;                       // Irritação de cada peça (array da parede; null = nunca irritada)
+    private readonly Random _random = new();               // Sorteio do tremor
 
     public void Build(DysonWallGeometry geometry, DysonWallStyle style)
     {
@@ -29,7 +28,6 @@ public partial class DysonWallView : Node2D, IDysonWallView
         _points = new Vector2[triangles * 3];
         _colors = new Color[triangles * 3];
         _subBaseColors = new Color[geometry.SubCount];
-        _tileOffsets = new Vector2[geometry.TileCount];
 
         for (int s = 0; s < geometry.SubCount; s++)
         {
@@ -37,7 +35,8 @@ public partial class DysonWallView : Node2D, IDysonWallView
             Color baseColor = geometry.TileParities[tile] == 0 ? style.PieceA : style.PieceB;
             _subBaseColors[s] = baseColor.Lerp(PieceTint, geometry.SubRandoms[s] * PieceTintAmount);
         }
-        FillTriangles();
+        FillMembranes();
+        FillSubTriangles();
         QueueRedraw();
     }
 
@@ -51,33 +50,37 @@ public partial class DysonWallView : Node2D, IDysonWallView
     {
         if (_points.Length == 0) return; // Parede sem peças (comprimento ou espessura zero)
 
-        if (_tileIrritation != null) FillTriangles(); // Irritada: brilho e tremor novos a cada desenho
+        if (_tileIrritation != null) FillSubTriangles(); // Irritada: brilho e tremor novos a cada desenho
         RenderingServer.CanvasItemAddTriangleArray(GetCanvasItem(), Array.Empty<int>(), _points, _colors);
     }
 
-    // Monta a lista de triângulos: membranas e sub-triângulos, com o tremor e o brilho de cada peça.
-    // O tremor é sorteado uma vez por peça: a membrana e os sub-triângulos dela tremem juntos.
-    private void FillTriangles()
+    // Membranas no começo da lista, montadas uma vez só: ficam paradas atrás, como tecido de fundo (decisão A5).
+    // Elas se encaixam sem vãos, então o fundo não aparece entre as peças quando os sub-triângulos tremem.
+    private void FillMembranes()
     {
-        for (int t = 0; t < _geometry.TileCount; t++) _tileOffsets[t] = TremorOffset(t);
-
-        int vertex = 0;
         for (int t = 0; t < _membraneCount; t++)
         {
-            vertex = AddTriangle(vertex, _geometry.TileVertices, t, _tileOffsets[t], _style.Membrane);
+            AddTriangle(t * 3, _geometry.TileVertices, t, Vector2.Zero, _style.Membrane);
         }
+    }
+
+    // Sub-triângulos depois das membranas, com o brilho da peça e um tremor sorteado para cada um,
+    // sem sincronia com os vizinhos (decisão A5)
+    private void FillSubTriangles()
+    {
+        int vertex = _membraneCount * 3;
         for (int t = 0; t < _geometry.TileCount; t++)
         {
             float glow = IrritationOf(t) * IrritationColorMix;
             int firstSub = t * _geometry.SubsPerTile;
             for (int s = firstSub; s < firstSub + _geometry.SubsPerTile; s++)
             {
-                vertex = AddTriangle(vertex, _geometry.SubVertices, s, _tileOffsets[t], _subBaseColors[s].Lerp(_style.Irritation, glow));
+                vertex = AddTriangle(vertex, _geometry.SubVertices, s, TremorOffset(t), _subBaseColors[s].Lerp(_style.Irritation, glow));
             }
         }
     }
 
-    // Tremor da peça neste desenho (spec 2.2): só acima do início, sorteado de novo a cada desenho
+    // Tremor de um sub-triângulo neste desenho (spec 2.2): só acima do início, pela irritação da peça, sorteado de novo a cada desenho
     private Vector2 TremorOffset(int tile)
     {
         float strength = (IrritationOf(tile) - _style.TremorStartIrritation) * _style.TremorStrength;

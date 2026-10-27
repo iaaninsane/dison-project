@@ -19,5 +19,5 @@ public readonly record struct DysonWallStyle(
     Color PieceA,
     Color PieceB,
     Color Irritation,            // Brilho da peça irritada (verde-água na spec)
-    float TremorStartIrritation, // A peça treme acima desta irritação (0 a 1)
-    float TremorStrength);       // Tremor por quadro: até ±(irritação − início) × isto ÷ 2 px em cada eixo
+    float TremorStartIrritation, // Os sub-triângulos da peça tremem acima desta irritação (0 a 1)
+    float TremorStrength);       // Tremor de cada sub-triângulo por quadro: até ±(irritação − início) × isto ÷ 2 px em cada eixo
