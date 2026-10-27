@@ -1,6 +1,6 @@
 # Spec: Parede de fronteira da esfera de Dyson (membrana fractal que abre para o vácuo)
 
-- **Status:** proposta; **decisões da fase A tomadas pelo dev** (out/2026, seção 10, A1 a A6). **Modelo-alvo das paredes de fronteira com o espaço** (decisão do dev, out/2026): quando implementada, substitui nessas paredes o puxão da `reactive-walls.md`. Fase A pode começar já (mecânica); fases C e D são visuais.
+- **Status:** **fase A concluída e validada pelo dev** (out/2026; decisões na seção 10, A1 a A6; arquivos na seção 6; medição na seção 8). Fases B a D propostas. **Modelo-alvo das paredes de fronteira com o espaço** (decisão do dev, out/2026): quando implementada, substitui nessas paredes o puxão da `reactive-walls.md`. Próxima: fase B (mecânica); fases C e D são visuais.
 - **Etapa:** fases A e B são etapa 1 (mecânica). Fases C e D são etapa 2 (arte e shaders), exceto se o dev liberar antes.
 - **Depende de:** `LightDamageArea.cs` (já tem `WallIrritationPerSecond`). Relacionada: `docs/specs/reactive-walls.md` (implementação atual da irritação e da ejeção, transitória). Para posicionar as paredes no jogo: a spec da fase hexagonal (backlog 1.3).
 - **Referência visual:** `docs/reference/dyson-wall-prototype.html`. Abrir no navegador e segurar o clique sobre a parede. É um protótipo em JavaScript, **não é código para portar linha a linha**, mas as fórmulas de cada abertura, as curvas de tempo e o modelo de luz devem ser reproduzidos a partir dele. Nomes de funções citados nesta spec (`params`, `local`, `amtAt`, `prism`, etc.) são as funções desse arquivo.
@@ -22,6 +22,7 @@ Serve ao core loop como pressão ambiental: usar a lanterna perto das paredes te
 - Formas alternativas (para teste, mesma interface): hexágonos com triângulos de preenchimento e octógonos com triângulos de preenchimento (`build()`, casos `hex` e `oct`). Essas formas não têm sub-peças.
 - Cada peça guarda: vértices de repouso, centro, um valor aleatório fixo `rnd` (0–1, sorteado na criação) e um índice de paridade `sh` (alterna 0/1). Cada sub-triângulo também tem seu `rnd`.
 - **Membrana de fundo:** atrás de cada triângulo de Sierpinski há um polígono do tamanho do triângulo externo, cor `MembraneColor`. Ele preenche os vãos do fractal para a parede não parecer furada.
+- **Pontas (fase A):** a faixa começa e termina com peças inteiras cortadas na extremidade da parede (o que passa dela fica achatado, sem área). Assim a subdivisão nas pontas é igual à das outras peças; subdividir um meio triângulo à parte deixava o vão espelhado.
 
 ### 2.2 Irritação
 
@@ -187,12 +188,20 @@ Do protótipo, para referência e implementação futura: degradê do espaço, h
 - Existentes a alterar pela sucção (seção 2.6; detalhar no plano): `Player.cs` (receber uma aceleração externa contínua, sem perder o controle), `FractalEnemy.cs` / `FractalSwarm.cs` (velocidade de sucção dos inimigos e saída pela fenda) e `BiomassField.cs` (sucção e perda dos orbes). Sugestão de arquitetura: um registro estático das fendas abertas (como o `FractalSwarm`), que responde "qual a aceleração de sucção neste ponto?"; jogador, inimigos e orbes perguntam a ele, e a parede não precisa conhecer nenhum deles (desacoplamento, mesmo espírito do Observer).
 - Existente a alterar (mínimo): `LightDamageArea.cs`, apenas para detectar a parede e chamar a irritação nela, se ainda não fizer isso. **Antes de mexer, investigar o que hoje usa `WallIrritationPerSecond` e me apresentar.**
   - Levantado (out/2026): a `LightDamageArea` guarda os corpos do grupo `Walls` que entram no feixe e, a cada passo de física, chama neles `AddIrritation(WallIrritationPerSecond × delta, posição do jogador)` por `HasMethod`/`Call`. Hoje só o `WallSensitive.cs` tem esse método. A `DysonWall` pode reaproveitar o contrato (corpo no grupo `Walls` com `AddIrritation`), mas a área entrega o **corpo inteiro**, não as peças: decidir quais peças estão dentro do feixe fica com a parede.
+  - Resolvido no passo 2 da fase A (out/2026): quem implementa o contrato `ILightIrritable` recebe `AddLightIrritation(quantidade, lanterna)` e pergunta à lanterna o peso da luz em cada ponto (`BeamWeightAt`, decisão A2). Os corpos sem o contrato (o `WallSensitive`) seguem pelo caminho antigo (`AddIrritation` por `HasMethod`/`Call`).
 - Existente que convive até a substituição: `WallSensitive.cs` (spec `reactive-walls.md`) continua nas salas atuais. Quando a `DysonWall` existir, ela entra nas paredes de fronteira; as paredes internas entre estruturas ficam rígidas (fora do grupo `Walls`).
-- Novos a criar (sugestão de nomes, ajustar ao padrão do projeto):
-  - `DysonWall.cs` + `dyson_wall.tscn`: geração, estado, irritação, ciclo de abertura, colisão, sucção.
+- **Criados na fase A (out/2026):**
+  - `DysonWall.cs` (`StaticBody2D`, implementa `ILightIrritable`): parâmetros (`[Export]`) e irritação de cada peça (0 a 1), com subida e decaimento (2.2). Dorme calma e a luz a acorda. No `_Ready`, cria por código a colisão fixa (um retângulo do tamanho da parede) e o nó de desenho. Não entra sozinha no grupo `Walls`: quem a monta decide.
+  - `DysonWallGeometry.cs` (classe C# comum, sem nó): peças e sub-triângulos de Sierpinski em arrays, com as pontas cortadas (2.1).
+  - `IDysonWallView.cs`: o contrato de quem desenha (`Build` e `Refresh`) e o estilo entregue a ele (`DysonWallStyle`: cores e tremor). É a Strategy da A1: a W2 cumpre o mesmo contrato.
+  - `DysonWallView.cs`: a W1. Uma lista de triângulos por parede (`RenderingServer.CanvasItemAddTriangleArray`), refeita só enquanto a parede está acordada. As membranas, paradas (A5), entram na lista uma vez só.
+  - `ILightIrritable.cs`: o contrato de quem quer a luz peça a peça.
+  - Alterado: `LightDamageArea.cs` (`BeamWeightAt`, peso pelo eixo do feixe, A2).
+  - `wall_test.tscn` (montada pelo dev): 5 paredes (níveis 0 a 3 e uma girada) no grupo `Walls`, e o jogador.
+- A criar nas fases seguintes (sugestão de nomes, ajustar ao padrão do projeto):
+  - Na `DysonWall.cs`: ciclo de abertura e sucção (fase B). A `dyson_wall.tscn` sugerida antes não foi precisa na fase A, porque a parede é um script num `StaticBody2D` e cria a colisão e o desenho por código. Decidir no plano da fase B se o construtor da fase cria a parede por código (como já faz com as paredes `WallSensitive`) ou instancia uma cena.
   - `WallOpenModes.cs` (ou equivalente): as funções de transformação por modo, puras, recebendo o estado e devolvendo a transformação de cada peça/sub-peça.
-  - Desenho: ver seção 10 (opção de renderização).
-  - Cena de teste isolada `wall_test.tscn`: um trecho de parede, um jogador, uma luz no lugar do sol.
+  - Na `wall_test.tscn`: uma luz no lugar do sol (fase D).
 - Referência: `docs/reference/dyson-wall-prototype.html`.
 
 ## 7. Passos no editor (feitos pelo dev)
@@ -204,10 +213,13 @@ Do protótipo, para referência e implementação futura: degradê do espaço, h
 ## 8. Pronto quando
 
 ### Fase A: geometria e irritação (etapa 1)
-- [ ] `dotnet build` sem erros
-- [ ] A parede de Sierpinski aparece nos níveis 0 a 3, com a membrana de fundo
-- [ ] O feixe da lanterna irrita as peças; elas brilham em verde-água e, acima de 0,5, os sub-triângulos tremem cada um por conta própria, com a membrana parada (A5)
-- [ ] A irritação decai fora do feixe
+
+Concluída e validada pelo dev na `wall_test.tscn` (out/2026), nos testes dos passos 1 a 3 e da decisão A5.
+
+- [x] `dotnet build` sem erros
+- [x] A parede de Sierpinski aparece nos níveis 0 a 3, com a membrana de fundo
+- [x] O feixe da lanterna irrita as peças; elas brilham em verde-água e, acima de 0,5, os sub-triângulos tremem cada um por conta própria, com a membrana parada (A5)
+- [x] A irritação decai fora do feixe
 
 ### Fase B: abertura, colisão e sucção (etapa 1)
 - [ ] Ao chegar a 1, a abertura no modo `Esmaecer` executa as 4 fases com a cascata da seção 2.5, sem transparência
@@ -227,8 +239,28 @@ Do protótipo, para referência e implementação futura: degradê do espaço, h
 - [ ] Mover o sol na cena de teste muda a direção da extrusão e do contorno
 
 ### Desempenho
-- [ ] Na cena de teste, uma tela cheia de parede no nível 2, com uma abertura em andamento, não aumenta o tempo de Renderização (CPU) de forma relevante em relação à linha de base de 1,55 ms da `sala_ninho`. Medir com o mesmo protocolo da seção 11 da `fractal-enemy.md` e registrar os números aqui
-- [ ] A física não é afetada pela deformação visual (colisão fixa)
+- [ ] Na cena de teste, uma tela cheia de parede no nível 2, com uma abertura em andamento, não aumenta o tempo de Renderização (CPU) de forma relevante em relação à linha de base de 1,55 ms da `sala_ninho`. Medir com o mesmo protocolo da seção 11 da `fractal-enemy.md` e registrar os números aqui. **Fase A: ok, sem abertura** (medição abaixo); falta medir com uma abertura em andamento (fase B).
+- [ ] A física não é afetada pela deformação visual (colisão fixa). Fase A: ok (o tremor é só visual e a colisão é um retângulo fixo); conferir com a abertura (fase B).
+
+**Medição da fase A (out/2026):**
+- **Cena:** 27 paredes de 1920 px empilhadas a cada 40 px (a tela inteira, zoom 1). Medida numa cópia do código num projeto descartável, na mesma máquina da linha de base (RTX 3060 Ti), com V-Sync desligado, 2 s de aquecimento e 4 s de medição por cenário. Rodada duas vezes, com os mesmos números.
+- **Como ler:** Processo e Física são o pior tempo de cada segundo (é o que os Monitores da Godot guardam); a coluna mostra a média e o maior desses valores. Renderização (CPU) é por quadro: o tempo medido do viewport mais a preparação do quadro.
+
+| Cenário | FPS | Processo | Física | Renderização (CPU) | Chamadas de desenho | Paredes acordadas |
+|---|---|---|---|---|---|---|
+| Vazio (só o fundo) | 2405 | 1,24 / 2,31 ms | 0,15 / 0,29 ms | 0,03 / 0,25 ms | 1 | 0 |
+| Nível 2, calmas | 2145 | 1,01 / 1,11 ms | 0,05 / 0,07 ms | 0,05 / 0,15 ms | 28 | 0 |
+| Nível 2, lanterna varrendo | 2074 | 1,06 / 1,17 ms | 1,48 / 1,58 ms | 0,04 / 0,37 ms | 28 | 5,1 |
+| Nível 2, todas acordadas (pior caso) | 1737 | 1,09 / 1,13 ms | 4,25 / 5,57 ms | 0,04 / 0,30 ms | 28 | 27 |
+| Nível 3, calmas | 2147 | 1,04 / 1,18 ms | 0,04 / 0,06 ms | 0,04 / 0,19 ms | 28 | 0 |
+| Nível 3, todas acordadas (pior caso) | 680 | 1,10 / 1,33 ms | 11,30 / 12,08 ms | 0,06 / 0,42 ms | 28 | 27 |
+
+- **Renderização (CPU):** de 0,03 ms (vazio) para 0,04 a 0,06 ms com a tela cheia de paredes (pior 0,42 ms), muito abaixo da linha de base de 1,55 ms. É uma chamada de desenho por parede; a placa de vídeo desenha 22 mil triângulos no nível 2 e 63 mil no nível 3.
+- **Parede calma:** custo zero na CPU (o sono da parede e o desenho guardado pela Godot).
+- **Parede acordada:** o custo vai para a Física, não para o Processo. O redesenho pedido no `_PhysicsProcess` roda no fim do passo de física, por isso o Processo não muda e a Física cresce com as paredes acordadas; ele acontece 60 vezes por segundo, seja qual for o FPS.
+  - Nível 2: ~0,16 ms por parede acordada. Com a lanterna varrendo (~5 acordadas, contando as que se acalmam), ~1,5 ms; com todas as 27, ~4,3 ms.
+  - Nível 3: ~0,42 ms por parede; com todas as 27, ~11 ms, perto da Física da `sala_ninho` com 300 inimigos (11,6 ms) num orçamento de 16,67 ms por passo.
+- **Conclusões:** no nível 2, a W1 dá conta, e a medição não pede a W2 (A1). O nível 3 fica só para testes. Na fase B, medir a fase hexagonal com a horda e algumas paredes acordadas ao mesmo tempo, e com uma abertura em andamento.
 
 ## 9. Como testar (roteiro manual no editor)
 
