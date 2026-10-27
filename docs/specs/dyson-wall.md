@@ -1,6 +1,10 @@
 # Spec: Parede de fronteira da esfera de Dyson (membrana fractal que abre para o vácuo)
 
-- **Status:** **fase A concluída e validada pelo dev** (out/2026; decisões na seção 10, A1 a A6; arquivos na seção 6; medição na seção 8). **Fase B: decisões tomadas pelo dev** (out/2026, seção 10, B1 a B6). Fases C e D propostas. **Modelo-alvo das paredes de fronteira com o espaço** (decisão do dev, out/2026): quando implementada, substitui nessas paredes o puxão da `reactive-walls.md`. Próxima: fase B (mecânica); fases C e D são visuais.
+- **Status:**
+  - **Fase A concluída e validada pelo dev** (out/2026; decisões A1 a A6 na seção 10; arquivos na seção 6; medição na seção 8).
+  - **Fase B concluída** (out/2026; decisões B1 a B6): passos 1 a 6 testados pelo dev no editor. **Observação:** o passo 7 foi verificado só no descartável (10 fendas seguidas com troca de cena e a medição da tela cheia com aberturas); o dev fechou a fase sem a confirmação no editor e sem a medição na fase com a horda, que ficaram para a fase de balanceamento (backlog 1.9; roteiro na seção 9, item 7).
+  - Fases C e D propostas (etapa 2).
+  - **Modelo-alvo das paredes de fronteira com o espaço** (decisão do dev, out/2026). Em uso na fase hexagonal desde o passo 5 da fase B, onde substituiu o puxão da `reactive-walls.md`; o `WallSensitive` segue só nas salas antigas (bancadas).
 - **Etapa:** fases A e B são etapa 1 (mecânica). Fases C e D são etapa 2 (arte e shaders), exceto se o dev liberar antes.
 - **Depende de:** `LightDamageArea.cs` (já tem `WallIrritationPerSecond`). Relacionada: `docs/specs/reactive-walls.md` (implementação atual da irritação e da ejeção, transitória). Para posicionar as paredes no jogo: a spec da fase hexagonal (backlog 1.3).
 - **Referência visual:** `docs/reference/dyson-wall-prototype.html`. Abrir no navegador e segurar o clique sobre a parede. É um protótipo em JavaScript, **não é código para portar linha a linha**, mas as fórmulas de cada abertura, as curvas de tempo e o modelo de luz devem ser reproduzidos a partir dele. Nomes de funções citados nesta spec (`params`, `local`, `amtAt`, `prism`, etc.) são as funções desse arquivo.
@@ -149,10 +153,11 @@ Do protótipo, para referência e implementação futura: degradê do espaço, h
 | `SierpinskiLevel` | 2 | 0 a 3. Nível 3 = 27 sub-peças por triângulo |
 | `WallThickness` | 44 px | Altura da faixa |
 | `OpenMode` | Esmaecer | Enum com os 17 modos |
-| `OpenRadius` | 64 px | Raio do núcleo da abertura |
+| `OpenRadius` | 64 px | Raio do núcleo da abertura. O vão da colisão deixa isto livre de cada lado do centro, um pouco menos que o buraco desenhado (~74 px) |
+| `WarningTremor` | 2 px (protótipo: `f × 2`) | Tremor extra das peças no aviso (fase 0): o maior no centro da abertura, zero a `OpenRadius` |
 | `FadeRadiusFactor` | 1,15 | Esmaecer: raio = `OpenRadius × fator` |
 | `OpenPhaseDurations` | (0,35; 0,6; 1,4; 0,75) | Esmaecer usa (0,35; 1,1; 1,2; 1,3) |
-| `MaxIrritation` | 1,0 na escala 0–1; **60 no jogo** (decisão A3) | Luz acumulada para uma peça chegar a 1 e disparar a abertura: ~3 s no centro do feixe com a lanterna atual (20/s). Na fase, por tipo de estrutura (fase B) |
+| `MaxIrritation` | 1,0 na escala 0–1; **60 no jogo** (decisão A3) | Luz acumulada para uma peça chegar a 1 e disparar a abertura: ~3 s no centro do feixe com a lanterna atual (20/s). Na fase, por tipo de estrutura: 100, 40 e 30 (B2) |
 | `RecoveryRate` | 0,25/s na escala 0–1; **15/s no jogo** (decisão A3) | Decaimento fora do feixe, na unidade do `MaxIrritation` (15 ÷ 60 = 0,25/s): ~4 s do máximo à calma |
 | `TremorStartIrritation` | 0,5 | Começa a tremer |
 | `TremorStrength` | 3 | Tremor de cada sub-triângulo: até ±(irr − 0,5) × 3 ÷ 2 px em cada eixo, sorteado a cada quadro (decisão A5) |
@@ -163,9 +168,11 @@ Do protótipo, para referência e implementação futura: degradê do espaço, h
 | `SuctionMaxRadius` | 360 px (proposto) | Além disso, força zero (3 × `NoReturnRadius`; legibilidade e custo) |
 | `GustMultiplier` | 3 (proposto) | Rajada no rompimento: multiplicador inicial da força |
 | `GustDecay` | 0,6 s (proposto) | Constante de tempo da queda da rajada até 1× |
-| `EnemySuctionFactor` | 1 (proposto) | Quanto os inimigos sentem a sucção (testar fragmentos mais leves, ex.: maior nas gerações menores) |
-| `OrbSuctionFactor` | 1 (proposto) | Quanto os orbes de biomassa sentem a sucção |
-| `SpawnerSuctionFactor` | 0,5 (proposto) | Quanto os spawners móveis sentem a sucção: menos que o jogador e os inimigos (B3) |
+| `EnemySuctionFactor` | 1 (proposto) | No `FractalEnemy` (`SuctionFactor`). Quanto os inimigos sentem a sucção (testar fragmentos mais leves, ex.: maior nas gerações menores) |
+| `OrbSuctionFactor` | 1 (proposto) | No `BiomassCollector` (`OrbSuctionFactor`), que move os orbes a cada passo. Quanto os orbes de biomassa sentem a sucção |
+| `SpawnerSuctionFactor` | 0,5 (escolhido no teste) | No `MobileSpawner` (`SuctionFactor`). Quanto os spawners móveis sentem a sucção: menos que o jogador e os inimigos (B3) |
+| `SuctionVelocityDecay` | 300 px/s² | Inimigos (`FractalEnemy`) e orbes (`BiomassCollector.OrbSuctionDecay`): fora do campo, a velocidade ganha da sucção some neste ritmo |
+| `RouteReturnTime` / `RouteReturnDamping` | 1,5 s / 0,7 | Spawners: a mola que os devolve ao trajeto, com leve balanço (`mobile-spawners.md`, S11) |
 | `ExtrudeLength` | 6 px | Multiplicado por 1 / 0,7 / 0,5 / 0,35 nos níveis 0–3 |
 | `FacetHeight` | 0,55 | Fração do raio da peça |
 | `SunPosition` | centro horizontal, acima da parede | Global da cena; ver seção 10 |
@@ -181,34 +188,59 @@ Do protótipo, para referência e implementação futura: degradê do espaço, h
 - **Jogador além de `SuctionMaxRadius` quando a fenda abre:** não é afetado. Dentro, sente a força conforme a distância.
 - **Jogador escapa da sucção antes de cruzar a parede:** nada acontece, a fenda fecha normalmente.
 - **Inimigos e orbes perto da fenda:** são sugados (seção 2.6). Ao cruzar a fenda, saem da fase sem erro nem nó órfão: o inimigo volta ao pool pelo mesmo caminho da morte (`OnDied`) ou é liberado; o orbe sai do `BiomassField`.
-- **Spawner móvel perto da fenda** (B3): sente a sucção × `SpawnerSuctionFactor` e sai da rota. Um corpo movido por código não para nas paredes sozinho, então o deslocamento também é testado contra elas (como o empurrão do jogador, `TestMove`). Fora do campo, volta à rota. Ao cruzar, emite `Destroyed` sem soltar orbes.
+- **Spawner móvel perto da fenda** (B3): sente a sucção × `SpawnerSuctionFactor` e sai da rota.
+  - Um corpo movido por código não para nas paredes sozinho, então o deslocamento também é testado contra elas, como o empurrão do jogador (`TestMove`).
+  - Fora do campo, volta ao trajeto por uma mola com leve balanço (`mobile-spawners.md`, S11). Se a fenda fechar com ele no vão (a parede só empurra para fora corpos `CharacterBody2D`), a mola o tira aos poucos.
+  - Ao cruzar, emite `Destroyed` sem soltar orbes.
 - **Inimigo travado (descansando) perto da fenda:** a sucção muda a direção desejada e o acorda (`WakeAngleDegrees`, spec de movimento). Como os inimigos não têm inércia (a velocidade é recalculada a cada passo), a sucção acumula uma velocidade própria no inimigo, que decai fora do campo, somada à perseguição e à separação.
 - **Ímã de biomassa × sucção:** as duas forças se somam no orbe; perto da fenda, a sucção vence.
 - **Várias fendas abertas ao mesmo tempo:** as acelerações se somam.
 - **Desempenho:** o campo entra nos laços que já existem (`FractalSwarm` e `BiomassField`): um cálculo de distância por elemento, por fenda ativa, só dentro de `SuctionMaxRadius`.
 - **Colisão durante modos que deformam vértices** (`esticar`, `gelatina`, `murchar`): não recalcular colisão por quadro. A parede tem colisão fixa por segmento; na área da fenda, a colisão é desligada da fase 1 até o meio da fase 3 e religada depois. A deformação é puramente visual.
-- **Jogador dentro da área da fenda quando ela fecha:** empurrar para dentro da câmara antes de religar a colisão, para não prender o jogador na parede.
+- **Jogador dentro da área da fenda quando ela fecha:** empurrar para dentro da câmara antes de religar a colisão, para não prender o jogador na parede. Implementado no passo 2 para todo corpo que se move (`CharacterBody2D`: jogador e inimigos): com o centro na faixa da parede, vai para logo depois da face de dentro; já passado da face de fora, vai para fora (puxar de volta quem saiu seria resgatar um ejetado).
+- **Lanterna parada quando o vão fecha:** com o vão aberto, a lanterna que mirava a fenda deixa de ver a parede (ali não há colisão), e isso é certo. Mas num `StaticBody2D` ela não a percebia de novo quando a forma era religada: uma `Area2D` parada não dispara `BodyEntered` até ela mesma se mexer, e a lanterna parava de irritar a parede depois da primeira abertura. Por isso a `DysonWall` é um `AnimatableBody2D` (verificado no motor, 4.7.2; seção 10, "Achados da fase B").
 - **Troca de sala no meio de uma abertura:** a parede é liberada sem erros nem tweens órfãos.
 
 ## 6. Arquivos e cenas
 
 - Existentes, somente leitura: `LightDamageArea.cs` (como o feixe detecta alvos e o `WallIrritationPerSecond`), `player.tscn`.
-- Existentes a alterar pela sucção (seção 2.6; detalhar no plano): `Player.cs` (receber uma aceleração externa contínua, sem perder o controle), `FractalEnemy.cs` / `FractalSwarm.cs` (velocidade de sucção dos inimigos e saída pela fenda) e `BiomassField.cs` (sucção e perda dos orbes). Sugestão de arquitetura: um registro estático das fendas abertas (como o `FractalSwarm`), que responde "qual a aceleração de sucção neste ponto?"; jogador, inimigos e orbes perguntam a ele, e a parede não precisa conhecer nenhum deles (desacoplamento, mesmo espírito do Observer).
+- Existentes a alterar pela sucção (seção 2.6): `Player.cs`, `FractalEnemy.cs`, `BiomassField.cs` e o `MobileSpawner.cs`. Arquitetura sugerida e feita na fase B: um registro estático das fendas abertas (`SuctionField`, como o `FractalSwarm`), que responde "qual a aceleração de sucção neste ponto?". Jogador, inimigos, orbes e spawners perguntam a ele, e a parede não precisa conhecer nenhum deles (desacoplamento, mesmo espírito do Observer). Detalhes em "Criados e alterados na fase B".
 - Existente a alterar (mínimo): `LightDamageArea.cs`, apenas para detectar a parede e chamar a irritação nela, se ainda não fizer isso. **Antes de mexer, investigar o que hoje usa `WallIrritationPerSecond` e me apresentar.**
   - Levantado (out/2026): a `LightDamageArea` guarda os corpos do grupo `Walls` que entram no feixe e, a cada passo de física, chama neles `AddIrritation(WallIrritationPerSecond × delta, posição do jogador)` por `HasMethod`/`Call`. Hoje só o `WallSensitive.cs` tem esse método. A `DysonWall` pode reaproveitar o contrato (corpo no grupo `Walls` com `AddIrritation`), mas a área entrega o **corpo inteiro**, não as peças: decidir quais peças estão dentro do feixe fica com a parede.
   - Resolvido no passo 2 da fase A (out/2026): quem implementa o contrato `ILightIrritable` recebe `AddLightIrritation(quantidade, lanterna)` e pergunta à lanterna o peso da luz em cada ponto (`BeamWeightAt`, decisão A2). Os corpos sem o contrato (o `WallSensitive`) seguem pelo caminho antigo (`AddIrritation` por `HasMethod`/`Call`).
-- Existente que convive até a substituição: `WallSensitive.cs` (spec `reactive-walls.md`) continua nas salas atuais. Quando a `DysonWall` existir, ela entra nas paredes de fronteira; as paredes internas entre estruturas ficam rígidas (fora do grupo `Walls`).
+- Existente que convive: `WallSensitive.cs` (spec `reactive-walls.md`). Desde o passo 5 da fase B, a `DysonWall` é a parede de fronteira da fase hexagonal; o `WallSensitive` segue só nas salas antigas (bancadas). As paredes internas entre estruturas, quando existirem, serão rígidas (fora do grupo `Walls`).
 - **Criados na fase A (out/2026):**
-  - `DysonWall.cs` (`StaticBody2D`, implementa `ILightIrritable`): parâmetros (`[Export]`) e irritação de cada peça (0 a 1), com subida e decaimento (2.2). Dorme calma e a luz a acorda. No `_Ready`, cria por código a colisão fixa (um retângulo do tamanho da parede) e o nó de desenho. Não entra sozinha no grupo `Walls`: quem a monta decide.
+  - `DysonWall.cs` (`StaticBody2D` na fase A, `AnimatableBody2D` desde o passo 2 da fase B; implementa `ILightIrritable`): parâmetros (`[Export]`) e irritação de cada peça (0 a 1), com subida e decaimento (2.2). Dorme calma e a luz a acorda. No `_Ready`, cria por código a colisão fixa (um retângulo do tamanho da parede) e o nó de desenho. Não entra sozinha no grupo `Walls`: quem a monta decide.
   - `DysonWallGeometry.cs` (classe C# comum, sem nó): peças e sub-triângulos de Sierpinski em arrays, com as pontas cortadas (2.1).
   - `IDysonWallView.cs`: o contrato de quem desenha (`Build` e `Refresh`) e o estilo entregue a ele (`DysonWallStyle`: cores e tremor). É a Strategy da A1: a W2 cumpre o mesmo contrato.
   - `DysonWallView.cs`: a W1. Uma lista de triângulos por parede (`RenderingServer.CanvasItemAddTriangleArray`), refeita só enquanto a parede está acordada. As membranas, paradas (A5), entram na lista uma vez só.
   - `ILightIrritable.cs`: o contrato de quem quer a luz peça a peça.
   - Alterado: `LightDamageArea.cs` (`BeamWeightAt`, peso pelo eixo do feixe, A2).
   - `wall_test.tscn` (montada pelo dev): 5 paredes (níveis 0 a 3 e uma girada) no grupo `Walls`, e o jogador.
+- **Criados e alterados na fase B (out/2026):**
+  - **Novos:**
+    - `DysonWallOpening.cs` (classe C# comum): o relógio de uma abertura. Guarda o centro, as 4 fases, a intensidade `k` (curva do Esmaecer), o tremor do aviso, o vão aberto para a física (`IsGapOpen`) e o tempo desde o rompimento (para a rajada). É a parte comum a todos os modos.
+    - `DysonWallFade.cs` (classe C# comum): o Esmaecer (2.5). Calcula a escala de cada sub-triângulo e de cada membrana, e o `MaxDelay`, o atraso da última figura a voltar. A interface dos 17 modos fica para a fase C, quando as necessidades deles forem conhecidas.
+    - `SuctionField.cs`: o registro estático das fendas abertas (`SuctionField`, com `AccelerationAt` e `HasCrossed`), os números da sucção (`SuctionSettings`) e a conta de cada fenda (`SuctionBreach`, com a rajada e a garganta).
+    - `SpawnerPaths.cs` (`mobile-spawners.md`, S10): as formas de trajeto dos spawners.
+  - **Alterados:**
+    - `DysonWall.cs`:
+      - `AnimatableBody2D`;
+      - o ciclo da abertura, com uma por parede e a área zerada no fim;
+      - a colisão em três formas: inteira, ou dois lados do vão;
+      - o empurrão para fora do vão ao fechar;
+      - `PlayerEjected`;
+      - a fenda no campo de sucção;
+      - os grupos "Abertura (Esmaecer)" e "Sucção" no Inspector.
+    - `IDysonWallView.cs` (`DysonWallState`: os arrays entregues a quem desenha), `DysonWallView.cs` (escala das figuras e tremor do aviso) e `DysonWallGeometry.cs` (`TileSide`, `SubSide`).
+    - `Player.cs`: a sucção soma à velocidade, e o empuxo não corta mais a velocidade acima do máximo.
+    - `FractalEnemy.cs`: velocidade própria de sucção, sem acumular contra a parede, e saída pela fenda sem biomassa (`LeaveSilently`, também usado no recolhimento).
+    - `BiomassOrb.cs`, `BiomassField.cs` e `BiomassCollector.cs`: orbes sugados e perdidos pela fenda.
+    - `MobileSpawner.cs` e `SpawnerDirector.cs`: sucção, trajeto e mola (S10, S11).
+    - `HexPhaseLayout.cs` (uma parede por aresta reta; `HexRoute.HalfWidth`) e `HexPhaseBuilder.cs` (cria as `DysonWall` por código, giradas com o espaço do lado de cima; sensibilidade 100/40/30).
+    - `wall_test.tscn`: as 5 paredes trocadas para `AnimatableBody2D` pelo dev.
 - A criar nas fases seguintes (sugestão de nomes, ajustar ao padrão do projeto):
-  - Na `DysonWall.cs`: ciclo de abertura e sucção (fase B). A `dyson_wall.tscn` sugerida antes não foi precisa na fase A, porque a parede é um script num `StaticBody2D` e cria a colisão e o desenho por código. Decidir no plano da fase B se o construtor da fase cria a parede por código (como já faz com as paredes `WallSensitive`) ou instancia uma cena.
-  - `WallOpenModes.cs` (ou equivalente): as funções de transformação por modo, puras, recebendo o estado e devolvendo a transformação de cada peça/sub-peça.
+  - `WallOpenModes.cs` (ou equivalente, fase C): as funções de transformação por modo, puras, recebendo o estado e devolvendo a transformação de cada peça/sub-peça.
   - Na `wall_test.tscn`: uma luz no lugar do sol (fase D).
 - Referência: `docs/reference/dyson-wall-prototype.html`.
 
@@ -230,12 +262,18 @@ Concluída e validada pelo dev na `wall_test.tscn` (out/2026), nos testes dos pa
 - [x] A irritação decai fora do feixe
 
 ### Fase B: abertura, colisão e sucção (etapa 1)
-- [ ] Ao chegar a 1, a abertura no modo `Esmaecer` executa as 4 fases com a cascata da seção 2.5, sem transparência
-- [ ] A colisão é desligada e religada na área da fenda conforme a seção 5
-- [ ] A sucção cresce com a proximidade: quase nada perto de `SuctionMaxRadius`, empata com o empuxo em `NoReturnRadius` e vence dentro dele; a rajada do rompimento é perceptível
-- [ ] O jogador mantém o controle durante a sucção e consegue escapar de fora do raio sem retorno; ao cruzar a fenda, o sinal `PlayerEjected` é emitido
-- [ ] Inimigos e orbes perto da fenda são sugados e, ao cruzá-la, saem da fase sem erros nem nós órfãos
-- [ ] Nenhum erro no Output ao abrir 10 fendas seguidas e trocar de sala
+
+Implementada e testada pelo dev nos passos 1 a 6 (out/2026). Nos passos 1 a 4, na `wall_test.tscn`; desde o passo 5, também na fase hexagonal (B2), com os spawners sugados no passo 6.
+
+- [x] Ao chegar a 1, a abertura no modo `Esmaecer` executa as 4 fases com a cascata da seção 2.5, sem transparência (passo 1)
+- [x] A colisão é desligada e religada na área da fenda conforme a seção 5 (passo 2)
+- [x] A sucção cresce com a proximidade: quase nada perto de `SuctionMaxRadius`, empata com o empuxo em `NoReturnRadius` e vence dentro dele; a rajada do rompimento é perceptível (passo 3)
+- [x] O jogador mantém o controle durante a sucção e consegue escapar de fora do raio sem retorno; ao cruzar a fenda, o sinal `PlayerEjected` é emitido (passo 3). O sinal ainda não tem ouvinte: foi verificado no descartável, e na fase quem encerra a incursão é o `LostInSpace` (B1).
+- [x] Inimigos e orbes perto da fenda são sugados e, ao cruzá-la, saem da fase sem erros nem nós órfãos (passos 4 e 5)
+- [x] Nenhum erro no Output ao abrir 10 fendas seguidas e trocar de sala (passo 7). **Verificado só no descartável** (observação abaixo):
+  - o teste: 4 paredes, o `Player.cs` de verdade, 30 inimigos e 20 orbes; 10 aberturas em sequência, até 4 ao mesmo tempo, com 26 inimigos saindo pelas fendas; a cena recarregada no meio da 10ª, com o vão aberto;
+  - o resultado: na cena nova, o campo de sucção, a horda e os orbes começaram vazios, com 0 nós órfãos e nenhuma linha de erro ou aviso;
+  - **observação:** o dev fechou a fase B sem confirmar no editor, na fase (out/2026). A confirmação ficou para a fase de balanceamento (backlog 1.9; seção 9, item 7).
 
 ### Fase C: todos os modos (etapa 2)
 - [ ] Os 17 modos funcionam e podem ser trocados por `[Export]`, comparáveis visualmente ao protótipo
@@ -247,8 +285,8 @@ Concluída e validada pelo dev na `wall_test.tscn` (out/2026), nos testes dos pa
 - [ ] Mover o sol na cena de teste muda a direção da extrusão e do contorno
 
 ### Desempenho
-- [ ] Na cena de teste, uma tela cheia de parede no nível 2, com uma abertura em andamento, não aumenta o tempo de Renderização (CPU) de forma relevante em relação à linha de base de 1,55 ms da `sala_ninho`. Medir com o mesmo protocolo da seção 11 da `fractal-enemy.md` e registrar os números aqui. **Fase A: ok, sem abertura** (medição abaixo); falta medir com uma abertura em andamento (fase B).
-- [ ] A física não é afetada pela deformação visual (colisão fixa). Fase A: ok (o tremor é só visual e a colisão é um retângulo fixo); conferir com a abertura (fase B).
+- [x] Na cena de teste, uma tela cheia de parede no nível 2, com uma abertura em andamento, não aumenta o tempo de Renderização (CPU) de forma relevante em relação à linha de base de 1,55 ms da `sala_ninho`. Medir com o mesmo protocolo da seção 11 da `fractal-enemy.md` e registrar os números aqui. **Fase A:** ok, sem abertura. **Fase B:** ok, com 1 e com 4 aberturas em andamento (0,04 ms; medições abaixo).
+- [x] A física não é afetada pela deformação visual. O tremor e o Esmaecer só mudam o desenho; a colisão só muda no vão, de um retângulo para dois, da fase 1 até o meio da fase 3.
 
 **Medição da fase A (out/2026):**
 - **Cena:** 27 paredes de 1920 px empilhadas a cada 40 px (a tela inteira, zoom 1). Medida numa cópia do código num projeto descartável, na mesma máquina da linha de base (RTX 3060 Ti), com V-Sync desligado, 2 s de aquecimento e 4 s de medição por cenário. Rodada duas vezes, com os mesmos números.
@@ -270,16 +308,38 @@ Concluída e validada pelo dev na `wall_test.tscn` (out/2026), nos testes dos pa
   - Nível 3: ~0,42 ms por parede; com todas as 27, ~11 ms, perto da Física da `sala_ninho` com 300 inimigos (11,6 ms) num orçamento de 16,67 ms por passo.
 - **Conclusões:** no nível 2, a W1 dá conta, e a medição não pede a W2 (A1). O nível 3 fica só para testes. Na fase B, medir a fase hexagonal com a horda e algumas paredes acordadas ao mesmo tempo, e com uma abertura em andamento.
 
+**Medição da fase B (out/2026, passo 7):**
+- **Cena e protocolo:** a mesma tela cheia da fase A (27 paredes de 1920 px no nível 2), com aberturas forçadas e mantidas: uma nova começa quando a anterior termina. Com a máquina quieta: o vazio deu 0,07 a 0,12 ms de física. Rodada três vezes.
+
+| Cenário | FPS | Processo | Física | Renderização (CPU) | Chamadas de desenho |
+|---|---|---|---|---|---|
+| Vazio (só o fundo) | 2401 | 1,15 / 1,81 ms | 0,07 / 0,11 ms | 0,02 / 0,25 ms | 1 |
+| Nível 2, calmas | 2176 | 0,97 / 1,01 ms | 0,04 / 0,07 ms | 0,04 / 0,31 ms | 28 |
+| Nível 2, 1 abertura (a primeira da sessão) | 2137 | 1,01 / 1,08 ms | 2,23 / 7,45 ms | 0,04 / 0,33 ms | 28 |
+| Nível 2, 4 aberturas ao mesmo tempo | 2139 | 1,00 / 1,06 ms | 1,03 / 1,18 ms | 0,04 / 0,39 ms | 28 |
+| Nível 2, 1 abertura (código já compilado) | 2168 | 1,10 / 1,28 ms | 0,81 / 1,18 ms | 0,04 / 0,38 ms | 28 |
+
+- **Renderização (CPU):** não muda com as aberturas, fica em 0,04 ms (pior 0,39 ms) contra a linha de base de 1,55 ms. Continua uma chamada de desenho por parede.
+- **Física:** cada parede com abertura custa ~0,25 ms por passo (redesenho, Esmaecer, membranas e colisão); 4 ao mesmo tempo ficam em ~1 ms.
+- **Pico de 7,5 ms na primeira abertura da sessão:** é a primeira compilação (JIT do C#) do código de abertura e do fechamento do vão (a consulta à física que empurra os corpos). Repetindo depois, ele some. Acontece uma vez por sessão de jogo e cabe num quadro (16,67 ms). Se incomodar no teste, dá para "aquecer" esse código ao carregar a fase, debaixo do escurecer.
+- **Outros custos** (seção 10, "Achados da fase B"): perguntas ao campo, 0,26 µs por inimigo com uma fenda aberta; a fase monta as 286 paredes em 84 ms.
+- **Na fase hexagonal, com a horda: não medida.** O dev fechou a fase B sem esta medição (out/2026); ela ficou para a fase de balanceamento (backlog 1.9), com o roteiro da seção 9, item 7. Registrar os números aqui quando for feita.
+
 ## 9. Como testar (roteiro manual no editor)
 
 1. Abra o protótipo HTML no navegador e deixe ao lado do editor.
 2. Rode `wall_test.tscn` com F6. Compare a parede no nível 2 com o protótipo.
 3. Aponte a lanterna para um trecho da parede: confirme brilho, tremor e, ao chegar no limite, a abertura em Esmaecer.
-4. Fique a distâncias diferentes da fenda (longe, perto do raio sem retorno, dentro dele): confirme que a força cresce com a proximidade, que de fora do raio dá para escapar com contra-empuxo e que, ao cruzar, o sinal `PlayerEjected` aparece no Output.
+4. Fique a distâncias diferentes da fenda (longe, perto do raio sem retorno, dentro dele): confirme que a força cresce com a proximidade e que de fora do raio dá para escapar com contra-empuxo. Na fase, ao cruzar, o `LostInSpace` encerra a incursão ~2 s depois (B1); o `PlayerEjected` não tem ouvinte por enquanto.
 5. Fique além de `SuctionMaxRadius`: confirme que nada acontece com o jogador.
 6. Com inimigos e orbes perto da parede (ex.: na `arena.tscn` ou numa cena de teste com inimigos colocados à mão), abra a fenda: confirme que eles são sugados e somem ao cruzá-la, sem erros e com "Nós Órfãos" = 0.
-7. (Fase C) Troque `OpenMode` no Inspector e compare cada modo com o botão equivalente no protótipo.
-8. (Fase D) Mova o sol e confirme que extrusão e contorno acompanham.
+7. **(Fase B, passo 7; pendente, backlog 1.9) Na fase hexagonal, com a horda.** Com a máquina quieta (feche outros programas pesados):
+   1. Rode a `hex_phase.tscn` com F5, libere as saídas e deixe um spawner gerar uma horda grande perto de você (200+ inimigos, no contador de objetos ou a olho).
+   2. Abra **Depurador > Monitores** e marque **Time > Physics Process**, **Time > Process** e **Time > FPS**. No **Analisador Gráfico** (Visual Profiler), veja a Renderização (CPU).
+   3. Anote os valores **sem nenhuma parede acordada**, depois **iluminando paredes** (2 ou 3 acordadas) e depois **com uma fenda aberta** perto da horda.
+   4. Abra 10 fendas seguidas, em paredes diferentes. Morra ou saia pela eclusa, e veja se o Output fica sem erros e se **Objeto > Nós Órfãos** = 0 depois da recarga.
+8. (Fase C) Troque `OpenMode` no Inspector e compare cada modo com o botão equivalente no protótipo.
+9. (Fase D) Mova o sol e confirme que extrusão e contorno acompanham.
 
 ## 10. Decisões e notas
 
@@ -321,6 +381,24 @@ Concluída e validada pelo dev na `wall_test.tscn` (out/2026), nos testes dos pa
   - **B4, inimigo sugado não solta biomassa:** sai da fase "perdido" pelo organismo e volta ao estoque. Descartada: soltar o orbe ao cruzar (ele nasceria dentro do campo e seria sugado também).
   - **B5, campo do lado de fora: empurra para o espaço, pela normal da parede.** Dentro da câmara, o campo puxa para o centro da fenda; do meio da espessura em diante (a garganta), empurra para fora, como o ar que escapa, e quem passou não volta puxado (sem efeito elástico). Esclarece a seção 2.6, que só falava do centro da abertura. Descartada: sempre para o centro (quem passou oscilaria no buraco).
   - **B6, partículas da fenda: etapa 2**, como o halo (A6). A fase B testa se a sucção é legível só com a fenda abrindo e o movimento; se não for, entra uma pista visual simples depois.
+
+- **Fase B, decisões do plano** (propostas como recomendação e aprovadas pelo dev com o plano, out/2026):
+  - **A fase cria a `DysonWall` por código**, sem `dyson_wall.tscn`: a parede monta colisão e desenho sozinha, e o construtor já criava as paredes por código.
+  - **O lado de fora (o espaço) é o −Y local**, o de cima sem rotação. O construtor gira cada parede para isso.
+  - **O vão da colisão deixa `OpenRadius` livre de cada lado do centro**, um pouco menos que o buraco desenhado: ninguém atravessa uma peça que ainda aparece.
+  - **A sucção pode passar da velocidade máxima do jogador.** O empuxo não leva a velocidade além do `MaxSpeed`, mas também não corta o que veio de fora (sucção, golpe): senão, apertar uma direção viraria um freio contra a sucção.
+  - **Sem interface dos 17 modos na fase B:** o relógio da abertura (`DysonWallOpening`) e o Esmaecer (`DysonWallFade`) ficam separados, e a interface dos modos nasce na fase C, com as necessidades reais (giram, dobram, deformam vértices).
+
+### Achados da fase B (verificados no motor, 4.7.2)
+- **`StaticBody2D` × lanterna parada:** uma `Area2D` parada não percebe uma forma de colisão religada num corpo estático (testados: religar adiado, reaplicar a posição, mover a parede 0,01 px; só mexer a área funcionou). Com a parede como `AnimatableBody2D` (cinemático), ela é percebida de novo. Ele herda de `StaticBody2D`: colide, bloqueia e entra no grupo `Walls` igual. O `SyncToPhysics` ficou no padrão: numa parede que não anda, não faz diferença.
+- **Garganta do campo:** trocar a direção só depois da face de fora criava um poço no vão, que devolvia à câmara quem estava passando (2.6).
+- **Reagir cedo salva:** no Esmaecer, a força sobe devagar. A 100 px, reagindo no rompimento, o jogador escapa; com a fenda já forte (1 s depois), é sugado mesmo com empuxo. No pico da rajada (1,36 em t = 1,32 s, perto do fim da fase 1), o raio sem retorno chega a ~140 px.
+- **Escrita dupla num `AnimatableBody2D`:** com Sync to Physics, a posição definida só vale no passo seguinte e, lida logo depois, ainda é a antiga. Duas escritas no mesmo passo: a segunda apaga a primeira (o salto do spawner; `mobile-spawners.md`, S11).
+- **Medir com a máquina quieta:** com o editor aberto, apareceram picos de 10 a 25 ms no pior passo de física de cada segundo até numa cena vazia, sem coleta de lixo do C#. Esses números não medem o jogo.
+- **Custos (descartável):**
+  - por parede de 1920 px acordada no nível 2: Esmaecer 0,025 ms e membranas 0,014 ms (só durante a abertura); o desenho continua em 0,10 ms, porque a conta de escala é pulada nas figuras inteiras;
+  - perguntas ao campo: 0,05 µs por inimigo sem fenda aberta e 0,26 µs com uma (0,09 ms para 350 inimigos);
+  - a fase hexagonal monta 286 `DysonWall` em 84 ms (134 ms na primeira vez, com a compilação do código), debaixo do escurecer.
 
 ### Em aberto (perguntar ao dev antes de decidir)
 - **Deformação final da parede** (o Esmaecer é só o padrão provisório). Referências sugeridas (out/2026): **exocitose** (a membrana envolve o corpo estranho numa vesícula e o expele: o organismo expulsando o patógeno, que é a premissa do jogo); **estômato** (duas células-guarda abrem um poro, encaixa em pares de triângulos); **esfíncter/íris** (portas biomecânicas de Scorn; já existe o modo `iris`); **peristalse** (onda que leva o jogador até a fenda; já existe o modo `peri`). Game feel da sucção: a descompressão de Heavenly Bodies.

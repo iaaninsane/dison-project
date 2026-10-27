@@ -1,6 +1,6 @@
 # Spec: Fase hexagonal (estruturas interligadas da esfera)
 
-- **Status:** aprovada (out/2026); **fase A validada** (passos 1 a 6, testados pelo dev no editor); **fase B validada** (passos B0 a B5, testados pelo dev no editor, out/2026). **A H5 foi revista** pela `docs/specs/start-chamber.md` (câmara de partida no nó inicial, validada em out/2026): a seção 2 descreve o fluxo de hoje, e os itens das seções 7 e 8 ficam como registro do que foi validado na época. A fase C (spawners na fase) foi feita na `docs/specs/mobile-spawners.md` (validada em out/2026). Decisões na seção 10. Valores em teste.
+- **Status:** aprovada (out/2026); **fase A validada** (passos 1 a 6, testados pelo dev no editor); **fase B validada** (passos B0 a B5, testados pelo dev no editor, out/2026). **A H5 foi revista** pela `docs/specs/start-chamber.md` (câmara de partida no nó inicial, validada em out/2026): a seção 2 descreve o fluxo de hoje, e os itens das seções 7 e 8 ficam como registro do que foi validado na época. A fase C (spawners na fase) foi feita na `docs/specs/mobile-spawners.md` (validada em out/2026). **Paredes de fronteira trocadas pela `DysonWall`** (out/2026; `dyson-wall.md`, fase B, decisão B2): uma parede por aresta reta (286 no hexágono, eram 1268 trechos de `WallSensitive`), com fendas e sucção no lugar do puxão. Os números de paredes e as medições dos passos 1 a 6 abaixo são do tempo do `WallSensitive`. Decisões na seção 10. Valores em teste.
 - **Etapa:** 1 (mecânica). Fases A e B nesta spec; a fase C ficou na `mobile-spawners.md`.
 - **Depende de:** `docs/HANDOFF.md` (v2.0, seção 4), `docs/specs/reactive-walls.md` (paredes atuais), `docs/specs/suit-evolution.md` (terminais e banco), `docs/specs/player-health-death.md` (morte), `docs/specs/start-chamber.md` (câmara de partida, reinício e ejeção). Futuro: `docs/specs/dyson-wall.md` (paredes de fronteira).
 - **Referências:** `docs/reference/dyson-sphere-reference.png` (a malha da esfera) e `docs/reference/connector-cut-mockup.png` (mockup de um conector). Jogos com o mesmo plano: FTL, Heat Signature e Space Haven (estruturas vistas de cima, sem teto, com o espaço em volta); a câmera do Cocoon também olha o mundo de cima.
@@ -34,7 +34,11 @@ Trocar as salas isoladas por uma **fase**: um hexágono da esfera (de início, u
 - **Contornos por código:** fundo, piso e paredes são gerados a partir da geometria da fase (`HexPhaseLayout`), montados pelo `HexPhaseBuilder`.
 - **Regra das paredes:** toda borda de piso vira parede, **menos os trechos que caem dentro de outra estrutura** (as passagens). As aberturas saem sozinhas, sem caso especial por tipo de encaixe. As paredes crescem para fora do piso (a sala mantém o tamanho da geometria) e são divididas em trechos de até `MaxWallSegmentLength` (cada trecho tem a sua irritação e o seu centro de puxão).
 - **Recheio no editor:** pilares, coberturas e marcadores de cada tipo de estrutura em cenas pequenas feitas pelo dev, posicionadas pelo construtor. Ainda não existe: o setor de teste nasce vazio.
-- **Paredes:** toda parede externa é fronteira com o espaço, portanto reativa (grupo `Walls`). Hoje: `WallSensitive` gerado por código, no mesmo formato das cenas (`StaticBody2D` + `ColorRect` + `CollisionShape2D`, pivô no centro), transitório até a `DysonWall` (backlog 1.5). Obstáculos internos serão rígidos.
+- **Paredes:** toda parede externa é fronteira com o espaço, portanto reativa (grupo `Walls`). Desde out/2026, é uma `DysonWall` (`dyson-wall.md`, decisão B2), criada por código, **uma por trecho reto entre passagens e quinas**.
+  - Pivô no centro, crescendo para fora do piso, girada para o lado de fora dela (−Y local) apontar para o espaço.
+  - A luz abre fendas que sugam jogador, inimigos, orbes e spawners. Quem sai por elas fica no espaço, e o `LostInSpace` encerra a incursão ~2 s depois (B1).
+  - Antes, eram trechos de até 200 px de `WallSensitive` (`StaticBody2D` + `ColorRect` + `CollisionShape2D`) com o puxão da `reactive-walls.md`.
+  - Obstáculos internos serão rígidos.
 - **Parede calma não processa:** fora da luz, a parede "dorme" (sem `_PhysicsProcess`); a luz a acorda e ela volta a dormir quando a irritação zera. Com centenas de paredes na fase, o processamento sempre ligado pesava (passo 6, seção 4).
 
 ### Paredes por tipo de estrutura (compressão e alívio)
@@ -76,7 +80,7 @@ Detalhes na `docs/specs/start-chamber.md`. Antes da revisão, a câmara era uma 
 
 - Spawners móveis, objetivo da fase e simulação por proximidade: a fase C, feita na `mobile-spawners.md`.
 - A consequência da ejeção: decidida e implementada na `start-chamber.md` (D3, igual à morte).
-- A parede de fronteira `DysonWall` (backlog 1.5): aqui as paredes externas usam o `WallSensitive`.
+- A parede de fronteira em si (`dyson-wall.md`, backlog 1.5): aqui a fase só a monta. Desde out/2026, as paredes externas são `DysonWall`.
 - Mapa e minimapa, geração procedural, hexágonos vizinhos e progressão entre fases.
 - Conteúdo de cada estrutura além do mínimo para teste (o papel de cada tipo é sugestão; seção 10).
 - Curvatura da esfera, arte e áudio (etapa 2; ideias na seção 10).
@@ -95,7 +99,7 @@ Detalhes na `docs/specs/start-chamber.md`. Antes da revisão, a câmara era uma 
 | `PlateConnectorWidth` | 240 px | Largura interna dos conectores de placa |
 | `PanelGap` | 1000 px | Vão (espaço) entre o painel e as paredes dos conectores de nós |
 | `WallThickness` | 40 px | Espessura das paredes geradas |
-| `MaxWallSegmentLength` | 200 px | Trecho máximo de parede |
+| ~~`MaxWallSegmentLength`~~ | — | Saiu em out/2026 (`dyson-wall.md`, B2): cada trecho reto vira uma `DysonWall` inteira, que irrita peça a peça. Era 200 px, para o `WallSensitive` ter "um trecho, uma irritação" |
 | `BackgroundMargin` | 2000 px | Quanto o fundo (espaço) passa da fase |
 | Cores do piso, das paredes e do espaço | provisórias | Grupo "Visual provisório"; arte na etapa 2 |
 
@@ -107,11 +111,11 @@ Valores provisórios: a sensibilidade de cada tipo será testada e definida no f
 
 | Parâmetro | Padrão | Tempo de luz até ejetar (lanterna atual) |
 |---|---|---|
-| `ArenaWallMaxIrritation` | 25 | ~5 s (nós e painéis) |
-| `CorridorWallMaxIrritation` | 10 | ~2 s (conectores de nós) |
-| `PlateWallMaxIrritation` | 7,5 | ~1,5 s (conectores de placa) |
+| `ArenaWallMaxIrritation` | 100 | ~5 s (nós e painéis) |
+| `CorridorWallMaxIrritation` | 40 | ~2 s (conectores de nós) |
+| `PlateWallMaxIrritation` | 30 | ~1,5 s (conectores de placa) |
 
-O padrão do `WallSensitive` é 15 (~3 s). A recuperação (15/s) e a força do puxão não mudam por tipo.
+São o `MaxIrritation` da `DysonWall` (padrão 60, ~3 s): com a lanterna atual (20/s), a peça no centro do feixe abre a fenda em ~`MaxIrritation` ÷ 20 segundos de luz contínua. Mantêm os tempos que a fase tinha com o `WallSensitive` (25/10/7,5 na unidade dele, com a recuperação de 15/s descontada). A recuperação e a sucção não mudam por tipo.
 
 ### Jogador, eclusa e espaço
 
@@ -187,7 +191,7 @@ Medido pelo dev no editor, com o hexágono vazio (sem inimigos) e o V-Sync desli
 - **Ponto fora de todas as estruturas** (ejetado): a estrutura atual é "espaço". Os vãos entre as estruturas são cercados de paredes: o `LostInSpace` encerra a incursão (`start-chamber.md`); sem ele, o jogador ejetado ficaria preso neles.
 - **Frestas nas junções:** os corredores entram uma espessura de parede nos nós e no painel; as passagens saem da regra das paredes, e nenhuma emenda deixa fresta (verificado no motor).
 - **Quinas convexas:** sobra um entalhe pequeno do lado de fora da parede (por dentro, as paredes se encontram sem fresta). É só visual (etapa 2).
-- **Paredes giradas:** o `WallSensitive` já calcula o centro real de paredes giradas (`reactive-walls.md`). As paredes geradas seguem o formato da cena, com o filho `ColorRect` (nome exato) adicionado antes de a parede entrar na árvore (o `_Ready` dela procura o `ColorRect`).
+- **Paredes giradas:** a `DysonWall` trabalha no próprio eixo local, em qualquer ângulo. O construtor a gira para o espaço ficar do lado de cima dela e define a posição antes de pô-la na árvore: ela é um `AnimatableBody2D`, e uma posição definida depois só valeria no passo seguinte. (Com o `WallSensitive`, era preciso calcular o centro real da parede girada e adicionar o `ColorRect` antes da árvore.)
 - **Quantidade de paredes:** de 129 (setor da primeira proposta) a 1268 (hexágono da receita 2×, o padrão). Medido no passo 6: o `_PhysicsProcess` de cada parede, mesmo calma, custava ~3,2 µs por passo (4 ms com 1268). Resolvido com a parede que dorme fora da luz; a fase vazia caiu para 0,3 ms de física (seção 4).
 - **Parede que dorme:** nasce dormindo (`SetPhysicsProcess(false)` no `_Ready`; a Godot liga o `_PhysicsProcess` antes do `_Ready`, por isso desligar ali vale). A luz a acorda (`AddIrritation`); ela decai e volta a dormir ao zerar, inclusive logo depois de ejetar (volta à cor normal no passo seguinte; antes podia ficar vermelha parada se a luz saísse dela). O tempo até ejetar não mudou (diferença máxima de 1 passo, conforme a ordem dos nós).
 - **Ordem do `_Ready`:** o `StructureTracker` e o `PhaseCamera` são filhos da raiz e ficam prontos antes dela, quando o `Layout` ainda não existe. O rastreador só trabalha no passo de física, com guarda; a câmera assina os avisos no `_Ready` e recebe o primeiro `PlayerPlaced`, emitido no `_Ready` da raiz.
@@ -206,7 +210,7 @@ Medido pelo dev no editor, com o hexágono vazio (sem inimigos) e o V-Sync desli
 
 - **Novos** (criados em out/2026, na raiz do projeto, com autorização do dev):
   - `HexPhaseLayout.cs` (classes C# comuns, sem nó): os tipos `HexPhaseShape`, `HexStructureKind`, `HexPhaseSettings`, `HexWallSegment` e `HexStructure`, e a classe `HexPhaseLayout`. Ela cuida da geometria do setor ou do hexágono, da pergunta `FindStructureAt`, do retângulo `Bounds`, dos `WallSegments` (com o tipo da estrutura dona), do `PeripheralNodeCenter` e da checagem do raio mínimo.
-  - `HexPhaseBuilder.cs` (`Node2D`, raiz da cena): monta o fundo, os pisos e as paredes (`WallSensitive`, com `MaxIrritation` por tipo). Põe o jogador na eclusa (`PlacePlayerAtEntry`) e emite `PlayerPlaced`. (Respondia ao `LostInSpace` com a regra provisória, `OnPlayerLostInSpace`; o método saiu com a câmara de partida.)
+  - `HexPhaseBuilder.cs` (`Node2D`, raiz da cena): monta o fundo, os pisos e as paredes (`DysonWall` desde out/2026, com `MaxIrritation` por tipo; antes, `WallSensitive`). Põe o jogador na eclusa (`PlacePlayerAtEntry`) e emite `PlayerPlaced`. (Respondia ao `LostInSpace` com a regra provisória, `OnPlayerLostInSpace`; o método saiu com a câmara de partida.)
   - `StructureTracker.cs` (`Node`): estrutura atual, sinais `StructureChanged` e `LostInSpace` (a consequência é de quem escuta: hoje, o `EjectionConsequence`).
   - `StructureHud.cs` (`Label`): HUD de teste "Estrutura: …".
   - `PhaseCamera.cs` (`Node`): limites da fase, zoom por tipo de estrutura, `ResetSmoothing`.
@@ -280,7 +284,7 @@ Confirmado pelo dev no editor (out/2026), com o ninho temporário na fase:
 ## 9. Como testar (roteiro manual no editor)
 
 1. F6 na `hex_phase.tscn`: percorra todas as estruturas, confira o rótulo e procure frestas nas junções (encoste nas emendas).
-2. Libere as saídas da câmara de partida e irrite paredes de nó, de corredor e de placa, contando o tempo até a ejeção (~5 s, ~2 s, ~1,5 s); ejetado, a incursão termina como na morte (`start-chamber.md`).
+2. Libere as saídas da câmara de partida e irrite paredes de nó, de corredor e de placa, contando o tempo até a fenda abrir (~5 s, ~2 s, ~1,5 s com a mira parada). Passando pela fenda, a incursão termina como na morte uns 2 s depois (`start-chamber.md`; `dyson-wall.md`, B1).
 3. Entre e saia de corredores e placas e confira o zoom (afasta nas arenas, aproxima nos corredores).
 4. **Passo 6:** com `Shape` = Hexagon, repita o passo 1 rapidamente e anote FPS, Processo de Física e Nós (Depurador > Monitores; V-Sync desligado só durante o teste). Referência na seção 4.
 5. Ciclo da partida: siga a seção 9 da `start-chamber.md` (F5 começa na câmara de partida; morte, ejeção e extração recarregam a fase); repita 5 vezes olhando o Output e "Nós Órfãos". Desde os spawners móveis, a fase tem inimigos próprios (o ninho temporário da seção 7, item 11, não é mais necessário).

@@ -1,6 +1,6 @@
 # Backlog do projeto
 
-Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atualizada em 2026-10-26.
+Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atualizada em 2026-10-27.
 
 > **Como usar:** cada item aponta para a spec relacionada e traz um "ponto de partida" técnico. O ponto de partida é uma **leitura inicial do código, não uma solução aprovada**: antes de implementar, seguir o fluxo do CLAUDE.md (ler spec e código, propor plano, esperar aprovação). Ao concluir um item, removê-lo daqui e registrar o resultado na spec.
 
@@ -14,24 +14,7 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 
 > **1.4 concluído (out/2026):** spawners móveis e objetivo da fase, validados pelo dev (`docs/specs/mobile-spawners.md`; decisões S1 a S9, com a S6 revista: uma seta por spawner). Ao liberar as saídas, 10 spawners andam pelas rotas da fase (grafo tirado da geometria), geram inimigos só com o jogador perto, a partir de um estoque compartilhado (`EnemyPool`), num ritmo que acelera a cada spawner morto (`SpawnerDirector`); a luz os mata (fogem em pânico) e soltam biomassa; encostar fere; inimigos longe do jogador são recolhidos; HUD com a contagem, setas na borda e "Fase limpa: volte à eclusa". Pior caso medido: passo de física constante de ~4 ms; o engasgo isolado na divisão em massa virou o item 1.8. Corrigidos no caminho: a "cola" do jogador no spawner e a "carona" do modo Grounded (Floor Layers do `Player` sem a camada 2).
 
-### 1.5 Parede de fronteira (dyson-wall), fases A e B (novo)
-
-- **Contexto:** modelo-alvo decidido pelo dev (out/2026): só as paredes de fronteira com o espaço são reativas; elas abrem uma fenda, sugam e ejetam o jogador (`PlayerEjected`). Paredes internas entre estruturas ficam rígidas. O `WallSensitive.cs` (spec `reactive-walls.md`) é transitório.
-- **Sucção (decidida, out/2026):** gradual pela distância, como numa descompressão (raio sem retorno, rajada no rompimento), sem tirar o controle do jogador; afeta também inimigos e orbes. Toca no `Player.cs` (aceleração externa), no `FractalEnemy.cs`/`FractalSwarm.cs` e no `BiomassField.cs` (spec, seções 2.6 e 6).
-- **Spec:** `docs/specs/dyson-wall.md` (fase A concluída; fases B a D propostas). Protótipo de referência: `docs/reference/dyson-wall-prototype.html`.
-- **Decisões da fase A (dev, out/2026; spec, seção 10, A1 a A6):** renderização W1 (desenho por código) para testar e validar ideias, preparada para a W2 (malha + shader) quando for a hora; a luz irrita cada peça com peso pelo eixo do feixe (a fenda abre onde se mira); ritmo da spec (sobe só no feixe e decai só fora, `MaxIrritation` 60 e `RecoveryRate` 15/s); respiração em repouso desligada na etapa 1 (volta com a W2, por shader). No teste do passo 3: os sub-triângulos tremem cada um por conta própria, com a membrana parada (A5; no protótipo, a peça inteira treme junto e abria fendas retas entre as peças); o halo aditivo da irritação fica para a etapa 2 (A6).
-- **Fase A concluída (out/2026):** geometria de Sierpinski, desenho W1, peso da luz pela lanterna e irritação das peças (brilho, tremor por sub-triângulo, decaimento e sono), validados pelo dev na `wall_test.tscn`. Commits 47101f6 (geometria e desenho), f25407d (peso da luz), 9312ea4 (irritação) e 57f35ca (tremor, A5 e A6). Arquivos na spec, seção 6.
-  - **Medição** (spec, seção 8): com a tela cheia de paredes no nível 2, a Renderização (CPU) fica em 0,04 a 0,06 ms, contra a linha de base de 1,55 ms. Parede calma custa zero; o custo das acordadas vai para a Física: ~0,16 ms por parede (~1,5 ms com a lanterna varrendo, ~4,3 ms com as 27 acordadas). O nível 3 custa ~2,6× mais e fica só para testes. Não pede a W2.
-- **Fase B em andamento** (abertura, colisão e sucção).
-  - **Decisões do dev (out/2026; spec, seção 10, B1 a B6):**
-    - ejeção: a parede emite `PlayerEjected`, e o `LostInSpace` encerra a incursão ~2 s depois (voltar pela fenda antes salva);
-    - todas as paredes externas da fase viram `DysonWall`, uma por aresta reta, com a sensibilidade 100/40/30 por tipo (os tempos de hoje) e o nó de entrada inerte até liberar;
-    - spawners sugados como os inimigos, mas mais resistentes (`SpawnerSuctionFactor` 0,5), com trajeto perto das paredes (3 formas para comparar no Inspector) e volta à rota com mola (`mobile-spawners.md`, S10 e S11); ao cruzar, contam como destruídos, sem orbes;
-    - inimigo sugado sem biomassa;
-    - do lado de fora, o campo empurra pela normal (quem passou não volta puxado);
-    - partículas da fenda na etapa 2.
-  - **Pendentes no plano:** se o construtor da fase cria a `DysonWall` por código ou instancia uma cena; medir a fase hexagonal com a horda e algumas paredes acordadas, e com uma abertura em andamento.
-- **Para a fase D (etapa 2):** iluminação (recomendado: por código) e posição do sol (recomendado: `SunAnchor` no centro do hexágono).
+> **1.5 concluído (out/2026):** parede de fronteira, fases A e B (`docs/specs/dyson-wall.md`; decisões A1 a A6 e B1 a B6, achados e medições nas seções 8 e 10). As paredes externas da fase hexagonal são `DysonWall`, uma por trecho reto (286 no hexágono), com sensibilidade 100/40/30 por tipo de estrutura. A luz irrita cada peça; a peça no limite abre uma fenda (Esmaecer); a colisão abre um vão; e a sucção puxa jogador, inimigos, orbes e spawners. Os spawners resistem mais, andam num trajeto perto das paredes e voltam à rota com mola (`mobile-spawners.md`, S10 e S11). Quem cruza a fenda sai da fase: o jogador morre pelo `LostInSpace`; inimigos e orbes somem sem biomassa; o spawner conta como destruído, sem orbes. A fase A foi validada pelo dev, e a fase B foi testada por ele nos passos 1 a 6 (commits fb46839 a 4b5d7ee). **Observação:** o passo 7 foi verificado só no descartável: 10 fendas seguidas com troca de cena, sem erros nem nós órfãos; na tela cheia com aberturas, Renderização (CPU) de 0,04 ms e ~0,25 ms de Física por parede abrindo. A confirmação no editor e a medição na fase com a horda ficaram no 1.9. As fases C e D são etapa 2 (seção 4).
 
 ### 1.6 Visibilidade sem blecaute nas cenas atuais (pequeno, no editor)
 
@@ -54,9 +37,10 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
   - spawners (`mobile-spawners.md`, seção 4): vida 300, velocidade 150, pânico ×2 por 2 s, orçamento de 1,5 inimigo/s +10% por morte, +5% de velocidade por morte, raio de geração 2000, recolhimento a 3000 px por 3 s, estoque 60 e teto 350, 20 orbes na morte;
   - inimigo (`fractal-enemy.md` e `fractal-enemy-movement.md`, seção 4): velocidade, vida, dano da luz (35/s), gerações e fragmentos, separação;
   - golpe e integridade (`player-health-death.md`): dano 10, empurrão 200, imunidade 0,8 s;
-  - paredes por tipo (`hex-phase.md`, seção 4: 25, 10 e 7,5) e zooms da câmera;
+  - paredes por tipo (o `MaxIrritation` da `DysonWall`: 100, 40 e 30; `hex-phase.md`, seção 4, e `dyson-wall.md`, B2), a sucção das fendas (`dyson-wall.md`, seção 4: raio sem retorno, rajada, fatores de inimigos, orbes e spawners) e zooms da câmera;
   - biomassa e evolução (`biomass-collection.md`, `suit-evolution.md`): ímã, coleta, custos e ganhos das melhorias, taxa da morte;
   - jogador (`Player.cs`): empuxo 450, velocidade máxima 600, atrito.
+- **Pendente do 1.5 (passo 7 da fase B):** medir a fase hexagonal com a horda (200+ inimigos), paredes acordadas e uma fenda aberta, e confirmar no editor as 10 fendas seguidas com troca de cena (roteiro na `dyson-wall.md`, seção 9, item 7). No descartável passou. Se o primeiro rompimento da sessão engasgar (pico de ~7,5 ms: a primeira compilação do código da abertura), aquecer esse código ao carregar a fase, debaixo do escurecer.
 - **Ponto de partida:** definir com o dev o que é "satisfatório" em metas verificáveis (ex.: tempo para matar um spawner, duração de uma incursão, quantos golpes até morrer, ritmo da curva de dificuldade) e um roteiro de teste por meta; ajustar no Inspector, digitando os valores (o ↺ volta ao padrão do script, `CLAUDE.md`), e registrar os escolhidos nas specs.
 - **Spec:** criar (ex.: `docs/specs/balancing.md`), com as metas e a tabela dos valores escolhidos.
 
@@ -65,7 +49,7 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 | Item | Onde está registrado | Observação |
 |---|---|---|
 | Deformação final da parede de fronteira | `dyson-wall.md` (seção 10) | Esmaecer é o padrão provisório. Referências sugeridas: exocitose, estômato, esfíncter/íris (Scorn), peristalse |
-| Fendas como arma contra a horda e os spawners | `dyson-wall.md` (seção 10) | Observar no teste da fase B se vira estratégia dominante; se virar, ajustar `EnemySuctionFactor` e `SpawnerSuctionFactor`. Biomassa do inimigo sugado e sucção dos spawners já decididas (B3 e B4) |
+| Fendas como arma contra a horda e os spawners | `dyson-wall.md` (seção 10) | Observar nos testes (fase de balanceamento, 1.9) se vira estratégia dominante; se virar, ajustar `EnemySuctionFactor` e `SpawnerSuctionFactor`. Biomassa do inimigo sugado e sucção dos spawners já decididas (B3 e B4) |
 | Tiros no ALERTAR | CLAUDE.md (core loop) e HANDOFF | O core loop cita "luz e tiros", mas não existe tiro; os "modos de tiro" do `TerminalModo` são modos da lanterna |
 | Melhoria "Potência da lanterna" | `suit-evolution.md` (decisão 4) | Adiada até ter requisitos; volta junto com o valor no enum `SuitUpgrade.TargetStat` |
 | Salvar progresso em disco | `suit-evolution.md` (decisão 2) | `RunData` já separado do nó; salvar = converter o `RunData` |
@@ -75,7 +59,7 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 | Neon × tons pastel | HANDOFF v2.0 (seção 5), `fractal-enemy-render-3d.md` | Testar na etapa 2 |
 | Cor da parede irritada | `dyson-wall.md` (seção 10) | Vermelho no `WallSensitive.cs` × verde-água na dyson-wall |
 | Orbe de biomassa com luz própria | `biomass-collection.md` (seção 10) | Sem blecaute, passa a ser só estética (etapa 2); medir o custo antes |
-| Sensibilidade das paredes por tipo de estrutura | `hex-phase.md` (seções 4 e 10) | Hoje 25 (nós e painéis), 10 (conectores de nós) e 7,5 (conectores de placa): provisórios, o dev vai testar e definir na fase de balanceamento (1.9) |
+| Sensibilidade das paredes por tipo de estrutura | `hex-phase.md` (seções 4 e 10), `dyson-wall.md` (B2) | Hoje 100 (nós e painéis), 40 (conectores de nós) e 30 (conectores de placa), o `MaxIrritation` da `DysonWall`: ~5 s, 2 s e 1,5 s de luz no centro do feixe até a fenda abrir. Provisórios, o dev vai testar e definir na fase de balanceamento (1.9) |
 | Papel e recheio de cada tipo de estrutura | `hex-phase.md` (seção 10), HANDOFF v2.0 (seção 4) | Sugestão: nós = arenas, conectores = corredores com risco de parede, painéis = áreas abertas, placas = gargalos, nó central = clímax. O recheio (pilares, costelas, gargalos) ainda não existe: o 1.4 foi feito sem ele |
 | "Horda que persegue": reposicionar perto do jogador, logo fora da tela, o inimigo que fica longe, em vez de recolhê-lo | `mobile-spawners.md` (seção 10, "Ideias para depois") | Ideia do dev (out/2026), para implementação futura. Referência: chefes do Vampire Survivors (os comuns somem). Muda a S5 (pressão longe dos spawners) e a compressão e o alívio; o ponto precisa estar no piso e sem parede no meio |
 | Forma do trajeto dos spawners | `mobile-spawners.md` (S10) | Senoide variada, rente à parede trocando de lado ou ruído orgânico, escolhida no Inspector (`PathShape`). O dev decide depois se ficam as três ou uma |
@@ -102,7 +86,7 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 - Fase hexagonal, compressão e alívio (`hex-phase.md`, decisão 7): paralaxe da megaestrutura vista pelos vãos (`Parallax2D`), estruturas em primeiro plano, contraste de luz (arenas iluminadas, corredores escuros), referências de escala e áudio (eco nas arenas, abafado nos corredores).
 - Direção de arte Cocoon com contraluz: um modelo de luz único para parede, inimigo e jogador (`dyson-wall.md`, seção 2.7); cor da estrela laranja-avermelhada; neon × pastel.
 - Visual 3D do inimigo fractal: `docs/specs/fractal-enemy-render-3d.md` (proposta; aplicável, com ramos facetados em vez de tubos lisos).
-- Parede de fronteira, fases C (todos os modos de abertura) e D (contraluz): `docs/specs/dyson-wall.md`.
+- Parede de fronteira, fases C (todos os modos de abertura) e D (contraluz): `docs/specs/dyson-wall.md`. Para a fase D, as recomendações do plano: iluminação por código e o sol num `SunAnchor` no centro do hexágono.
 - Renderização em lote (bake + MultiMesh): adiada em `fractal-enemy.md` (seção 11).
 - Partículas e iluminação na morte do inimigo, arte dos orbes e do HUD, efeitos de dano.
 - Áudio: efeitos sonoros e trilha sonora (a definir).
