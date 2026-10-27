@@ -14,6 +14,8 @@ public class DysonWallGeometry
     public int TileCount { get; }   // Peças (triângulos externos), contando os meios-triângulos das pontas
     public int SubsPerTile { get; } // 3^nível
     public int SubCount => TileCount * SubsPerTile;
+    public float TileSide { get; }                   // Lado de uma peça inteira (px)
+    public float SubSide => TileSide / (1 << Level); // Lado de um sub-triângulo (px): cada nível divide o lado ao meio
 
     // Peças: 3 vértices por peça, centro, sorteio fixo (0 a 1) e paridade (alterna 0 e 1)
     public Vector2[] TileVertices { get; }
@@ -54,6 +56,7 @@ public class DysonWallGeometry
         _random = new Random(seed);
         _halfLength = length / 2f;
         float halfSide = length / halfSteps;
+        TileSide = halfSide * 2f;
         for (int i = 0; i < TileCount; i++)
         {
             BuildTile(i, -length / 2f + i * halfSide, halfSide, thickness / 2f);

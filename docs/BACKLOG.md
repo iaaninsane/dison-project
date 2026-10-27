@@ -22,10 +22,16 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 - **Decisões da fase A (dev, out/2026; spec, seção 10, A1 a A6):** renderização W1 (desenho por código) para testar e validar ideias, preparada para a W2 (malha + shader) quando for a hora; a luz irrita cada peça com peso pelo eixo do feixe (a fenda abre onde se mira); ritmo da spec (sobe só no feixe e decai só fora, `MaxIrritation` 60 e `RecoveryRate` 15/s); respiração em repouso desligada na etapa 1 (volta com a W2, por shader). No teste do passo 3: os sub-triângulos tremem cada um por conta própria, com a membrana parada (A5; no protótipo, a peça inteira treme junto e abria fendas retas entre as peças); o halo aditivo da irritação fica para a etapa 2 (A6).
 - **Fase A concluída (out/2026):** geometria de Sierpinski, desenho W1, peso da luz pela lanterna e irritação das peças (brilho, tremor por sub-triângulo, decaimento e sono), validados pelo dev na `wall_test.tscn`. Commits 47101f6 (geometria e desenho), f25407d (peso da luz), 9312ea4 (irritação) e 57f35ca (tremor, A5 e A6). Arquivos na spec, seção 6.
   - **Medição** (spec, seção 8): com a tela cheia de paredes no nível 2, a Renderização (CPU) fica em 0,04 a 0,06 ms, contra a linha de base de 1,55 ms. Parede calma custa zero; o custo das acordadas vai para a Física: ~0,16 ms por parede (~1,5 ms com a lanterna varrendo, ~4,3 ms com as 27 acordadas). O nível 3 custa ~2,6× mais e fica só para testes. Não pede a W2.
-- **Próximo: fase B** (abertura, colisão e sucção), começando pelas decisões abaixo. Somam-se a elas:
-  - decidir no plano se o construtor da fase cria a `DysonWall` por código ou instancia uma cena;
-  - medir a fase hexagonal com a horda e algumas paredes acordadas, e com uma abertura em andamento.
-- **Para fechar a fase B** (decidir no início dela; recomendações na spec, seção 10): ligar a ejeção à consequência (já decidida: igual à morte, `start-chamber.md` D3; recomendado deixar o `LostInSpace` agir, com o `PlayerEjected` emitido para outros ouvintes); onde ficam as fronteiras em cada estrutura (recomendado: todas as paredes externas, uma `DysonWall` por aresta reta); se os spawners são afetados pela sucção (recomendado: imunes); se o inimigo sugado solta biomassa (proposto: não). Para a fase D (etapa 2): iluminação (recomendado: por código) e posição do sol (recomendado: `SunAnchor` no centro do hexágono).
+- **Fase B em andamento** (abertura, colisão e sucção).
+  - **Decisões do dev (out/2026; spec, seção 10, B1 a B6):**
+    - ejeção: a parede emite `PlayerEjected`, e o `LostInSpace` encerra a incursão ~2 s depois (voltar pela fenda antes salva);
+    - todas as paredes externas da fase viram `DysonWall`, uma por aresta reta, com a sensibilidade 100/40/30 por tipo (os tempos de hoje) e o nó de entrada inerte até liberar;
+    - spawners sugados como os inimigos, mas mais resistentes (`SpawnerSuctionFactor` 0,5 proposto); ao cruzar, contam como destruídos, sem orbes;
+    - inimigo sugado sem biomassa;
+    - do lado de fora, o campo empurra pela normal (quem passou não volta puxado);
+    - partículas da fenda na etapa 2.
+  - **Pendentes no plano:** se o construtor da fase cria a `DysonWall` por código ou instancia uma cena; medir a fase hexagonal com a horda e algumas paredes acordadas, e com uma abertura em andamento.
+- **Para a fase D (etapa 2):** iluminação (recomendado: por código) e posição do sol (recomendado: `SunAnchor` no centro do hexágono).
 
 ### 1.6 Visibilidade sem blecaute nas cenas atuais (pequeno, no editor)
 
