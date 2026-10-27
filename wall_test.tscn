@@ -11,26 +11,26 @@ offset_bottom = 1080.0
 mouse_filter = 2
 color = Color(0.12156863, 0.078431375, 0.16078432, 1)
 
-[node name="WallLevel0" type="StaticBody2D" parent="." unique_id=785222762 groups=["Walls"]]
+[node name="WallLevel0" type="AnimatableBody2D" parent="." unique_id=104574824 groups=["Walls"]]
 position = Vector2(960, 150)
 script = ExtResource("1_1mqbt")
 SierpinskiLevel = 0
 
-[node name="WallLevel1" type="StaticBody2D" parent="." unique_id=323054075 groups=["Walls"]]
+[node name="WallLevel1" type="AnimatableBody2D" parent="." unique_id=329949620 groups=["Walls"]]
 position = Vector2(960, 330)
 script = ExtResource("1_1mqbt")
 SierpinskiLevel = 1
 
-[node name="WallLevel2" type="StaticBody2D" parent="." unique_id=1666381463 groups=["Walls"]]
+[node name="WallLevel2" type="AnimatableBody2D" parent="." unique_id=1716551229 groups=["Walls"]]
 position = Vector2(960, 510)
 script = ExtResource("1_1mqbt")
 
-[node name="WallLevel3" type="StaticBody2D" parent="." unique_id=413653098 groups=["Walls"]]
+[node name="WallLevel3" type="AnimatableBody2D" parent="." unique_id=1798363902 groups=["Walls"]]
 position = Vector2(960, 690)
 script = ExtResource("1_1mqbt")
 SierpinskiLevel = 3
 
-[node name="WallTilted" type="StaticBody2D" parent="." unique_id=1533699388 groups=["Walls"]]
+[node name="WallTilted" type="AnimatableBody2D" parent="." unique_id=2138604835 groups=["Walls"]]
 position = Vector2(1500, 900)
 rotation = 0.5235988
 script = ExtResource("1_1mqbt")

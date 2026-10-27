@@ -27,6 +27,16 @@ public class DysonWallOpening
 
     public float Intensity => IntensityAt(Time);
 
+    // A fenda está aberta para a física (spec, seção 5): da fase 1 até o meio da fase 3
+    public bool IsGapOpen
+    {
+        get
+        {
+            var (phase, progress) = PhaseAt(Time);
+            return phase is 1 or 2 || (phase == 3 && progress < 0.5f);
+        }
+    }
+
     // Fase num instante (0 aviso, 1 abrir, 2 aberta, 3 fechar, 4 terminou) e quanto dela já passou, de 0 a 1 (phaseAt)
     public (int Phase, float Progress) PhaseAt(float time)
     {

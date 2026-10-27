@@ -6,8 +6,14 @@ using System;
 // A parede monta a geometria (DysonWallGeometry, classe pura), guarda a irritação de cada peça e a abertura em
 // andamento, e entrega tudo a quem desenha (IDysonWallView). Ela não entra sozinha no grupo Walls: quem a monta decide
 // (na cena de teste, o dev; na fase, o construtor, que deixa as paredes do nó de entrada inertes até liberar as saídas).
-public partial class DysonWall : StaticBody2D, ILightIrritable
+// O lado de fora (o espaço) é o de cima, sem rotação: -Y local. Quem monta a parede a gira para isso.
+// É um AnimatableBody2D (corpo movido por código), mesmo parada: a colisão muda na abertura e, num StaticBody2D, a
+// lanterna parada não percebe a forma religada quando o vão fecha (verificado no motor, 4.7.2).
+public partial class DysonWall : AnimatableBody2D, ILightIrritable
 {
+    // O jogador cruzou a face de fora pela fenda (decisão B1: para som e câmera no futuro; a consequência vem do LostInSpace)
+    [Signal] public delegate void PlayerEjectedEventHandler();
+
     [Export] public float Length = 1920f;      // Comprimento (px), no eixo X local, com o pivô no centro
     [Export] public float WallThickness = 40f; // Espessura (px) = altura dos triângulos; 40 como as paredes da fase (o protótipo usa 44)
     [Export(PropertyHint.Range, "0,3")] public int SierpinskiLevel = 2; // Cada peça vira 3^nível sub-triângulos
@@ -18,7 +24,7 @@ public partial class DysonWall : StaticBody2D, ILightIrritable
     [Export] public float RecoveryRate = 15f; // Quanto a peça se acalma por segundo, fora do feixe (mesma unidade): ~4 s do máximo à calma
 
     [ExportGroup("Abertura (Esmaecer)")]
-    [Export] public float OpenRadius = 64f;         // Raio do núcleo da abertura (px)
+    [Export] public float OpenRadius = 64f;         // Raio do núcleo da abertura (px); o vão da colisão deixa isto livre de cada lado do centro
     [Export] public float FadeRadiusFactor = 1.15f; // As figuras a menos de OpenRadius × isto do centro somem
     [Export] public float WarningDuration = 0.35f;  // Fase 0, aviso: as peças da área tremem forte (s)
     [Export] public float OpeningDuration = 1.1f;   // Fase 1: a fenda abre (s)
@@ -34,8 +40,17 @@ public partial class DysonWall : StaticBody2D, ILightIrritable
     [Export] public float TremorStartIrritation = 0.5f; // Os sub-triângulos da peça tremem acima desta irritação (0 a 1)
     [Export] public float TremorStrength = 3f;          // Tremor de cada sub-triângulo: até ±(irritação − início) × isto ÷ 2 px em cada eixo (spec 2.2)
 
+    private const uint GapBodyLayers = 1 | 2;       // Quem é empurrado para fora do vão ao fechar: jogador (camada 1), inimigos (2)
+    private const float PushClearance = 2f;         // Folga entre a parede e quem foi empurrado (px)
+    private const float DefaultBodyHalfExtent = 16f; // Metade do tamanho de um corpo sem a forma "CollisionShape2D" (px)
+
     private DysonWallGeometry _geometry;
     private IDysonWallView _view;      // Quem desenha (hoje, a W1)
+    private CollisionShape2D _wholeCollision;                                      // A parede inteira (sem abertura)
+    private readonly CollisionShape2D[] _sideCollisions = new CollisionShape2D[2]; // Os dois lados do vão, na abertura
+    private bool _gapOpen;             // A colisão está dividida (vão aberto)
+    private Node2D _player;            // Achado pelo grupo Player na primeira abertura (para o PlayerEjected)
+    private bool _playerWasInside;     // O jogador estava do lado de dentro da face de fora no passo anterior
     private float[] _irritation;       // Irritação de cada peça, de 0 a 1: o estado da parede
     private ulong[] _litFrame;         // Último passo de física em que cada peça recebeu luz
     private float[] _tileTremorBoost;  // Tremor extra de cada peça (aviso da abertura)
@@ -133,6 +148,8 @@ public partial class DysonWall : StaticBody2D, ILightIrritable
         {
             _tileTremorBoost[t] = _opening.WarningTremorAt(_geometry.TileCenters[t].X);
         }
+        UpdateGap();
+        CheckPlayerEjected();
     }
 
     // Uma peça chegou a 1? A abertura nasce nela (a primeira, se houver várias: a irritação para em 1).
@@ -145,11 +162,14 @@ public partial class DysonWall : StaticBody2D, ILightIrritable
         _opening = new DysonWallOpening(_geometry.TileCenters[peak].X, WarningDuration, OpeningDuration, OpenDuration,
             ClosingDuration, OpenRadius, WarningTremor);
         _fade = new DysonWallFade(OpenRadius, OpenRadius * FadeRadiusFactor);
+        _player ??= GetTree().GetFirstNodeInGroup("Player") as Node2D;
+        _playerWasInside = _player != null && IsInside(_player);
     }
 
     // Fim da abertura: as peças da área voltam à calma (spec 2.3) e as figuras, ao tamanho normal
     private void FinishOpening()
     {
+        if (_gapOpen) CloseGap();
         for (int t = 0; t < _irritation.Length; t++)
         {
             if (IsInOpening(t)) _irritation[t] = 0f;
@@ -163,10 +183,107 @@ public partial class DysonWall : StaticBody2D, ILightIrritable
 
     private bool IsInOpening(int tile) => _opening != null && _fade.Affects(_opening, _geometry.TileCenters[tile].X);
 
-    // Colisão fixa: um retângulo do tamanho da parede. A deformação das peças é só visual (spec, seção 5).
+    // Vão na colisão (spec, seção 5): aberto da fase 1 até o meio da fase 3
+    private void UpdateGap()
+    {
+        bool shouldBeOpen = _opening.IsGapOpen;
+        if (shouldBeOpen == _gapOpen) return;
+
+        if (shouldBeOpen) OpenGap();
+        else CloseGap();
+    }
+
+    // A parede vira dois retângulos, um de cada lado do centro da abertura, com OpenRadius livre para cada lado
+    // (um pouco menos que o buraco desenhado: ninguém atravessa uma peça que ainda aparece)
+    private void OpenGap()
+    {
+        float halfLength = Length / 2f;
+        SetSide(_sideCollisions[0], -halfLength, _opening.CenterX - OpenRadius);
+        SetSide(_sideCollisions[1], _opening.CenterX + OpenRadius, halfLength);
+        _wholeCollision.Disabled = true;
+        _gapOpen = true;
+    }
+
+    // Um lado do vão, de `from` a `to` no eixo da parede. Sem largura (abertura na ponta), fica desligado.
+    private void SetSide(CollisionShape2D side, float from, float to)
+    {
+        side.Disabled = to <= from;
+        if (side.Disabled) return;
+
+        ((RectangleShape2D)side.Shape).Size = new Vector2(to - from, WallThickness);
+        side.Position = new Vector2((from + to) / 2f, 0f);
+    }
+
+    // Fecha o vão: quem estiver nele sai antes de a parede voltar a ser inteira, para não ficar preso (spec, seção 5)
+    private void CloseGap()
+    {
+        PushBodiesOutOfGap();
+        _wholeCollision.Disabled = false;
+        foreach (CollisionShape2D side in _sideCollisions) side.Disabled = true;
+        _gapOpen = false;
+    }
+
+    // Consulta ao espaço físico (segura no passo de física, onde a parede roda): corpos que se movem dentro do vão
+    private void PushBodiesOutOfGap()
+    {
+        var query = new PhysicsShapeQueryParameters2D
+        {
+            Shape = new RectangleShape2D { Size = new Vector2(OpenRadius * 2f, WallThickness) },
+            Transform = GlobalTransform * new Transform2D(0f, new Vector2(_opening.CenterX, 0f)),
+            CollisionMask = GapBodyLayers,
+        };
+        foreach (var hit in GetWorld2D().DirectSpaceState.IntersectShape(query))
+        {
+            if (hit["collider"].As<GodotObject>() is CharacterBody2D body) PushOutOfWall(body);
+        }
+    }
+
+    // Leva o corpo para logo depois da face de dentro (para a câmara). Quem já passou da face de fora vai para fora.
+    private void PushOutOfWall(CharacterBody2D body)
+    {
+        Vector2 local = ToLocal(body.GlobalPosition);
+        float clearance = WallThickness / 2f + HalfExtentOf(body) + PushClearance;
+        local.Y = local.Y >= -WallThickness / 2f ? clearance : -clearance;
+        body.GlobalPosition = ToGlobal(local);
+    }
+
+    // Metade do maior lado da forma de colisão do corpo (o jogador e o inimigo têm uma chamada "CollisionShape2D")
+    private static float HalfExtentOf(CharacterBody2D body)
+    {
+        var shape = body.GetNodeOrNull<CollisionShape2D>("CollisionShape2D");
+        if (shape?.Shape == null) return DefaultBodyHalfExtent;
+
+        Vector2 size = shape.Shape.GetRect().Size * shape.GlobalScale.Abs();
+        return Mathf.Max(size.X, size.Y) / 2f;
+    }
+
+    // O jogador passou de dentro para fora da face de fora, pela fenda? Avisa (uma vez a cada travessia)
+    private void CheckPlayerEjected()
+    {
+        if (_player == null || !IsInstanceValid(_player)) return;
+
+        bool inside = IsInside(_player);
+        bool crossed = _playerWasInside && !inside && Mathf.Abs(ToLocal(_player.GlobalPosition).X - _opening.CenterX) <= OpenRadius;
+        _playerWasInside = inside;
+        if (crossed) EmitSignal(SignalName.PlayerEjected);
+    }
+
+    // Do lado de dentro da face de fora (na câmara ou dentro da faixa da parede)
+    private bool IsInside(Node2D body) => ToLocal(body.GlobalPosition).Y >= -WallThickness / 2f;
+
+    // Colisão fixa: um retângulo do tamanho da parede. A deformação das peças é só visual (spec, seção 5). Durante a
+    // abertura, ele dá lugar a dois retângulos, um de cada lado do vão (OpenGap).
     private void CreateCollision()
     {
-        AddChild(new CollisionShape2D { Shape = new RectangleShape2D { Size = new Vector2(Length, WallThickness) } });
+        _wholeCollision = AddCollisionRectangle(new Vector2(Length, WallThickness), false);
+        for (int i = 0; i < _sideCollisions.Length; i++) _sideCollisions[i] = AddCollisionRectangle(Vector2.One, true);
+    }
+
+    private CollisionShape2D AddCollisionRectangle(Vector2 size, bool disabled)
+    {
+        var shape = new CollisionShape2D { Shape = new RectangleShape2D { Size = size }, Disabled = disabled };
+        AddChild(shape);
+        return shape;
     }
 
     // O único ponto que conhece a W1: para usar a W2, troca-se o nó criado aqui
