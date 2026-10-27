@@ -91,9 +91,11 @@ public partial class Player : CharacterBody2D
 
             if (inputDirection != Vector2.Zero)
             {
-                // Adiciona aceleração com empuxo
+                // Adiciona aceleração com empuxo. O empuxo não leva a velocidade além do máximo, mas também não corta o
+                // que uma força de fora (sucção, golpe) somou acima dele: apertar uma direção não vira freio
+                float speedLimit = Mathf.Max(MaxSpeed, currentVelocity.Length());
                 currentVelocity += inputDirection * ThrustForce * dt;
-                currentVelocity = currentVelocity.LimitLength(MaxSpeed);
+                currentVelocity = currentVelocity.LimitLength(speedLimit);
             }
 
             else
@@ -102,6 +104,9 @@ public partial class Player : CharacterBody2D
                 currentVelocity = currentVelocity.MoveToward(Vector2.Zero, Friction * ThrustForce * dt);
             }
         }
+
+        // Sucção das fendas abertas (spec dyson-wall.md, 2.6): soma à velocidade, sem tirar o controle
+        currentVelocity += SuctionField.AccelerationAt(GlobalPosition) * dt;
 
         // Aplica a velocidade calculada e processa as colisões físicas na Godot
         Velocity = currentVelocity;

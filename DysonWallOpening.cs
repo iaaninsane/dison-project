@@ -26,6 +26,7 @@ public class DysonWallOpening
     public void Advance(float dt) => Time += dt;
 
     public float Intensity => IntensityAt(Time);
+    public float TimeSinceRupture => Time - _durations[0]; // Desde o rompimento (início da fase 1); negativo no aviso
 
     // A fenda está aberta para a física (spec, seção 5): da fase 1 até o meio da fase 3
     public bool IsGapOpen

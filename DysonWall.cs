@@ -32,6 +32,15 @@ public partial class DysonWall : AnimatableBody2D, ILightIrritable
     [Export] public float ClosingDuration = 1.3f;   // Fase 3: fecha (s)
     [Export] public float WarningTremor = 2f;       // Tremor extra no aviso, no centro da abertura (px)
 
+    [ExportGroup("Sucção")]
+    [Export] public float NoReturnRadius = 120f;                // Distância em que a sucção empata com o empuxo máximo do traje (px)
+    [Export] public float SuctionAccelerationAtNoReturn = 450f; // A sucção nessa distância (px/s²): o ThrustForce do jogador
+    [Export] public float SuctionFalloffExponent = 2f;          // Queda com a distância (2: o ar que escapa em leque, arrasto ~ 1/r²)
+    [Export] public float MaxSuctionAcceleration = 3000f;       // Teto perto da fenda, para a conta não ir ao infinito (px/s²)
+    [Export] public float SuctionMaxRadius = 360f;              // Além disto, a fenda não puxa (px)
+    [Export] public float GustMultiplier = 3f;                  // Rajada no rompimento: começa com esta força a mais
+    [Export] public float GustDecay = 0.6f;                     // Quanto a rajada leva para cair até 1× (constante de tempo, s)
+
     [ExportGroup("Visual provisório (arte na etapa 2)")]
     [Export] public Color MembraneColor = Color.Color8(150, 74, 62); // #964A3E: tecido atrás do fractal (fecha os vãos)
     [Export] public Color PieceColorA = Color.Color8(92, 58, 76);    // #5C3A4C e #6C4658: cores base das peças,
@@ -59,6 +68,7 @@ public partial class DysonWall : AnimatableBody2D, ILightIrritable
     private DysonWallState _state;     // Os arrays acima, entregues a quem desenha
     private DysonWallOpening _opening; // Abertura em andamento (null = nenhuma; uma por parede de cada vez)
     private DysonWallFade _fade;       // Como as peças somem nessa abertura (Esmaecer)
+    private SuctionBreach _breach;     // A fenda dessa abertura no campo de sucção
 
     public override void _Ready()
     {
@@ -76,6 +86,12 @@ public partial class DysonWall : AnimatableBody2D, ILightIrritable
 
         // A Godot liga o _PhysicsProcess antes do _Ready; desligar aqui faz a parede calma não custar nada
         SetPhysicsProcess(false); // Calma: dorme até a luz chegar (AddLightIrritation acorda), como o WallSensitive
+    }
+
+    // A lista do campo de sucção é estática: uma fenda aberta não pode ficar nela quando a parede sai (troca de cena)
+    public override void _ExitTree()
+    {
+        if (_breach != null) SuctionField.Unregister(_breach);
     }
 
     // Só roda enquanto há peça irritada ou abertura: acalma as peças fora do feixe, cuida da abertura, mostra e,
@@ -144,6 +160,7 @@ public partial class DysonWall : AnimatableBody2D, ILightIrritable
         }
 
         _fade.Apply(_opening, _geometry, _subScales, _membraneScales);
+        _breach.Update(_opening.Intensity, _opening.TimeSinceRupture);
         for (int t = 0; t < _tileTremorBoost.Length; t++)
         {
             _tileTremorBoost[t] = _opening.WarningTremorAt(_geometry.TileCenters[t].X);
@@ -164,12 +181,20 @@ public partial class DysonWall : AnimatableBody2D, ILightIrritable
         _fade = new DysonWallFade(OpenRadius, OpenRadius * FadeRadiusFactor);
         _player ??= GetTree().GetFirstNodeInGroup("Player") as Node2D;
         _playerWasInside = _player != null && IsInside(_player);
+
+        // A fenda entra no campo já no aviso, com força zero (k = 0 até o rompimento). "Fora" = -Y local, no global.
+        _breach = new SuctionBreach(ToGlobal(new Vector2(_opening.CenterX, 0f)), GlobalTransform.BasisXform(Vector2.Up).Normalized(),
+            new SuctionSettings(NoReturnRadius, SuctionAccelerationAtNoReturn, SuctionFalloffExponent, MaxSuctionAcceleration,
+                SuctionMaxRadius, GustMultiplier, GustDecay));
+        SuctionField.Register(_breach);
     }
 
-    // Fim da abertura: as peças da área voltam à calma (spec 2.3) e as figuras, ao tamanho normal
+    // Fim da abertura: as peças da área voltam à calma (spec 2.3) e as figuras, ao tamanho normal; a fenda sai do campo
     private void FinishOpening()
     {
         if (_gapOpen) CloseGap();
+        SuctionField.Unregister(_breach);
+        _breach = null;
         for (int t = 0; t < _irritation.Length; t++)
         {
             if (IsInOpening(t)) _irritation[t] = 0f;
