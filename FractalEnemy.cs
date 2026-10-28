@@ -77,6 +77,8 @@ public partial class FractalEnemy : CharacterBody2D, ILightDamageable, IContactH
     // Se um estoque (pool) assinar este callback, a saída de cena (morte ou recolhimento) avisa em vez de destruir.
     // Se ninguém assinar (fluxo atual, sem pooling), o comportamento continua idêntico ao original.
     public Action<FractalEnemy> OnDied;
+    // Se um estoque se apresentar como fonte, os fragmentos da divisão saem dele; sem fonte, a própria cena é instanciada
+    public IFragmentSource FragmentSource;
     private CollisionShape2D _collisionShape;
 
     // Par simétrico: entrou na árvore de cena → inscreve; saiu → remove
@@ -366,24 +368,45 @@ public partial class FractalEnemy : CharacterBody2D, ILightDamageable, IContactH
         if (Generation >= MaxGeneration) return false; // última geração: morre sem se dividir
         if (FragmentCount <= 0) return false;
 
+        return FragmentSource != null ? SpawnFragmentsFromSource() : InstantiateFragments();
+    }
+
+    // Com estoque (fase hexagonal): os fragmentos são nós guardados, reaproveitados na hora (backlog 1.8)
+    private bool SpawnFragmentsFromSource()
+    {
+        float startAngle = GD.Randf() * Mathf.Tau; // ângulo aleatório a cada morte
+        for (int i = 0; i < FragmentCount; i++)
+        {
+            FragmentSource.SpawnFragment(GlobalPosition + FragmentOffset(startAngle, i), Generation + 1);
+        }
+        return true;
+    }
+
+    // Sem estoque (sala_ninho, arena): instancia a própria cena, como antes do estoque de fragmentos
+    private bool InstantiateFragments()
+    {
         Node parent = GetParent();
         if (parent == null) return false;
 
         var scene = GD.Load<PackedScene>(SceneFilePath); // a própria cena (a Godot guarda em cache)
         if (scene == null) return false;
 
-        float startAngle = GD.Randf() * Mathf.Tau;  // ângulo aleatório a cada morte
-        float angleStep = Mathf.Tau / FragmentCount; // ângulos iguais (2 → opostos)
-
+        float startAngle = GD.Randf() * Mathf.Tau; // ângulo aleatório a cada morte
         for (int i = 0; i < FragmentCount; i++)
         {
             var fragment = scene.Instantiate<FractalEnemy>();
-            fragment.Generation = Generation + 1;    // definido ANTES de entrar na árvore
-            Vector2 offset = Vector2.Right.Rotated(startAngle + angleStep * i) * FragmentSpawnOffset;
-            fragment.Position = Position + offset;   // mesmo pai → mesmo espaço de coordenadas
+            fragment.Generation = Generation + 1;                         // definido ANTES de entrar na árvore
+            fragment.Position = Position + FragmentOffset(startAngle, i); // mesmo pai → mesmo espaço de coordenadas
             parent.CallDeferred(Node.MethodName.AddChild, fragment);
         }
         return true;
+    }
+
+    // Onde nasce o fragmento `index`: ângulos iguais (2 → opostos) a partir de startAngle, a FragmentSpawnOffset do centro
+    private Vector2 FragmentOffset(float startAngle, int index)
+    {
+        float angleStep = Mathf.Tau / FragmentCount;
+        return Vector2.Right.Rotated(startAngle + angleStep * index) * FragmentSpawnOffset;
     }
 
     // Recompensa: quem morre sem se dividir (a última geração) solta um orbe de biomassa
@@ -395,11 +418,11 @@ public partial class FractalEnemy : CharacterBody2D, ILightDamageable, IContactH
 
     // --- MÉTODOS NOVOS, USADOS SÓ PELO SPAWNER COM POOLING ---
 
-    public void ActivateAt(Vector2 position)
+    public void ActivateAt(Vector2 position, int generation = 0)
     {
         GlobalPosition = position;
-        _isDead = false; // Inimigo reaproveitado do pool volta a estar vivo
-        Generation = 0;  // Do pool sempre sai um inimigo original
+        _isDead = false;         // Inimigo reaproveitado do pool volta a estar vivo
+        Generation = generation; // 0 = original (spawners e ninho); 1 ou mais = fragmento de uma divisão
         ApplyGeneration();
         _damageFlashTimer = 0f;
         NeonColor = _originalColor;

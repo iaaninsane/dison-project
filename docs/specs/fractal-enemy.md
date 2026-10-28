@@ -20,7 +20,7 @@ O anticorpo fractal é o inimigo da demo. Ele é desenhado por código como uma 
 - Quando o feixe da lanterna sobrepõe o inimigo, então ele perde vida continuamente: `DamagePerSecond × delta` a cada frame de física.
 - Ao receber dano, o inimigo pisca em branco por um instante (flash de dano, já existente no código).
 - Quando o inimigo sai do feixe, então a vida para de cair e não regenera.
-- Quando a vida chega a zero, então o inimigo morre. Sem pool: `QueueFree()`. Com pool: `Die()` chama o callback `OnDied` e o inimigo volta para o estoque do `NinhoSpawnerPooled`.
+- Quando a vida chega a zero, então o inimigo morre. Sem pool: `QueueFree()`. Com pool: `Die()` chama o callback `OnDied` e o inimigo volta para o estoque do `NinhoSpawnerPooled` (na fase hexagonal, do `EnemyPool`).
 
 ### Fase 2: implementada (divisão celular)
 
@@ -28,11 +28,14 @@ O anticorpo fractal é o inimigo da demo. Ele é desenhado por código como uma 
 - Cada geração é calculada a partir da configuração base, sem alterar os `[Export]` (`ApplyGeneration()`): vida = `MaxHealth × HealthFactorPerGeneration^g`; tamanho (ramo do desenho e escala do nó de colisão) × `ScaleFactorPerGeneration^g`; profundidade da árvore = `RecursionDepth − DepthLossPerGeneration × g` (mínimo 1).
 - Quando a vida chega a zero e a geração é menor que `MaxGeneration`, então o inimigo gera `FragmentCount` fragmentos da geração seguinte, distribuídos em ângulos iguais (com 2, opostos) a partir de um ângulo aleatório a cada morte, a `FragmentSpawnOffset` px do centro.
 - Quando um inimigo da geração máxima morre, então não gera fragmentos.
-- O próprio inimigo cria os fragmentos: instancia a própria cena (`SceneFilePath`), define a geração **antes** de entrar na árvore e adiciona o fragmento ao mesmo pai com `CallDeferred` (fim do frame).
+- De onde vêm os fragmentos (backlog 1.8, out/2026):
+  - **Com estoque (fase hexagonal):** o inimigo pede cada fragmento à sua fonte (`FragmentSource`, contrato `IFragmentSource`), que o `EnemyPool` preenche ao ativá-lo. O estoque reaproveita um nó guardado e o ativa na geração seguinte, na hora (`SpawnFragmentsFromSource`).
+  - **Sem estoque (`sala_ninho`, `arena`):** o próprio inimigo instancia a própria cena (`SceneFilePath`), define a geração **antes** de entrar na árvore e adiciona o fragmento ao mesmo pai com `CallDeferred` (fim do frame) (`InstantiateFragments`).
+  - Nos dois casos, a posição é a mesma (`FragmentOffset`).
 - A divisão acontece uma única vez por morte (protegida pela trava `_isDead`).
 - Fragmentos recém-nascidos ficam imunes a dano por `SpawnInvulnerability` segundos. Inimigos do ninho (geração 0) nascem vulneráveis.
-- Ao ser reaproveitado pelo pool (`ActivateAt`), o inimigo volta para a geração 0.
-- Os fragmentos ficam fora do pool e do `MaxConcurrentEnemies`, mas contam no teto total `MaxTotalEnemies` dos spawners (seção 10; na fase hexagonal, no `EnemyPool`, spec `mobile-spawners.md`).
+- Ao ser reaproveitado pelo pool (`ActivateAt(posição, geração)`), o inimigo volta na geração pedida: 0 para os ancestrais (ninho e spawners); 1 ou mais para os fragmentos do estoque da fase.
+- Os fragmentos ficam fora do `MaxConcurrentEnemies` (e, na fase, do `PoolSize`: têm estoque próprio, `FragmentPoolSize`), mas contam no teto total `MaxTotalEnemies` dos spawners (seção 10; na fase hexagonal, no `EnemyPool`, spec `mobile-spawners.md`). O teto só segura ancestrais novos: a divisão nunca espera.
 - Velocidade (`Speed`) e raio de separação (`SeparationRadius`) dos fragmentos: iguais aos do pai por enquanto. **A testar no futuro:** outras possibilidades (ex.: proporcionais à geração, "menor = mais rápido").
 
 ## 3. Fora do escopo
@@ -97,7 +100,18 @@ Com os valores atuais da cena (`RecursionDepth` 4, `BaseBranchLength` 8, `MaxHea
 - Fragmentos que nascem dentro do feixe: imunes por `SpawnInvulnerability`; continuam na lista do feixe (a detecção funciona durante a imunidade) e passam a tomar dano depois.
 - Recurso de colisão compartilhado: o `CircleShape2D` da cena é o mesmo objeto para todas as instâncias. O tamanho por geração escala o **nó** `CollisionShape2D` (individual), nunca o raio do recurso.
 - Troca de sala no mesmo frame de uma divisão: o `AddChild` adiado pode não executar e os fragmentos ficam como nós órfãos (monitor "Nós Órfãos"). Improvável; observar nos testes.
-- Custo de instanciar: cada divisão cria nós novos (mais caro que reaproveitar do pool). Se matar muitos inimigos no mesmo instante causar engasgo, considerar um pool de fragmentos (não implementado). **Medido no fechamento dos spawners móveis (out/2026):** dividir dezenas no mesmo quadro causa um engasgo de um quadro (~27 ms no editor; 28 a 42 ms no descartável, ~0,15 a 0,3 ms por fragmento). Item 1.8 do backlog.
+- Custo de instanciar (backlog 1.8, **resolvido na fase hexagonal em out/2026**):
+  - **O problema:** cada divisão criava nós novos (`Instantiate`, `AddChild` adiado e `_Ready`), ~0,15 a 0,3 ms por fragmento. Medido no fechamento dos spawners móveis: dividir dezenas no mesmo quadro causava um engasgo de um quadro (~27 ms no editor; 28 a 42 ms no descartável).
+  - **Solução:** o estoque de fragmentos do `EnemyPool` (seção 10).
+  - **Medido no descartável** (campo aberto, quadro inteiro): dividir 60 de uma vez caiu de 13–18 ms para 4–6 ms; dividir 120, de 31–35 ms para 7–8 ms.
+  - **No editor** (teste do dev): num massacre de propósito, as divisões não se juntaram. Houve no máximo 2 fragmentos por passo, ou seja, uma divisão por vez, porque a lanterna mata cada inimigo num momento. Os picos que restaram eram pausas do coletor de lixo do .NET (backlog 1.10).
+  - Fora da fase (`sala_ninho`, `arena`), os fragmentos continuam instanciados.
+- **Golpe fantasma** (inimigo reaproveitado no mesmo passo em que voltou ao estoque; verificado no motor, 4.7.2):
+  - A Godot só avisa a saída de um corpo no passo seguinte, então a lanterna e o traje (`PlayerHurtbox`) ainda têm o inimigo nas listas.
+  - Com o estoque em pilha (LIFO), o nó que morria encostado no jogador era reaproveitado no mesmo passo, a 993 px dali, e o traje acusava um contato de lá: um golpe vindo do nada.
+  - **Coberto:** os estoques do `EnemyPool` são filas (FIFO), e um nó só sai a partir do passo seguinte ao da volta (`ReadyFrame`). Confirmado pelo dev no editor: o empurrão vem sempre de quem encosta.
+- Estoque de fragmentos vazio: o `EnemyPool` cria mais um, que passa a fazer parte do estoque (a divisão nunca falha). Com `PoolSize` 60, o massacre de 60 → 120 → 240 usa até 360 fragmentos de uma vez (os que voltam num passo só servem no seguinte), daí o padrão 360.
+- Morte em massa da última geração: cada uma solta um orbe, nó criado na hora (`BiomassField.Drop`). **Risco residual, fora do 1.8** (sem item próprio, decisão do dev): no descartável, 240 orbes no mesmo passo custaram 16 a 20 ms. No editor, as rajadas foram de até 20 orbes (morte de spawner): 3,4 a 4,1 ms, e 8,3 ms na primeira, que é a primeira execução do código.
 - Total de inimigos vivos: os fragmentos não contam no `MaxConcurrentEnemies`; o teto total dos spawners (`MaxTotalEnemies`) pausa o ninho, mas inimigos já vivos continuam se dividindo, então o total pode passar um pouco do teto durante massacres (medido: pico de 380 com teto 350).
 
 ## 6. Arquivos e cenas
@@ -107,6 +121,9 @@ Com os valores atuais da cena (`RecursionDepth` 4, `BaseBranchLength` 8, `MaxHea
 - Alterados pela fase 2: `NinhoSpawner.cs` e `NinhoSpawnerPooled.cs` (teto total `MaxTotalEnemies`; a `sala_ninho.tscn` usa a versão com pool).
 - Usado: `FractalSwarm.cs` (registro de inimigos ativos; `FractalSwarm.Count` inclui fragmentos e exclui inimigos guardados no pool).
 - Leitura externa: `FractalEnemy.IsDead` (público) é usado pelo `PlayerHurtbox` (spec `player-health-death.md`) para ignorar inimigos mortos ou guardados no pool.
+- Estoque de fragmentos (backlog 1.8, out/2026):
+  - **Criado:** `IFragmentSource.cs`, o contrato da fonte de fragmentos (`SpawnFragment(posição, geração)`).
+  - **Alterados:** `FractalEnemy.cs` (`FragmentSource`, `SpawnFragmentsFromSource`, `InstantiateFragments`, `FragmentOffset` e `ActivateAt` com a geração) e `EnemyPool.cs` (estoque de fragmentos, filas com descanso de um passo).
 - Novos a criar: nenhum previsto.
 
 ## 7. Passos no editor (feitos pelo dev)
@@ -165,6 +182,12 @@ Com os valores atuais da cena (`RecursionDepth` 4, `BaseBranchLength` 8, `MaxHea
 - Renderização em lote (R1–R3) adiada: o desenho não é o gargalo hoje (seção 11).
 - Movimento e colisão da horda: separação (B) e descanso de inimigos travados (A) implementados em `docs/specs/fractal-enemy-movement.md`. Os inimigos agora ficam na camada 2 (máscara 1).
 - Desde os spawners móveis (out/2026, `mobile-spawners.md`): o inimigo cumpre as interfaces `ILightDamageable` e `IContactHazard` (a lanterna e o traje o tratam pela interface) e tem o recolhimento por distância (`DespawnDistance` 3000 na cena, `DespawnDelay` 3 s): longe do jogador, volta ao estoque ou sai da árvore, sem se dividir nem soltar biomassa. A saída de cena (morte ou recolhimento) fica no `LeaveScene`.
+- Estoque de fragmentos (backlog 1.8, out/2026, decisões do dev):
+  - **Abordagem:** na fase, os fragmentos saem de um segundo estoque do `EnemyPool`, e não de criação espalhada por quadros.
+  - **Tamanho:** `PoolSize` mantém o significado (teto de game design dos ancestrais, 60). O novo `FragmentPoolSize` (360) é só desempenho: é criado ao carregar a fase, escondido pelo escurecer; se faltar, cria mais um, que fica.
+  - **Arquitetura:** o inimigo só conhece o contrato `IFragmentSource`. É um Strategy com inversão de dependência: com fonte, pede a ela; sem fonte, instancia a própria cena como antes. O estoque se apresenta ao ativar o inimigo (`FragmentSource`, como o `OnDied`).
+  - **Fora da fase** (`sala_ninho`, `arena`): os inimigos continuam instanciando.
+  - **Filas:** os estoques são filas com descanso de um passo, por causa do golpe fantasma (seção 5).
 
 ### Em aberto
 

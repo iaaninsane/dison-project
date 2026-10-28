@@ -1,6 +1,6 @@
 # Spec: Spawners móveis e objetivo da fase
 
-- **Status:** **validada** (out/2026). Decisões S1 a S9 do dev (seção 10; a S6 foi revista depois do teste do passo 6). Plano de implementação (passos 1 a 7) feito e testado pelo dev. Um item do "Pronto quando" ficou parcial: o engasgo de um quadro na divisão em massa, que virou o item 1.8 do backlog. Valores em teste. **Revista em out/2026** pela parede de fronteira (`dyson-wall.md`, fase B): decisões S10 (trajeto perto das paredes) e S11 (sucção e volta à rota), em implementação.
+- **Status:** **validada** (out/2026). Decisões S1 a S9 do dev (seção 10; a S6 foi revista depois do teste do passo 6). Plano de implementação (passos 1 a 7) feito e testado pelo dev. Um item do "Pronto quando" ficou parcial: o engasgo de um quadro na divisão em massa, que virou o item 1.8 do backlog e foi resolvido em out/2026 (estoque de fragmentos no `EnemyPool`; seção 10, "Desempenho"). Valores em teste. **Revista em out/2026** pela parede de fronteira (`dyson-wall.md`, fase B): decisões S10 (trajeto perto das paredes) e S11 (sucção e volta à rota), em implementação.
 - **Etapa:** 1 (mecânica). É a "fase C" da `hex-phase.md` (spawners na fase e simulação por proximidade).
 - **Depende de:** `docs/specs/hex-phase.md` (a fase, o `HexPhaseLayout`), `docs/specs/start-chamber.md` (sinal `IncursionStarted`; nada nasce no nó inicial travado), `docs/specs/fractal-enemy.md` e `docs/specs/fractal-enemy-movement.md` (inimigo, horda, tetos e o problema conhecido de FPS), `docs/specs/biomass-collection.md` (recompensa), `docs/specs/player-health-death.md` (golpe de contato). Relaciona-se com a `docs/specs/dyson-wall.md` (a sucção afeta os spawners? Em aberto lá).
 
@@ -120,6 +120,7 @@ Dar à fase um objetivo: cerca de 10 spawners circulam pelas estruturas do hexá
 |---|---|---|
 | `EnemyScene` | `fractal_enemy.tscn` | Ligado no Inspector |
 | `PoolSize` | 60 | Teto de inimigos da geração 0 vivos na fase toda (faz na fase o papel do `MaxConcurrentEnemies` do ninho). Com os fragmentos, até 420 em teoria; o `MaxTotalEnemies` corta antes. Criar os 60 leva ~15 ms (descartável), ao carregar a fase |
+| `FragmentPoolSize` | 360 | Fragmentos guardados de antemão (backlog 1.8). Só desempenho, não é teto: se faltar, cria mais um, que fica, e a divisão nunca falha. O massacre de 60 → 120 → 240 usa até 360 de uma vez (quem volta ao estoque só serve no passo seguinte). Criar os 420 inimigos (60 + 360) leva ~60 ms ao carregar a fase (descartável), escondido pelo escurecer |
 | `MaxTotalEnemies` | 350 | O mesmo orçamento de física medido no ninho (pico de 380 em massacre, FPS ≥ 100). Saiu do diretor no passo 4: o "posso criar mais um inimigo?" fica num lugar só |
 
 ### `MobileSpawner` (cena `mobile_spawner.tscn`)
@@ -172,6 +173,7 @@ O dano do contato é o do `SuitIntegrity` (`ContactDamage` 10, `KnockbackImpulse
 - **Último spawner frenético e massacre:** o teto de física corta a geração; os vivos ainda se dividem, então o total pode passar um pouco do teto (como no ninho: pico de 380 com 350). Medir.
 - **Liberar as saídas:** criar 10 spawners é barato. O estoque é criado ao carregar a fase (escondido pelo escurecer), não ao liberar (o engasgo apareceria na tela).
 - **Inimigo recolhido dentro do feixe ou encostado no jogador:** as guardas existentes cobrem (`_isDead` no `TakeDamage`, `IsDead` no `PlayerHurtbox`). O spawner morto também responde `IsDead`.
+- **Inimigo reaproveitado no passo em que voltou ao estoque** (golpe fantasma; backlog 1.8, verificado no motor): o traje ainda o tinha na lista e acusava um contato de longe. Por isso os estoques do `EnemyPool` são filas com descanso de um passo (`fractal-enemy.md`, seção 5).
 - **Recargas seguidas:** registros estáticos limpos no `_ExitTree`; conferir "Nós Órfãos" = 0.
 - **Setor de teste:** 3 rotas elegíveis (o nó 2 de entrada toca as outras 3); com 10 spawners, vários dividem a mesma rota.
 - **Seta:** o mais próximo em linha reta pode estar do outro lado de um vão (o caminho é mais longo). Aceito na etapa 1.
@@ -184,7 +186,7 @@ O dano do contato é o do `SuitIntegrity` (`ContactDamage` 10, `KnockbackImpulse
 - **Novos (criar só com autorização):**
   - `MobileSpawner.cs` (`AnimatableBody2D`, o nó da Godot para corpos movidos por código) e a cena `mobile_spawner.tscn` (montada pelo dev): anda pelas rotas, gera inimigos, toma dano da luz, foge, morre e avisa. **Criado no passo 2** (andar pelas rotas e silhueta provisória).
   - `SpawnerDirector.cs` (`Node2D`, filho da raiz da fase): começa no `IncursionStarted`, cria e posiciona os spawners, calcula a curva de dificuldade e emite `SpawnersChanged` e `AllSpawnersDestroyed`. **Criado no passo 2** (começar e posicionar).
-  - `EnemyPool.cs` (`Node2D` parado, filho da raiz da fase): o estoque compartilhado e o orçamento de inimigos (`PoolSize`, `MaxTotalEnemies`). **Criado no passo 4.**
+  - `EnemyPool.cs` (`Node2D` parado, filho da raiz da fase): o estoque compartilhado e o orçamento de inimigos (`PoolSize`, `MaxTotalEnemies`). **Criado no passo 4.** Ampliado no backlog 1.8 (out/2026): segundo estoque, o de fragmentos (`FragmentPoolSize`), entregue ao inimigo pelo contrato `IFragmentSource` (`IFragmentSource.cs`).
   - `ILightDamageable.cs` (interface C#): "o que a luz fere". **Criado no passo 3.**
   - `IContactHazard.cs` (interface C#): "o que fere o traje ao encostar". **Criado no passo 3.**
   - `SpawnerHud.cs` (`Label`) e `SpawnerIndicator.cs` (`Control`, a seta). **Criados no passo 6.**
@@ -221,7 +223,10 @@ Confirmado pelo dev no editor (out/2026), passo a passo (seção 10, plano):
 - [x] Inimigos longe do jogador somem sem soltar biomassa e voltam ao estoque
 - [x] Com todos mortos, o HUD mostra "Fase limpa: volte à eclusa" e a eclusa extrai como antes
 - [x] A `sala_ninho` (bancada) continua funcionando: a luz mata os inimigos e o contato fere
-- [ ] **Parcial.** Pior caso (último spawner frenético, massacre): o passo de física constante fica em ~4 ms (dev: 4,05 ms no editor; descartável: ~4 ms com ~270 inimigos), FPS 826 com V-Sync desligado e "Nós Órfãos" = 0 em todas as recargas. Mas há um pico isolado de ~27 ms no quadro em que dezenas de inimigos se dividem ao mesmo tempo (seção 10, "Desempenho"; backlog 1.8)
+- [x] Pior caso (último spawner frenético, massacre):
+  - o passo de física constante fica em ~4 ms (dev: 4,05 ms no editor; descartável: ~4 ms com ~270 inimigos), FPS 826 com V-Sync desligado e "Nós Órfãos" = 0 em todas as recargas;
+  - o pico isolado de ~27 ms na divisão em massa saiu com o estoque de fragmentos (backlog 1.8, out/2026; seção 10, "Desempenho");
+  - os picos que restam (~9 a 14 ms) são pausas do coletor de lixo do .NET (backlog 1.10).
 
 ## 9. Como testar (roteiro manual no editor)
 
@@ -328,6 +333,30 @@ Cada passo: verificação antes no descartável (Godot headless), apresentação
 
 **O pico isolado:** é o quadro em que dezenas de inimigos se dividem ao mesmo tempo. Cada divisão instancia dois fragmentos novos (`Instantiate`, `AddChild` adiado e `_Ready`), e isso entra no quadro de física depois dos callbacks (as chamadas adiadas). Medindo o quadro inteiro no descartável: dividir 60 de uma vez custou 28 a 39 ms; dividir 120, 35 a 42 ms; o quadro seguinte volta a 3 a 8 ms. Com um "aquecimento" antes (o .NET já tendo compilado esses caminhos), o pico continuou, então não é a primeira execução do código: é o custo de criar nós (~0,15 a 0,3 ms por fragmento). Solução proposta no backlog 1.8 (pool de fragmentos).
 
+**Estoque de fragmentos (backlog 1.8, out/2026):** na fase, os fragmentos saem de um segundo estoque do `EnemyPool` (`FragmentPoolSize` 360; `fractal-enemy.md`, seções 5 e 10).
+
+*Descartável* (Godot 4.7.2 headless, campo aberto, quadro inteiro):
+- dividir 60 de uma vez caiu de 13–18 ms para 4–6 ms;
+- dividir 120, de 31–35 ms para 7–8 ms;
+- criar os 420 inimigos ao carregar leva ~60 ms, escondido pelo escurecer;
+- 60 vivos custam o mesmo com e sem o estoque parado (callbacks de 0,57 a 0,62 ms por passo).
+
+*Teste do dev no editor* (`PoolSize` 60, `DespawnDistance` 3000, V-Sync desligado só no teste, massacre de propósito com 2 spawners restantes). Para atribuir cada pico, um diagnóstico temporário, retirado antes do commit, escreveu por segundo o pior passo de Física, os fragmentos e orbes criados (total e rajada num mesmo passo) e as coletas do GC (pausa e memória alocada):
+
+| Medida | Valor |
+|---|---|
+| Processo de Física | ~1,5 ms fora dos picos. Todos os picos de 8 ms ou mais durante o jogo (8,6 a 14,2 ms) tiveram uma coleta do GC, com a pausa 1 a 2 ms abaixo do pico (ex.: 14,2 ms com pausa de 12,4 ms) |
+| Divisões | No máximo 2 fragmentos por passo (uma divisão por vez), mesmo no massacre (até 43 vivos): a lanterna mata cada inimigo num momento |
+| Morte de spawner (20 orbes) | 3,4 a 4,1 ms; 8,3 ms na primeira (primeira execução do código) |
+| GC | Uma coleta quase todo segundo, quase sempre da geração 1, com pausa de 7 a 9 ms e só 0,3 a 0,7 MB alocados por segundo (backlog 1.10) |
+| Estoque / Nós Órfãos | Nenhum fragmento criado no meio do jogo (o estoque não cresceu; o diagnóstico registraria) / 0, inclusive nas recargas |
+| Carga | 61 a 67 ms no primeiro passo depois da carga e dois passos de ~14 ms na câmara, sem GC nem inimigos (fora do 1.8) |
+| Contato e bancadas | O empurrão vem sempre de quem encosta (sem golpe fantasma); a `sala_ninho` e a `arena` dividem como antes |
+
+Numa rodada de estresse anterior (`PoolSize` 200, sem recolhimento, horda de 130 a 200 Objetos Ativos), os picos foram de ~11 a ~27 ms, sem diagnóstico para atribuí-los; o de 27 ms veio logo depois de uma pausa do jogo. Pelos Nós, o estoque também não cresceu.
+
+**Risco residual** (sem item próprio, decisão do dev): cada inimigo da última geração solta um orbe, nó criado na hora. No descartável, 240 orbes no mesmo passo custaram 16 a 20 ms; no jogo, as rajadas foram de até 20.
+
 ### Ideias para depois
 
 - **"Horda que persegue"** (ideia do dev, out/2026; implementação futura, sem data). Em vez de recolher ao estoque o inimigo que fica longe (passo 5), reposicioná-lo logo fora da tela, perto do jogador, para a pressão acompanhá-lo para onde ele for.
@@ -341,4 +370,5 @@ Cada passo: verificação antes no descartável (Godot headless), apresentação
 - Backlog, seção 2: "Valores definitivos de `MaxConcurrentEnemies` e `MaxTotalEnemies`": na fase, o `PoolSize` do `EnemyPool` (60) faz o papel do `MaxConcurrentEnemies`, e o `MaxTotalEnemies` (no `EnemyPool`) continua 350. Mantidos depois da medição (passo constante de ~4 ms no pior caso); continuam pontos de partida.
 - `dyson-wall.md` (backlog 1.5, fase B): os spawners são sugados (B3), com o trajeto perto das paredes (S10) e a volta à rota com mola (S11).
 - `hex-phase.md`: esta spec é a fase C (concluída); o recheio das estruturas fica para depois.
-- Backlog 1.8: engasgo de um quadro na divisão em massa (pool de fragmentos).
+- Backlog 1.8 (concluído em out/2026): engasgo de um quadro na divisão em massa, resolvido pelo estoque de fragmentos no `EnemyPool`.
+- Backlog 1.10: pausas do coletor de lixo do .NET (GC), achadas no teste do 1.8.

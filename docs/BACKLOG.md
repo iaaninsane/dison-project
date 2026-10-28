@@ -16,18 +16,13 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 
 > **1.5 concluído (out/2026):** parede de fronteira, fases A e B (`docs/specs/dyson-wall.md`; decisões A1 a A6 e B1 a B6, achados e medições nas seções 8 e 10). As paredes externas da fase hexagonal são `DysonWall`, uma por trecho reto (286 no hexágono), com sensibilidade 100/40/30 por tipo de estrutura. A luz irrita cada peça; a peça no limite abre uma fenda (Esmaecer); a colisão abre um vão; e a sucção puxa jogador, inimigos, orbes e spawners. Os spawners resistem mais, andam num trajeto perto das paredes e voltam à rota com mola (`mobile-spawners.md`, S10 e S11). Quem cruza a fenda sai da fase: o jogador morre pelo `LostInSpace`; inimigos e orbes somem sem biomassa; o spawner conta como destruído, sem orbes. A fase A foi validada pelo dev, e a fase B foi testada por ele nos passos 1 a 6 (commits fb46839 a 4b5d7ee). **Observação:** o passo 7 foi verificado só no descartável: 10 fendas seguidas com troca de cena, sem erros nem nós órfãos; na tela cheia com aberturas, Renderização (CPU) de 0,04 ms e ~0,25 ms de Física por parede abrindo. A confirmação no editor e a medição na fase com a horda ficaram no 1.9. As fases C e D são etapa 2 (seção 4).
 
+> **1.8 concluído (out/2026):** engasgo de um quadro na divisão em massa (`fractal-enemy.md`, seções 5 e 10; medições na `mobile-spawners.md`, seção 10). Na fase, os fragmentos saem de um segundo estoque do `EnemyPool` (`FragmentPoolSize` 360, criado ao carregar a fase; se faltar, cria mais um, que fica), pelo contrato `IFragmentSource`. Fora da fase, continuam instanciados. Os estoques são filas com descanso de um passo, contra o "golpe fantasma" achado no motor (nó reaproveitado no mesmo passo em que voltou). No descartável, dividir 120 de uma vez caiu de 31–35 para 7–8 ms. No editor, num massacre de propósito, as divisões não se juntaram (no máximo uma por passo), e os picos que restam são pausas do GC (1.10). Contato e regressão (`sala_ninho`, `arena`) testados pelo dev. **Risco residual:** 240 orbes no mesmo passo custam 16 a 20 ms no descartável; no jogo, as rajadas foram de até 20 (morte de spawner, 3,4 a 4,1 ms).
+
 ### 1.6 Visibilidade sem blecaute nas cenas atuais (pequeno, no editor)
 
 - **Contexto:** o rascunho de out/2026 retirou o blecaute total (inimigos em silhueta). Estado das cenas em 2026-10-21: `CanvasModulate` preto na `sala_entrada`, `sala_desfiladeiro` e `arena`; oculto (`visible = false`) na `sala_ninho`, que estava em teste pelo dev. Na `sala_desfiladeiro`, o `Background` também está oculto, o que contraria a regra do fundo obrigatório: conferir se é de propósito.
 - **O que fazer:** o dev escolhe uma cor provisória de `CanvasModulate` para testar as mecânicas sem blecaute. O `ColorRect` de fundo continua obrigatório (sem ele a luz da lanterna não aparece). Arte final na etapa 2.
 - **Spec:** nenhuma (ajuste de cena). Conferir depois se a lanterna continua legível sobre fundos claros.
-
-### 1.8 Engasgo de um quadro na divisão em massa (pool de fragmentos) (novo)
-
-- **Contexto:** medido no fechamento do 1.4 (out/2026). Quando dezenas de inimigos se dividem no mesmo quadro (massacre com a lanterna na horda do último spawner), esse quadro passa do orçamento: pico isolado de ~27 ms no Processo de Física no editor (medição do dev, com inimigos de teste a 40 px/s). No descartável, dividir 60 inimigos no mesmo quadro (120 fragmentos) custou 28 a 39 ms, e 120 (240 fragmentos), 35 a 42 ms, com e sem aquecimento do .NET (não é a primeira execução do código). No quadro seguinte volta a 3 a 8 ms; o passo constante fica em ~4 ms.
-- **Causa:** cada divisão instancia nós novos (`FractalEnemy.SpawnFragments`: `Instantiate`, `AddChild` adiado e `_Ready`), ~0,15 a 0,3 ms por fragmento.
-- **Ponto de partida:** pool de fragmentos: o `FractalEnemy` pede os fragmentos ao `EnemyPool` (que hoje só guarda inimigos da geração 0) em vez de instanciar; cuidar do `PoolSize` (os fragmentos contam?) e do `MaxTotalEnemies`. Alternativa mais simples: espalhar a criação dos fragmentos por alguns quadros (orçamento de criação por quadro). Na `sala_ninho` (sem `EnemyPool`), os fragmentos continuam instanciados.
-- **Spec:** criar quando for feito (ou ampliar a `fractal-enemy.md`, seção 5, "Custo de instanciar"). Medições na `mobile-spawners.md` (seção 10, "Desempenho").
 
 ### 1.9 Fase de balanceamento (novo)
 
@@ -43,6 +38,24 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 - **Pendente do 1.5 (passo 7 da fase B):** medir a fase hexagonal com a horda (200+ inimigos), paredes acordadas e uma fenda aberta, e confirmar no editor as 10 fendas seguidas com troca de cena (roteiro na `dyson-wall.md`, seção 9, item 7). No descartável passou. Se o primeiro rompimento da sessão engasgar (pico de ~7,5 ms: a primeira compilação do código da abertura), aquecer esse código ao carregar a fase, debaixo do escurecer.
 - **Ponto de partida:** definir com o dev o que é "satisfatório" em metas verificáveis (ex.: tempo para matar um spawner, duração de uma incursão, quantos golpes até morrer, ritmo da curva de dificuldade) e um roteiro de teste por meta; ajustar no Inspector, digitando os valores (o ↺ volta ao padrão do script, `CLAUDE.md`), e registrar os escolhidos nas specs.
 - **Spec:** criar (ex.: `docs/specs/balancing.md`), com as metas e a tabela dos valores escolhidos.
+
+### 1.10 Pausas do coletor de lixo do .NET (GC) (novo)
+
+- **Contexto:** achado no teste do 1.8 (out/2026), com um diagnóstico temporário por segundo (pausa do GC, coletas por geração e memória alocada; retirado antes do commit; números na `mobile-spawners.md`, seção 10).
+  - **Frequência:** na fase, com V-Sync desligado (~1200 FPS), houve uma coleta quase todo segundo, quase sempre da geração 1, com pausa de 7 a 9 ms. As só da geração 0 pararam ~4,5 ms; uma série com a geração 2 somou 16 ms.
+  - **Na física:** quando a pausa cai num passo de física, o Processo de Física sobe para 9 a 14 ms. Todos os picos de 8 ms ou mais durante o jogo tiveram uma coleta, com a pausa 1 a 2 ms abaixo do pico.
+  - **Fora da física:** o monitor de Física não mostra a pausa, mas o quadro para do mesmo jeito.
+- **O que não fecha:** o jogo aloca só 0,3 a 0,7 MB por segundo, pouco para uma coleta por segundo, e quase todas são da geração 1. Hipóteses a verificar:
+  - objetos da Godot com finalizador (os objetos C# que representam `RefCounted`, ex.: o `KinematicCollision2D` do `GetSlideCollision`, no `FractalEnemy.cs`) sobrevivendo à geração 0. O monitor "Objetos" oscilou entre ~6 mil e ~12 mil, com ~2,5 mil nós;
+  - memória do sistema alta (o .NET coleta mais quando a carga de memória está alta);
+  - a versão do .NET em uso: a Godot sobe com `rollForward` `LatestMajor`, isto é, a mais nova instalada.
+- **Também visto, sem GC:** 61 a 67 ms no primeiro passo depois da carga da fase (escondido pelo escurecer) e dois passos de ~14 ms na câmara, sem inimigos. Ver junto com o aquecimento citado no 1.9.
+- **Ponto de partida:**
+  - confirmar primeiro se a pausa é visível a 60 FPS (orçamento de 16,6 ms por quadro), com V-Sync ligado;
+  - recriar o diagnóstico (`GC.CollectionCount`, `GC.GetTotalPauseDuration`, `GC.GetTotalAllocatedBytes`) e acrescentar `GC.GetGCMemoryInfo()` (carga de memória, finalizações pendentes, bytes promovidos);
+  - medir fora do editor;
+  - procurar alocações por passo: `GetSlideCollision`, `IntersectShape` no `MobileSpawner` e na `DysonWall`, `Input.GetVector` com textos no `Player`.
+- **Spec:** criar se for feito (ex.: `docs/specs/gc-pauses.md`), ou registrar na `mobile-spawners.md` (seção 10).
 
 ## 2. Decisões de design em aberto
 

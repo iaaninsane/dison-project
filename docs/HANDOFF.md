@@ -75,7 +75,7 @@ Resumo; as regras completas e os valores em teste estão nas specs.
 
 - Árvore fractal binária desenhada em `_Draw` (4 troncos), com o ângulo dos ramos pulsando; morre sob a luz e se divide em fragmentos menores até a geração máxima (divisão celular).
 - `CharacterBody2D` em Motion Mode **Floating**, camada 2 (máscara 1). Os inimigos não colidem entre si: o registro estático `FractalSwarm` calcula uma separação suave e põe para descansar quem está travado.
-- Spawners: na fase, os spawners móveis (seção 4.3), com um estoque compartilhado (`EnemyPool`: 60 da geração 0 e teto de 350 contando fragmentos) e o recolhimento dos inimigos longe do jogador (`DespawnDistance`). Nas bancadas: `NinhoSpawnerPooled.cs` (com pool; usado na `sala_ninho`) e `NinhoSpawner.cs` (sem pool), com `MaxConcurrentEnemies` (pressão do ninho) e `MaxTotalEnemies` (orçamento de física). Medido: no ninho, com 200 e teto 350, FPS ≥ 100 (V-Sync desligado); na fase, pior caso de ~4 ms de física por passo, com um engasgo de um quadro quando dezenas se dividem juntos (backlog 1.8).
+- Spawners: na fase, os spawners móveis (seção 4.3), com um estoque compartilhado (`EnemyPool`: 60 da geração 0, 360 fragmentos guardados de antemão e teto de 350 contando fragmentos) e o recolhimento dos inimigos longe do jogador (`DespawnDistance`). Nas bancadas: `NinhoSpawnerPooled.cs` (com pool; usado na `sala_ninho`) e `NinhoSpawner.cs` (sem pool), com `MaxConcurrentEnemies` (pressão do ninho) e `MaxTotalEnemies` (orçamento de física). Medido: no ninho, com 200 e teto 350, FPS ≥ 100 (V-Sync desligado); na fase, pior caso de ~4 ms de física por passo; o engasgo de um quadro quando dezenas se dividiam juntos saiu com o estoque de fragmentos (backlog 1.8, out/2026).
 - Specs: `fractal-enemy.md`, `fractal-enemy-movement.md`; visual 3D (etapa 2): `fractal-enemy-render-3d.md`.
 
 ### 3.5 Biomassa (`BiomassOrb.cs`, `BiomassField.cs`, `BiomassCollector.cs`)
@@ -125,7 +125,7 @@ Spec `docs/specs/mobile-spawners.md` (validada em out/2026; decisões S1 a S9 do
 - **Dificuldade:** um orçamento global de geração (1,5 inimigo/s, +10% por spawner morto) repartido entre os vivos: o intervalo de cada um cai de 6,7 s para 0,35 s, e a velocidade sobe 5% por morte. O último fica frenético.
 - **Rastreio:** contador no HUD e uma seta na borda da tela para cada spawner fora dela (a do mais próximo em destaque).
 - **Fim:** com todos mortos, "Fase limpa: volte à eclusa"; a extração encerra (100% da biomassa).
-- **Desempenho:** inimigos longe do jogador voltam ao estoque; pior caso medido de ~4 ms de física por passo; engasgo de um quadro quando dezenas se dividem juntos (backlog 1.8).
+- **Desempenho:** inimigos longe do jogador voltam ao estoque; pior caso medido de ~4 ms de física por passo; fragmentos tirados de um estoque, sem engasgo na divisão em massa (backlog 1.8); picos isolados de ~9 a 14 ms por pausas do coletor de lixo do .NET (backlog 1.10).
 
 ### 4.4 Decisões da spec da fase e sugestões em aberto
 
@@ -209,7 +209,7 @@ Nada disto entra na etapa 1, salvo o que uma spec pedir.
 ### 6.8 Desempenho da horda
 
 - O gargalo é a colisão, não o desenho: Motion Mode Floating, camada própria dos inimigos e separação por código. Medições e problema conhecido nas specs `fractal-enemy.md` (seção 11) e `fractal-enemy-movement.md` (seção 11).
-- Na fase com os spawners (out/2026): geração só perto do jogador, recolhimento dos inimigos longe e tetos mantêm a horda perto e limitada; pior caso medido de ~4 ms de física por passo (~270 inimigos). Criar dezenas de fragmentos no mesmo quadro causa um engasgo de um quadro (backlog 1.8). Spec `mobile-spawners.md` (seção 10).
+- Na fase com os spawners (out/2026): geração só perto do jogador, recolhimento dos inimigos longe e tetos mantêm a horda perto e limitada; pior caso medido de ~4 ms de física por passo (~270 inimigos). Criar dezenas de fragmentos no mesmo quadro causava um engasgo de um quadro; na fase, eles saem de um estoque criado na carga (backlog 1.8, out/2026). Spec `mobile-spawners.md` (seção 10).
 
 ---
 
@@ -241,4 +241,4 @@ Nada disto entra na etapa 1, salvo o que uma spec pedir.
 
 ## 9. Próximos passos
 
-A lista de tarefas, decisões em aberto e dívidas técnicas fica no **`docs/BACKLOG.md`** (a v1.0 mantinha os próximos passos aqui). Feitos em out/2026: a fase hexagonal (1.3), a câmara de partida (1.7), os spawners móveis (1.4) e a parede de fronteira, fases A e B (1.5; as fases C e D são etapa 2). Seguem no backlog, entre outros: a visibilidade sem blecaute (1.6) e o engasgo da divisão em massa (1.8).
+A lista de tarefas, decisões em aberto e dívidas técnicas fica no **`docs/BACKLOG.md`** (a v1.0 mantinha os próximos passos aqui). Feitos em out/2026: a fase hexagonal (1.3), a câmara de partida (1.7), os spawners móveis (1.4) e a parede de fronteira, fases A e B (1.5; as fases C e D são etapa 2) e o engasgo da divisão em massa (1.8). Seguem no backlog, entre outros: a visibilidade sem blecaute (1.6), o balanceamento (1.9) e as pausas do coletor de lixo do .NET (1.10).
