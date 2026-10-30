@@ -1,8 +1,8 @@
 using Godot;
 
-// Câmara de partida no nó de entrada da fase (spec start-chamber.md). Reúne os terminais (os do traje e o de liberar
-// as saídas), montados no editor como filhos; o HexPhaseBuilder a põe no nó de entrada.
-// Ao começar: deposita a biomassa carregada e desliga a eclusa. Ao liberar: abre o nó, liga a eclusa, tira os
+// Câmara de partida no nó de entrada da fase (spec start-chamber.md). Reúne os terminais (o do modo da lanterna e o de
+// liberar as saídas), montados no editor como filhos; o HexPhaseBuilder a põe no nó de entrada.
+// Ao começar: deposita os créditos carregados e desliga a eclusa. Ao liberar: abre o nó, liga a eclusa, tira os
 // terminais e avisa que a incursão começou.
 public partial class StartChamber : Node2D
 {
@@ -15,7 +15,7 @@ public partial class StartChamber : Node2D
 
     public override void _Ready()
     {
-        GameState.Instance?.DepositCarried(); // Chegou à câmara: guarda no banco o que carrega (como a SalaEntrada)
+        GameState.Instance?.DepositCarried(); // Chegou à câmara: guarda no banco os créditos carregados (como a SalaEntrada)
         SetAirlockActive(false);              // Com o nó travado, não há o que extrair
     }
 
