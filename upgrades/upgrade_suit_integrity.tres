@@ -6,6 +6,7 @@
 script = ExtResource("1_1lhb2")
 Id = "suit_integrity"
 DisplayName = "Integridade do traje"
+Description = "Reforça o traje: +20 de integridade máxima e repara 20"
 ValuePerLevel = 20.0
-Costs = PackedInt32Array(20, 40, 80)
+Costs = PackedInt32Array(1, 1, 1, 1)
 metadata/_custom_type_script = "uid://duqih0vanj7vr"

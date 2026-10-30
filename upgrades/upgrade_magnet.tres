@@ -6,7 +6,9 @@
 script = ExtResource("1_1yypl")
 Id = "magnet_radius"
 DisplayName = "Ímã de biomassa"
+Description = "Atrai a biomassa de mais longe: +25% no raio do ímã"
 Target = 1
-ValuePerLevel = 30.0
-Costs = PackedInt32Array(15, 30, 60)
+ValueMode = 1
+ValuePerLevel = 25.0
+Costs = PackedInt32Array(1, 1, 1, 1)
 metadata/_custom_type_script = "uid://duqih0vanj7vr"

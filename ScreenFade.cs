@@ -43,6 +43,10 @@ public partial class ScreenFade : CanvasLayer
         tree.CallDeferred(SceneTree.MethodName.ChangeSceneToFile, scenePath);
     }
 
+    // Há uma troca de cena em andamento? O fade para com a pausa: quem pausa o jogo (o menu de melhorias) espera ela
+    public static bool IsChangingScene(Node caller) =>
+        caller.GetTree().GetFirstNodeInGroup(GroupName) is ScreenFade fade && fade._nextScenePath != null;
+
     // Quem sai escurece; a troca acontece no _Process, quando a tela fica preta
     public void FadeOutAndChangeScene(string scenePath)
     {

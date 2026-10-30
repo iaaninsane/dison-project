@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="UpgradeCatalog" format=3 uid="uid://nwojbaj4my7d"]
+
+[ext_resource type="Script" uid="uid://duqih0vanj7vr" path="res://SuitUpgrade.cs" id="1_q1p2x"]
+[ext_resource type="Script" uid="uid://cac4txdxckosx" path="res://UpgradeCatalog.cs" id="2_5mkub"]
+[ext_resource type="Resource" uid="uid://jmiutfd2jr5h" path="res://upgrades/upgrade_suit_integrity.tres" id="2_ffv85"]
+[ext_resource type="Resource" uid="uid://dhkh8d1nk7b1n" path="res://upgrades/upgrade_magnet.tres" id="3_bvkwk"]
+
+[resource]
+script = ExtResource("2_5mkub")
+Upgrades = Array[ExtResource("1_q1p2x")]([ExtResource("2_ffv85"), ExtResource("3_bvkwk")])
+metadata/_custom_type_script = "uid://cac4txdxckosx"

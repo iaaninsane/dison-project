@@ -46,6 +46,16 @@ public partial class ExperienceTracker : Node
         EmitPoints();
     }
 
+    // Gasta 1 ponto (escolha no menu de melhorias); devolve false se não houver ponto
+    public bool TrySpendPoint()
+    {
+        if (Points <= 0) return false;
+
+        Points--;
+        EmitPoints();
+        return true;
+    }
+
     // Requisito para sair do nível: o primeiro mais os acréscimos, que crescem IncrementGrowth por nível
     // (10, 15, 21, 28...: acréscimos de 5, 6, 7...; a soma de uma progressão aritmética).
     // Nunca abaixo de 1: com 0, o laço do AddExperience não terminaria.

@@ -14,6 +14,9 @@
 [ext_resource type="Resource" uid="uid://ckk8tfaxyiisu" path="res://upgrades/upgrade_catalog.tres" id="12_urp6f"]
 [ext_resource type="Script" uid="uid://cuoby5abte8bx" path="res://ScreenFade.cs" id="13_urp6f"]
 [ext_resource type="Script" uid="uid://c4mkp3bknqqoi" path="res://ExperienceTracker.cs" id="14_606se"]
+[ext_resource type="Script" uid="uid://chwxb85fv8ond" path="res://IncursionUpgrades.cs" id="15_u1c27"]
+[ext_resource type="Resource" uid="uid://nwojbaj4my7d" path="res://upgrades/levelup_catalog.tres" id="16_op7ga"]
+[ext_resource type="Script" uid="uid://baglfpdr38hrh" path="res://LevelUpPanel.cs" id="17_op7ga"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_i3pqv"]
 light_mode = 1
@@ -116,9 +119,10 @@ BlinkTarget = NodePath("../Sprite2D")
 [node name="RestartOnDeath" type="Node" parent="." unique_id=924423182]
 script = ExtResource("10_n7ghd")
 
-[node name="SuitUpgradeApplier" type="Node" parent="." unique_id=102462073 node_paths=PackedStringArray("Integrity", "Collector")]
+[node name="SuitUpgradeApplier" type="Node" parent="." unique_id=102462073 node_paths=PackedStringArray("Incursion", "Integrity", "Collector")]
 script = ExtResource("11_ivps1")
 Catalog = ExtResource("12_urp6f")
+Incursion = NodePath("../IncursionUpgrades")
 Integrity = NodePath("../SuitIntegrity")
 Collector = NodePath("../BiomassCollector")
 
@@ -130,9 +134,57 @@ ScreenFadeDuration = 0.8
 [node name="ExperienceTracker" type="Node" parent="." unique_id=1645436938]
 script = ExtResource("14_606se")
 
+[node name="IncursionUpgrades" type="Node" parent="." unique_id=648521991 node_paths=PackedStringArray("Experience")]
+script = ExtResource("15_u1c27")
+Catalog = ExtResource("16_op7ga")
+Experience = NodePath("../ExperienceTracker")
+
+[node name="LevelUpUi" type="CanvasLayer" parent="." unique_id=1911095188]
+layer = 2
+
+[node name="LevelUpPanel" type="PanelContainer" parent="LevelUpUi" unique_id=441159534 node_paths=PackedStringArray("Upgrades", "Applier", "PointsLabel", "CardList", "MaxedLabel", "CloseButton")]
+custom_maximum_size = Vector2(700, 300)
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("17_op7ga")
+Upgrades = NodePath("../../IncursionUpgrades")
+Applier = NodePath("../../SuitUpgradeApplier")
+PointsLabel = NodePath("Content/PointsLabel")
+CardList = NodePath("Content/CardList")
+MaxedLabel = NodePath("Content/MaxedLabel")
+CloseButton = NodePath("Content/CloseButton")
+
+[node name="Content" type="VBoxContainer" parent="LevelUpUi/LevelUpPanel" unique_id=865904793]
+layout_mode = 2
+
+[node name="PointsLabel" type="Label" parent="LevelUpUi/LevelUpPanel/Content" unique_id=339397731]
+layout_mode = 2
+text = "Pontos: 0"
+
+[node name="CardList" type="VBoxContainer" parent="LevelUpUi/LevelUpPanel/Content" unique_id=1818325187]
+layout_mode = 2
+
+[node name="MaxedLabel" type="Label" parent="LevelUpUi/LevelUpPanel/Content" unique_id=1848795679]
+layout_mode = 2
+text = "Traje no máximo"
+
+[node name="CloseButton" type="Button" parent="LevelUpUi/LevelUpPanel/Content" unique_id=1776657564]
+layout_mode = 2
+text = "FECHAR"
+
 [connection signal="BiomassCollected" from="BiomassCollector" to="ExperienceTracker" method="OnBiomassCollected"]
 [connection signal="Died" from="SuitIntegrity" to="." method="OnDied"]
 [connection signal="Died" from="SuitIntegrity" to="RestartOnDeath" method="OnPlayerDied"]
+[connection signal="Died" from="SuitIntegrity" to="LevelUpUi/LevelUpPanel" method="OnPlayerDied"]
 [connection signal="IntegrityChanged" from="SuitIntegrity" to="Hud/IntegrityLabel" method="OnIntegrityChanged"]
 [connection signal="ExperienceChanged" from="ExperienceTracker" to="Hud/ExperienceHud" method="OnExperienceChanged"]
 [connection signal="UpgradePointsChanged" from="ExperienceTracker" to="Hud/ExperienceHud" method="OnUpgradePointsChanged"]
