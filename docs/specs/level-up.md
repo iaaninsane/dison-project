@@ -1,6 +1,6 @@
 # Spec: Level up na incursão (biomassa vira experiência)
 
-- **Status:** rascunho (out/2026), a aprovar pelo dev. Decisões L1 a L21 na seção 10: as respostas do dev às perguntas da análise do documento de origem.
+- **Status:** **aprovada** pelo dev (out/2026), com a arquitetura e o plano de implementação (seção 10). Decisões L1 a L21 na seção 10: as respostas do dev às perguntas da análise do documento de origem. Implementação a começar pelo passo 0 (commit das specs).
 - **Etapa:** 1 (mecânica)
 - **Origem:** `docs/reference/documentacao_level_up_demo_atualizada.md` (documento de design do dev, independente de engine). Onde esta spec diverge dele, vale esta spec: as diferenças vêm das respostas do dev (seção 10).
 - **Depende de:** `docs/specs/biomass-collection.md` (orbes e ímã), `docs/specs/suit-evolution.md` (melhorias `SuitUpgrade`, aplicador e banco, que fica pronto para outra moeda), `docs/specs/player-health-death.md` (integridade e morte), `docs/specs/start-chamber.md` (início da incursão), `docs/specs/mobile-spawners.md` (biomassa do spawner), `docs/specs/force-field.md` (o campo de força, um dos atributos).
@@ -279,7 +279,7 @@ Na análise do documento de origem, o dev aceitou as recomendações, com duas e
   - o level up é esta spec (`level-up.md`);
   - o documento de origem foi movido para `docs/reference/`.
 
-### Arquitetura (proposta, a aprovar com a spec)
+### Arquitetura (aprovada pelo dev, out/2026)
 
 - **Progressão no jogador:** o `ExperienceTracker` e o `IncursionUpgrades` são componentes do `player.tscn`, como a integridade.
   - **Por quê:** toda incursão termina recarregando a cena, e o jogador nasce com componentes novos. O reinício pedido pelo documento de origem (seção 7) vem de graça, sem um código de "zerar" que alguém possa esquecer de chamar.
@@ -302,7 +302,7 @@ Na análise do documento de origem, o dev aceitou as recomendações, com duas e
 - **Sorteio:** embaralha as melhorias elegíveis e pega as primeiras (Fisher–Yates), guardando as cartas até a escolha.
 - **Pausa:** o mesmo mecanismo do `UpgradePanel`: `GetTree().Paused`, e o painel com `ProcessMode = Always`.
 
-### Plano de implementação (a aprovar)
+### Plano de implementação (aprovado pelo dev, out/2026)
 
 Cada passo segue o ritual dos anteriores:
 1. verificação antes no descartável (Godot headless);

@@ -32,7 +32,7 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
   - Tudo zera a cada incursão.
   - O banco fica pronto para melhorias permanentes futuras, com outra moeda (créditos, provisório), e o terminal de evolução sai da câmara.
   - O campo de força é uma mecânica nova: absorve golpes de contato e repele os inimigos, com cargas e recarga.
-- **Specs:** `docs/specs/level-up.md` (decisões L1 a L21) e `docs/specs/force-field.md` (F1 a F5), em rascunho, a aprovar pelo dev. As specs afetadas têm uma linha "Revista" no topo: `suit-evolution.md`, `biomass-collection.md`, `player-health-death.md`, `start-chamber.md` e `mobile-spawners.md`.
+- **Specs:** `docs/specs/level-up.md` (decisões L1 a L21) e `docs/specs/force-field.md` (F1 a F5 e P1 a P3), aprovadas pelo dev (out/2026), com a arquitetura e o plano. As specs afetadas têm uma linha "Revista" no topo: `suit-evolution.md`, `biomass-collection.md`, `player-health-death.md`, `start-chamber.md` e `mobile-spawners.md`.
 - **Ponto de partida:** o plano em passos da `level-up.md`, seção 10.
 
 ### 1.9 Fase de balanceamento (novo)

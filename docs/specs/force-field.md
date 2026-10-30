@@ -1,6 +1,6 @@
 # Spec: Campo de força do traje
 
-- **Status:** rascunho (out/2026), a aprovar pelo dev. Decisões F1 a F5 do dev (respostas 14 a 18 da análise do documento de origem) e propostas P1 a P3, a aprovar com a spec (seção 10).
+- **Status:** **aprovada** pelo dev (out/2026), com a arquitetura e o plano de implementação (seção 10). Decisões F1 a F5 (respostas 14 a 18 da análise do documento de origem) e propostas P1 a P3, aprovadas com a spec. É o passo 6 do plano da `level-up.md`.
 - **Etapa:** 1 (mecânica)
 - **Origem:** `docs/reference/documentacao_level_up_demo_atualizada.md`, seção 5.3.
 - **Depende de:**
@@ -126,14 +126,14 @@ O roteiro completo, com os nomes exatos, vem em cada passo do plano. Resumo:
   - Descartada: uma carga por vez.
 - **F5 (pergunta 18):** aviso mínimo: o círculo enquanto ativo e "Campo: N/M" no HUD.
 
-### Propostas (a aprovar com a spec)
+### Propostas (aprovadas pelo dev com a spec, out/2026)
 
 - **P1:** ao absorver, repelir todos os inimigos encostados naquele momento, e não só o mais próximo. O documento de origem fala em repelir "inimigos".
 - **P2:** no golpe absorvido, o empurrão do jogador e a imunidade são os de um golpe normal, e o sprite pisca do mesmo jeito, mostrando a imunidade.
   - Alternativa: não piscar, já que o traje não foi atingido. Isso pede um segundo relógio.
 - **P3:** subir o nível com o campo ativo dá a carga nova na hora.
 
-### Arquitetura (proposta)
+### Arquitetura (aprovada pelo dev, out/2026)
 
 - **Uma responsabilidade cada:** o `SuitIntegrity` continua decidindo **quando** há golpe (contato fora da imunidade), e o `ForceField` decide se o golpe é **absorvido**, e repele.
 - **Contrato `IRepellable`:** o campo empurra pelo contrato, sem conhecer o tipo do inimigo, como a lanterna fere pelo `ILightDamageable`.
