@@ -5,14 +5,15 @@
 [ext_resource type="Texture2D" uid="uid://dhvfp5kmwpswq" path="res://lanterna_reta.png" id="3_i3pqv"]
 [ext_resource type="Script" uid="uid://x0c521uv85m7" path="res://LightDamageArea.cs" id="4_hqtel"]
 [ext_resource type="Script" uid="uid://8rm5vq4k7ptu" path="res://BiomassCollector.cs" id="5_sweqy"]
-[ext_resource type="Script" uid="uid://ckjrcb2nw4vhp" path="res://BiomassHud.cs" id="6_2hs0m"]
 [ext_resource type="Script" uid="uid://dat5ptckemyh8" path="res://PlayerHurtbox.cs" id="7_1jxqw"]
 [ext_resource type="Script" uid="uid://pvnjg7q7a2ug" path="res://IntegrityHud.cs" id="7_b26j0"]
+[ext_resource type="Script" uid="uid://d36wwpsklgvg2" path="res://ExperienceHud.cs" id="7_bwjto"]
 [ext_resource type="Script" uid="uid://c0crd0ftaq7q5" path="res://SuitIntegrity.cs" id="9_n7ghd"]
 [ext_resource type="Script" uid="uid://4xxrewgc1csd" path="res://RestartOnDeath.cs" id="10_n7ghd"]
 [ext_resource type="Script" uid="uid://cvtu88k6g38w3" path="res://SuitUpgradeApplier.cs" id="11_ivps1"]
 [ext_resource type="Resource" uid="uid://ckk8tfaxyiisu" path="res://upgrades/upgrade_catalog.tres" id="12_urp6f"]
 [ext_resource type="Script" uid="uid://cuoby5abte8bx" path="res://ScreenFade.cs" id="13_urp6f"]
+[ext_resource type="Script" uid="uid://c4mkp3bknqqoi" path="res://ExperienceTracker.cs" id="14_606se"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_i3pqv"]
 light_mode = 1
@@ -65,20 +66,38 @@ script = ExtResource("5_sweqy")
 
 [node name="Hud" type="CanvasLayer" parent="." unique_id=1852008773]
 
-[node name="BiomassLabel" type="Label" parent="Hud" unique_id=1749379778]
-offset_left = 16.0
-offset_top = 16.0
-offset_right = 56.0
-offset_bottom = 39.0
-theme_override_font_sizes/font_size = 24
-script = ExtResource("6_2hs0m")
-
 [node name="IntegrityLabel" type="Label" parent="Hud" unique_id=34214920]
 offset_left = 16.0
 offset_top = 48.0
 offset_right = 56.0
 offset_bottom = 71.0
 script = ExtResource("7_b26j0")
+
+[node name="ExperienceHud" type="HBoxContainer" parent="Hud" unique_id=838509142 node_paths=PackedStringArray("LevelLabel", "XpBar", "PointsLabel")]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 56.0
+offset_bottom = 56.0
+theme_override_constants/separation = 16
+script = ExtResource("7_bwjto")
+LevelLabel = NodePath("LevelLabel")
+XpBar = NodePath("XpBar")
+PointsLabel = NodePath("PointsLabel")
+
+[node name="LevelLabel" type="Label" parent="Hud/ExperienceHud" unique_id=838163409]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Nível 1"
+
+[node name="XpBar" type="ProgressBar" parent="Hud/ExperienceHud" unique_id=1588072465]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="PointsLabel" type="Label" parent="Hud/ExperienceHud" unique_id=376433167]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Pontos: 0"
 
 [node name="HurtBox" type="Area2D" parent="." unique_id=1553812969]
 collision_layer = 0
@@ -108,7 +127,12 @@ layer = 10
 script = ExtResource("13_urp6f")
 ScreenFadeDuration = 0.8
 
-[connection signal="BiomassChanged" from="BiomassCollector" to="Hud/BiomassLabel" method="OnBiomassChanged"]
+[node name="ExperienceTracker" type="Node" parent="." unique_id=1645436938]
+script = ExtResource("14_606se")
+
+[connection signal="BiomassCollected" from="BiomassCollector" to="ExperienceTracker" method="OnBiomassCollected"]
 [connection signal="Died" from="SuitIntegrity" to="." method="OnDied"]
 [connection signal="Died" from="SuitIntegrity" to="RestartOnDeath" method="OnPlayerDied"]
 [connection signal="IntegrityChanged" from="SuitIntegrity" to="Hud/IntegrityLabel" method="OnIntegrityChanged"]
+[connection signal="ExperienceChanged" from="ExperienceTracker" to="Hud/ExperienceHud" method="OnExperienceChanged"]
+[connection signal="UpgradePointsChanged" from="ExperienceTracker" to="Hud/ExperienceHud" method="OnUpgradePointsChanged"]

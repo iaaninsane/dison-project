@@ -1,11 +1,11 @@
 using Godot;
 
 // Coletor de biomassa do traje: atrai e recolhe os orbes próximos.
-// O total mora no GameState (sobrevive à troca de sala); este nó só recolhe, entrega e avisa.
-// Fica como nó filho do Player (composição), sem alterar o Player.cs.
+// Só recolhe e avisa quanto coletou (sinal BiomassCollected); quem transforma a coleta em experiência é o
+// ExperienceTracker (spec level-up.md). Fica como nó filho do Player (composição), sem alterar o Player.cs.
 public partial class BiomassCollector : Node2D
 {
-    [Signal] public delegate void BiomassChangedEventHandler(int total);
+    [Signal] public delegate void BiomassCollectedEventHandler(int amount);
 
     [Export] public float PickupRadius = 12f;  // Distância em que o orbe é recolhido (px)
     [Export] public float MagnetRadius = 80f;  // Distância em que o ímã começa a puxar (px)
@@ -14,22 +14,12 @@ public partial class BiomassCollector : Node2D
     [Export] public float OrbSuctionFactor = 1f;  // Quanto os orbes sentem a sucção (OrbSuctionFactor da spec)
     [Export] public float OrbSuctionDecay = 300f; // Fora do campo, a velocidade ganha da sucção some neste ritmo (px/s²)
 
-    public int Total => GameState.Instance?.Data.CarriedBiomass ?? 0; // Biomassa carregada na incursão
-
-    public override void _Ready()
-    {
-        Callable.From(NotifyTotal).CallDeferred(); // Mostra a biomassa carregada ao entrar na sala
-    }
-
     public override void _PhysicsProcess(double delta)
     {
         int collected = BiomassField.Update((float)delta, GlobalPosition, PickupRadius, MagnetRadius, MagnetSpeed,
             OrbSuctionFactor, OrbSuctionDecay);
         if (collected <= 0) return;
 
-        GameState.Instance?.AddCarried(collected);
-        NotifyTotal();
+        EmitSignal(SignalName.BiomassCollected, collected); // A coleta do passo inteiro num aviso só
     }
-
-    private void NotifyTotal() => EmitSignal(SignalName.BiomassChanged, Total);
 }

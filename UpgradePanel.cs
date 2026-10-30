@@ -1,11 +1,11 @@
 using Godot;
 using System.Collections.Generic;
 
-// Painel de compra: monta um botão por melhoria do catálogo, mostra o banco e pausa o jogo enquanto aberto.
+// Painel de compra do banco: monta um botão por melhoria do catálogo, mostra os créditos e pausa o jogo enquanto aberto.
 public partial class UpgradePanel : PanelContainer
 {
     [Export] public UpgradeCatalog Catalog;  // Lista de melhorias (o .tres da pasta upgrades)
-    [Export] public Label BankLabel;         // Mostra o saldo do banco
+    [Export] public Label BankLabel;         // Mostra o saldo do banco (créditos)
     [Export] public Container UpgradeList;   // Onde os botões das melhorias são criados
     [Export] public Button CloseButton;      // Fecha o painel
 
@@ -77,7 +77,7 @@ public partial class UpgradePanel : PanelContainer
         GameState state = GameState.Instance;
         if (state == null) return;
 
-        if (BankLabel != null) BankLabel.Text = $"Banco de biomassa: {state.Data.BankedBiomass}";
+        if (BankLabel != null) BankLabel.Text = $"Créditos: {state.Data.BankedCredits}";
 
         foreach (var (upgrade, button) in _buyButtons)
         {

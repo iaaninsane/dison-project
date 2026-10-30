@@ -20,25 +20,25 @@ public partial class GameState : Node
         if (Instance == this) Instance = null;
     }
 
-    // Biomassa coletada na incursão (chamado pelo BiomassCollector)
-    public void AddCarried(int amount)
+    // Créditos coletados na incursão. Ainda sem chamador: a fonte de créditos não existe (spec level-up.md, L1)
+    public void AddCarriedCredits(int amount)
     {
         if (amount <= 0) return;
-        Data.CarriedBiomass += amount;
+        Data.CarriedCredits += amount;
     }
 
-    // Morte: a biomassa carregada perde a parte que não é guardada ("taxa")
+    // Morte: os créditos carregados perdem a parte que não é guardada ("taxa")
     public void ApplyDeathPenalty(float keepFraction)
     {
-        Data.CarriedBiomass = Mathf.FloorToInt(Data.CarriedBiomass * Mathf.Clamp(keepFraction, 0f, 1f));
+        Data.CarriedCredits = Mathf.FloorToInt(Data.CarriedCredits * Mathf.Clamp(keepFraction, 0f, 1f));
     }
 
-    // Câmara inicial: deposita no banco tudo o que está carregado
+    // Câmara de partida: deposita no banco todos os créditos carregados
     public void DepositCarried()
     {
-        Data.BankedBiomass += Data.CarriedBiomass;
-        Data.CarriedBiomass = 0;
-        EmitSignal(SignalName.BankChanged, Data.BankedBiomass);
+        Data.BankedCredits += Data.CarriedCredits;
+        Data.CarriedCredits = 0;
+        EmitSignal(SignalName.BankChanged, Data.BankedCredits);
     }
 
     public int GetUpgradeLevel(SuitUpgrade upgrade) => Data.GetUpgradeLevel(upgrade.Id);
@@ -47,20 +47,20 @@ public partial class GameState : Node
     public bool CanBuy(SuitUpgrade upgrade)
     {
         int cost = upgrade.GetCostForNextLevel(GetUpgradeLevel(upgrade));
-        return cost >= 0 && Data.BankedBiomass >= cost;
+        return cost >= 0 && Data.BankedCredits >= cost;
     }
 
-    // Tenta comprar o próximo nível; devolve true se comprou
+    // Tenta comprar o próximo nível com os créditos do banco; devolve true se comprou
     public bool TryBuyUpgrade(SuitUpgrade upgrade)
     {
         if (upgrade == null || string.IsNullOrEmpty(upgrade.Id)) return false;
         if (!CanBuy(upgrade)) return false; // sem saldo ou no nível máximo
 
         int level = GetUpgradeLevel(upgrade);
-        Data.BankedBiomass -= upgrade.GetCostForNextLevel(level);
+        Data.BankedCredits -= upgrade.GetCostForNextLevel(level);
         Data.UpgradeLevels[upgrade.Id] = level + 1;
 
-        EmitSignal(SignalName.BankChanged, Data.BankedBiomass);
+        EmitSignal(SignalName.BankChanged, Data.BankedCredits);
         EmitSignal(SignalName.UpgradeLevelChanged, upgrade.Id, level + 1);
         return true;
     }
