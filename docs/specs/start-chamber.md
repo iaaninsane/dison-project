@@ -1,6 +1,11 @@
 # Spec: Câmara de partida no nó inicial
 
 - **Status:** **validada** (ideia do dev, out/2026). Decisões D1 a D6 na seção 10; passos 2 a 7 feitos e testados pelo dev no editor, cada um verificado antes no descartável. Revê a decisão H5 da `hex-phase.md` (a câmara separada na `sala_entrada` virou bancada).
+- **Revista (out/2026, `level-up.md`; decidido, ainda não implementado):**
+  - O depósito ao carregar a fase e o da extração passam a ser em créditos, ainda sem fonte; a biomassa vira experiência.
+  - O terminal de evolução sai da câmara.
+  - As melhorias passam a ser escolhidas durante a incursão (level up, num menu que o jogador abre). Isso revê a nota "não há compra de melhorias no meio da incursão" (seção 10).
+  - O level up zera a cada recarga da fase.
 - **Etapa:** 1 (mecânica)
 - **Depende de:** `docs/specs/hex-phase.md` (fases A e B), `docs/specs/suit-evolution.md` (terminais, banco, melhorias), `docs/specs/player-health-death.md` (morte e reinício). Decidiu a consequência da ejeção (backlog, seção 2). Relaciona-se com a `docs/specs/mobile-spawners.md` (backlog 1.4, concluído): o `SpawnerDirector` escuta `IncursionStarted`.
 

@@ -1,6 +1,10 @@
 # Spec: Coleta de biomassa neon
 
 - **Status:** validada (out/2026). Valores em teste.
+- **Revista (out/2026, `level-up.md`; decidido, ainda não implementado):**
+  - A biomassa coletada vira experiência do level up (1 orbe = 1 XP), que zera a cada incursão, e deixa de ir para o banco.
+  - O rótulo "Biomassa: N" dá lugar à barra de XP.
+  - O ímã (`MagnetRadius`) passa a ser um atributo do level up (+25% do raio-base por nível).
 - **Etapa:** 1 (mecânica)
 - **Depende de:** `docs/specs/fractal-enemy.md` (morte do inimigo e divisão celular). A spec de evolução (gastar a biomassa) ainda não existe.
 

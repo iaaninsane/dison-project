@@ -1,6 +1,10 @@
 # Spec: Spawners móveis e objetivo da fase
 
 - **Status:** **validada** (out/2026). Decisões S1 a S9 do dev (seção 10; a S6 foi revista depois do teste do passo 6). Plano de implementação (passos 1 a 7) feito e testado pelo dev. Um item do "Pronto quando" ficou parcial: o engasgo de um quadro na divisão em massa, que virou o item 1.8 do backlog e foi resolvido em out/2026 (estoque de fragmentos no `EnemyPool`; seção 10, "Desempenho"). Valores em teste. **Revista em out/2026** pela parede de fronteira (`dyson-wall.md`, fase B): decisões S10 (trajeto perto das paredes) e S11 (sucção e volta à rota), em implementação.
+- **Relação com o level up (out/2026, `level-up.md` e `force-field.md`; decidido, ainda não implementado):**
+  - Os 20 orbes do spawner valem 20 de experiência.
+  - A potência da lanterna encurta o tempo para matá-lo: no nível 5, de ~8,6 s para ~4,3 s.
+  - O campo de força absorve o golpe do spawner, sem empurrá-lo.
 - **Etapa:** 1 (mecânica). É a "fase C" da `hex-phase.md` (spawners na fase e simulação por proximidade).
 - **Depende de:** `docs/specs/hex-phase.md` (a fase, o `HexPhaseLayout`), `docs/specs/start-chamber.md` (sinal `IncursionStarted`; nada nasce no nó inicial travado), `docs/specs/fractal-enemy.md` e `docs/specs/fractal-enemy-movement.md` (inimigo, horda, tetos e o problema conhecido de FPS), `docs/specs/biomass-collection.md` (recompensa), `docs/specs/player-health-death.md` (golpe de contato). Relaciona-se com a `docs/specs/dyson-wall.md` (a sucção afeta os spawners? Em aberto lá).
 

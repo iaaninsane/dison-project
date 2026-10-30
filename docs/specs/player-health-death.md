@@ -1,6 +1,10 @@
 # Spec: Integridade do traje e morte do jogador
 
 - **Status:** validada (out/2026). Valores em teste. O fluxo depois da morte foi definido pela spec `suit-evolution.md`: voltar à câmara inicial. **Atualizado (out/2026, `start-chamber.md`):** a câmara passou para o nó de entrada da fase; a morte recarrega a fase em modo câmara (`RestartOnDeath` com destino vazio), e ser ejetado para o espaço tem a mesma consequência (`SuitIntegrity.Breach`).
+- **Revista (out/2026, `level-up.md` e `force-field.md`; decidido, ainda não implementado):**
+  - A taxa da morte passa a valer para os créditos do banco (ainda sem fonte). A biomassa vira experiência e zera com a incursão.
+  - A melhoria de integridade do level up sobe o máximo em 20 e cura 20: é uma exceção a "a integridade não regenera".
+  - O campo de força absorve os golpes de contato enquanto tiver carga.
 - **Etapa:** 1 (mecânica)
 - **Depende de:** `docs/specs/fractal-enemy.md` (inimigos, camadas de colisão), `docs/specs/fractal-enemy-movement.md` (inimigos travados descansam encostados no jogador), `docs/specs/biomass-collection.md` (o que acontece com a biomassa na morte).
 

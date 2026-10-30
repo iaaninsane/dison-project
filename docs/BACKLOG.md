@@ -1,6 +1,6 @@
 # Backlog do projeto
 
-Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atualizada em 2026-10-27.
+Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atualizada em 2026-10-29.
 
 > **Como usar:** cada item aponta para a spec relacionada e traz um "ponto de partida" técnico. O ponto de partida é uma **leitura inicial do código, não uma solução aprovada**: antes de implementar, seguir o fluxo do CLAUDE.md (ler spec e código, propor plano, esperar aprovação). Ao concluir um item, removê-lo daqui e registrar o resultado na spec.
 
@@ -24,6 +24,17 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 - **O que fazer:** o dev escolhe uma cor provisória de `CanvasModulate` para testar as mecânicas sem blecaute. O `ColorRect` de fundo continua obrigatório (sem ele a luz da lanterna não aparece). Arte final na etapa 2.
 - **Spec:** nenhuma (ajuste de cena). Conferir depois se a lanterna continua legível sobre fundos claros.
 
+### 1.11 Level up na incursão e campo de força (novo; antes do 1.9)
+
+- **Contexto:** pedido do dev (out/2026), antes do balanceamento. Origem: o documento de design `docs/reference/documentacao_level_up_demo_atualizada.md`.
+  - A biomassa vira experiência, e cada nível dá um ponto de melhoria.
+  - Num menu aberto pelo jogador, que pausa o jogo, cada ponto compra 1 de 3 melhorias sorteadas, com 5 atributos de nível 1 a 5: integridade, ímã, potência e alcance da lanterna, e campo de força.
+  - Tudo zera a cada incursão.
+  - O banco fica pronto para melhorias permanentes futuras, com outra moeda (créditos, provisório), e o terminal de evolução sai da câmara.
+  - O campo de força é uma mecânica nova: absorve golpes de contato e repele os inimigos, com cargas e recarga.
+- **Specs:** `docs/specs/level-up.md` (decisões L1 a L21) e `docs/specs/force-field.md` (F1 a F5), em rascunho, a aprovar pelo dev. As specs afetadas têm uma linha "Revista" no topo: `suit-evolution.md`, `biomass-collection.md`, `player-health-death.md`, `start-chamber.md` e `mobile-spawners.md`.
+- **Ponto de partida:** o plano em passos da `level-up.md`, seção 10.
+
 ### 1.9 Fase de balanceamento (novo)
 
 - **Contexto:** pedido do dev (out/2026), depois das mecânicas do 1.4: uma passada de balanceamento dos valores para tornar o gameplay mais satisfatório. Os `[Export]` de todas as specs são "valores em teste" (pontos de partida); valores fora do padrão encontrados até lá ficam para esta fase.
@@ -33,7 +44,9 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
   - inimigo (`fractal-enemy.md` e `fractal-enemy-movement.md`, seção 4): velocidade, vida, dano da luz (35/s), gerações e fragmentos, separação;
   - golpe e integridade (`player-health-death.md`): dano 10, empurrão 200, imunidade 0,8 s;
   - paredes por tipo (o `MaxIrritation` da `DysonWall`: 100, 40 e 30; `hex-phase.md`, seção 4, e `dyson-wall.md`, B2), a sucção das fendas (`dyson-wall.md`, seção 4: raio sem retorno, rajada, fatores de inimigos, orbes e spawners) e zooms da câmera;
-  - biomassa e evolução (`biomass-collection.md`, `suit-evolution.md`): ímã, coleta, custos e ganhos das melhorias, taxa da morte;
+  - level up (`level-up.md`, seção 4): curva de XP (10, +5, +1) e ganho por nível dos atributos (integridade +20; ímã +25%; potência +25% no dano e na irritação; alcance +15%);
+  - campo de força (`force-field.md`, seção 4): recarga de 5 s, impulso de 300 px/s, 1 carga no nível 1;
+  - biomassa (`biomass-collection.md`): coleta; o banco e a taxa da morte só quando os créditos existirem;
   - jogador (`Player.cs`): empuxo 450, velocidade máxima 600, atrito.
 - **Pendente do 1.5 (passo 7 da fase B):** medir a fase hexagonal com a horda (200+ inimigos), paredes acordadas e uma fenda aberta, e confirmar no editor as 10 fendas seguidas com troca de cena (roteiro na `dyson-wall.md`, seção 9, item 7). No descartável passou. Se o primeiro rompimento da sessão engasgar (pico de ~7,5 ms: a primeira compilação do código da abertura), aquecer esse código ao carregar a fase, debaixo do escurecer.
 - **Ponto de partida:** definir com o dev o que é "satisfatório" em metas verificáveis (ex.: tempo para matar um spawner, duração de uma incursão, quantos golpes até morrer, ritmo da curva de dificuldade) e um roteiro de teste por meta; ajustar no Inspector, digitando os valores (o ↺ volta ao padrão do script, `CLAUDE.md`), e registrar os escolhidos nas specs.
@@ -64,7 +77,8 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 | Deformação final da parede de fronteira | `dyson-wall.md` (seção 10) | Esmaecer é o padrão provisório. Referências sugeridas: exocitose, estômato, esfíncter/íris (Scorn), peristalse |
 | Fendas como arma contra a horda e os spawners | `dyson-wall.md` (seção 10) | Observar nos testes (fase de balanceamento, 1.9) se vira estratégia dominante; se virar, ajustar `EnemySuctionFactor` e `SpawnerSuctionFactor`. Biomassa do inimigo sugado e sucção dos spawners já decididas (B3 e B4) |
 | Tiros no ALERTAR | CLAUDE.md (core loop) e HANDOFF | O core loop cita "luz e tiros", mas não existe tiro; os "modos de tiro" do `TerminalModo` são modos da lanterna |
-| Melhoria "Potência da lanterna" | `suit-evolution.md` (decisão 4) | Adiada até ter requisitos; volta junto com o valor no enum `SuitUpgrade.TargetStat` |
+| Moeda permanente e melhorias permanentes | `level-up.md` (L1), `suit-evolution.md` | Decidido em out/2026: o banco fica pronto para uma moeda futura ("créditos", provisório; ex.: créditos colhidos no jogo), com o catálogo vazio e o terminal de evolução só na `sala_entrada`. A definir: de onde vem a moeda, quanto vale e o que compra. Quando houver melhorias permanentes, os bônus somam com os do level up |
+| Melhorias especiais e sinergias do level up | `level-up.md` (seção 3), documento de origem (seção 9) | Feixe concentrado, feixe ampliado, luz persistente, repulsão reforçada, recuperação acelerada, pulso defensivo, coleta eficiente. Fora da implementação inicial |
 | Salvar progresso em disco | `suit-evolution.md` (decisão 2) | `RunData` já separado do nó; salvar = converter o `RunData` |
 | Velocidade e separação dos fragmentos | `fractal-enemy.md` (fase 2) | Iguais às do pai; testar outras possibilidades (ex.: menor = mais rápido). Na fase de balanceamento (1.9) |
 | Valores definitivos de `MaxConcurrentEnemies` e `MaxTotalEnemies` | `fractal-enemy.md` (seção 10), `mobile-spawners.md` (seção 4) | Hoje 200 e 350 na `sala_ninho`. Na fase (1.4): `PoolSize` 60 (papel do `MaxConcurrentEnemies`) e `MaxTotalEnemies` 350, no `EnemyPool`; no pior caso medido, passo constante de ~4 ms (`mobile-spawners.md`, seção 10). Continuam pontos de partida; revisar na fase de balanceamento (1.9). Variantes A2/A3 do teto anotadas |
@@ -72,7 +86,7 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 | Neon × tons pastel | HANDOFF v2.0 (seção 5), `fractal-enemy-render-3d.md` | Testar na etapa 2 |
 | Cor da parede irritada | `dyson-wall.md` (seção 10) | Vermelho no `WallSensitive.cs` × verde-água na dyson-wall |
 | Orbe de biomassa com luz própria | `biomass-collection.md` (seção 10) | Sem blecaute, passa a ser só estética (etapa 2); medir o custo antes |
-| Sensibilidade das paredes por tipo de estrutura | `hex-phase.md` (seções 4 e 10), `dyson-wall.md` (B2) | Hoje 100 (nós e painéis), 40 (conectores de nós) e 30 (conectores de placa), o `MaxIrritation` da `DysonWall`: ~5 s, 2 s e 1,5 s de luz no centro do feixe até a fenda abrir. Provisórios, o dev vai testar e definir na fase de balanceamento (1.9) |
+| Sensibilidade das paredes por tipo de estrutura | `hex-phase.md` (seções 4 e 10), `dyson-wall.md` (B2) | Hoje 100 (nós e painéis), 40 (conectores de nós) e 30 (conectores de placa), o `MaxIrritation` da `DysonWall`: ~5 s, 2 s e 1,5 s de luz no centro do feixe até a fenda abrir. Provisórios, o dev vai testar e definir na fase de balanceamento (1.9). Com o level up (1.11), a potência da lanterna dobra a irritação no nível 5 (metade do tempo), e o alcance irrita de mais longe |
 | Papel e recheio de cada tipo de estrutura | `hex-phase.md` (seção 10), HANDOFF v2.0 (seção 4) | Sugestão: nós = arenas, conectores = corredores com risco de parede, painéis = áreas abertas, placas = gargalos, nó central = clímax. O recheio (pilares, costelas, gargalos) ainda não existe: o 1.4 foi feito sem ele |
 | "Horda que persegue": reposicionar perto do jogador, logo fora da tela, o inimigo que fica longe, em vez de recolhê-lo | `mobile-spawners.md` (seção 10, "Ideias para depois") | Ideia do dev (out/2026), para implementação futura. Referência: chefes do Vampire Survivors (os comuns somem). Muda a S5 (pressão longe dos spawners) e a compressão e o alívio; o ponto precisa estar no piso e sem parede no meio |
 | Forma do trajeto dos spawners | `mobile-spawners.md` (S10) | Senoide variada, rente à parede trocando de lado ou ruído orgânico, escolhida no Inspector (`PathShape`). O dev decide depois se ficam as três ou uma |

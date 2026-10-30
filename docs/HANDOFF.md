@@ -29,9 +29,10 @@ Fronteira de escopo enxuta para a demo.
 2. Lanterna: feixe que ilumina, causa dano aos inimigos e irrita as paredes.
 3. Combate por luz e divisão celular dos inimigos (fragmentação).
 4. Irritabilidade das paredes e ejeção do jogador para o espaço.
-5. Coleta de biomassa e evolução do traje.
+5. Coleta de biomassa e evolução do traje. **Decidido em out/2026, em implementação** (`level-up.md`): a biomassa vira experiência, e o level up dá melhorias durante a incursão (3 sorteadas por ponto, num menu que pausa), zeradas a cada incursão. O banco da câmara fica reservado para melhorias permanentes futuras, com outra moeda. Hoje o código ainda usa o banco de biomassa (seção 3.7).
 6. Troca entre modo manual e automático da lanterna.
 7. **Novo (out/2026):** objetivo da fase: destruir os spawners móveis (seção 4.3; spec `mobile-spawners.md`, validada em out/2026).
+8. **Novo (out/2026, decidido, em implementação):** campo de força do traje (`force-field.md`). Absorve golpes de contato e repele os inimigos enquanto tiver carga, e recarrega ao esgotar. É um dos atributos do level up.
 
 ### Adiadas para depois da demo
 
@@ -40,7 +41,7 @@ Fronteira de escopo enxuta para a demo.
 
 ### Core loop
 
-`EXPLORAR` (navegação inercial pelas estruturas do hexágono) ➔ `ALERTAR` (luz e tiros estressam o organismo) ➔ `COMBATER` (dano por luz e fragmentação; destruir os spawners) ➔ `COLETAR` (biomassa neon) ➔ `EVOLUIR` (melhorias do traje na câmara inicial) ou `MORRER`.
+`EXPLORAR` (navegação inercial pelas estruturas do hexágono) ➔ `ALERTAR` (luz e tiros estressam o organismo) ➔ `COMBATER` (dano por luz e fragmentação; destruir os spawners) ➔ `COLETAR` (biomassa neon) ➔ `EVOLUIR` (melhorias do traje; decidido em out/2026, em implementação: level up durante a incursão, com a biomassa como experiência, em vez da compra na câmara inicial; `level-up.md`) ou `MORRER`.
 
 Tiros ainda não existem: o "estresse por tiros" e os "modos de tiro" são decisões em aberto (backlog).
 
