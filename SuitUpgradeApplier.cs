@@ -4,7 +4,7 @@ using System;
 // Aplica as melhorias nos componentes do jogador, juntando as duas fontes (spec level-up.md): o banco (melhorias
 // permanentes, níveis no GameState) e a incursão (level up, níveis no IncursionUpgrades).
 // Recalcula tudo do zero a cada mudança: valor-base × (1 + soma das %) + soma fixa, por alvo.
-// Os componentes (SuitIntegrity, BiomassCollector, LightDamageArea) não sabem que melhorias existem.
+// Os componentes (SuitIntegrity, BiomassCollector, LightDamageArea, ForceField) não sabem que melhorias existem.
 public partial class SuitUpgradeApplier : Node
 {
     [Export] public UpgradeCatalog Catalog;      // Catálogo do banco (o mesmo do painel de compra)
@@ -12,6 +12,7 @@ public partial class SuitUpgradeApplier : Node
     [Export] public SuitIntegrity Integrity;     // Alvo: integridade máxima
     [Export] public BiomassCollector Collector;  // Alvo: raio do ímã
     [Export] public LightDamageArea Flashlight;  // Alvo: potência e alcance da lanterna
+    [Export] public ForceField ForceField;       // Alvo: cargas do campo de força
 
     private int _baseMaxIntegrity;   // Valores da cena, antes das melhorias
     private float _baseMagnetRadius;
@@ -54,6 +55,7 @@ public partial class SuitUpgradeApplier : Node
         if (Collector != null) Collector.MagnetRadius = bonuses.ApplyTo(SuitUpgrade.TargetStat.MagnetRadius, _baseMagnetRadius);
         Flashlight?.SetPowerMultiplier(bonuses.ApplyTo(SuitUpgrade.TargetStat.FlashlightPower, 1f));
         Flashlight?.SetRangeMultiplier(bonuses.ApplyTo(SuitUpgrade.TargetStat.BeamRange, 1f));
+        ForceField?.SetBonusCharges(Mathf.RoundToInt(bonuses.ApplyTo(SuitUpgrade.TargetStat.ForceFieldCharges, 0f))); // Só o bônus: a base fica no campo
     }
 
     // As duas fontes somadas por alvo
@@ -78,6 +80,7 @@ public partial class SuitUpgradeApplier : Node
         SuitUpgrade.TargetStat.MagnetRadius => _baseMagnetRadius,
         SuitUpgrade.TargetStat.FlashlightPower => 1f, // Potência e alcance são multiplicadores: 1 = 100%
         SuitUpgrade.TargetStat.BeamRange => 1f,
+        SuitUpgrade.TargetStat.ForceFieldCharges => ForceField?.BaseCharges ?? 0,
         _ => 0f,
     };
 

@@ -59,6 +59,18 @@ public partial class ForceField : Node2D
         return true;
     }
 
+    // Pedido do SuitUpgradeApplier, que recalcula tudo a cada melhoria: sem mudança no máximo, não faz nada (outra melhoria
+    // não pode dar carga de graça). Ativo, a carga nova entra na hora (P3); desligado, ele volta com o máximo novo
+    public void SetBonusCharges(int bonus)
+    {
+        int max = BaseCharges + bonus;
+        if (max == _maxCharges) return;
+
+        if (_charges > 0) _charges += max - _maxCharges;
+        _maxCharges = max;
+        NotifyCharges();
+    }
+
     // Empurra pelo contrato, sem conhecer o tipo: o spawner fere ao encostar, mas não é IRepellable
     private void Repel(IReadOnlyList<IContactHazard> contacts)
     {
