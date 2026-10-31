@@ -7,6 +7,9 @@ public partial class LightDamageArea : Area2D
     [Export] public float DamagePerSecond = 35f;       // Dano contínuo da luz básica
     [Export] public float WallIrritationPerSecond = 20f; // Quanto a luz "irrita" as paredes sensíveis por segundo
 
+    private float _baseDamagePerSecond;          // Valores da cena, antes da potência da lanterna
+    private float _baseWallIrritationPerSecond;
+
     // Listas dinâmicas para rastreamento de alvos: o que a luz fere (inimigos, spawners) e as paredes que ela irrita
     private readonly List<ILightDamageable> _targetsInLight = new();
     private readonly List<Node2D> _wallsInLight = new();
@@ -21,6 +24,9 @@ public partial class LightDamageArea : Area2D
 
     public override void _Ready()
     {
+        _baseDamagePerSecond = DamagePerSecond;
+        _baseWallIrritationPerSecond = WallIrritationPerSecond;
+
         // Conecta os sinais de colisão fisicamente de forma programática
         BodyEntered += OnBodyEntered;
         BodyExited += OnBodyExited;
@@ -59,6 +65,14 @@ public partial class LightDamageArea : Area2D
                 _wallsInLight.RemoveAt(i);
             }
         }
+    }
+
+    // Potência da lanterna (spec level-up.md): multiplica o dano e a irritação das paredes, a partir dos valores da cena.
+    // Quem chama é o SuitUpgradeApplier; a lanterna não sabe que melhorias existem.
+    public void SetPowerMultiplier(float multiplier)
+    {
+        DamagePerSecond = _baseDamagePerSecond * multiplier;
+        WallIrritationPerSecond = _baseWallIrritationPerSecond * multiplier;
     }
 
     // Parede de fronteira (ILightIrritable): recebe a lanterna e pergunta o peso da luz em cada peça.

@@ -5,7 +5,7 @@ using Godot;
 [GlobalClass]
 public partial class SuitUpgrade : Resource
 {
-    public enum TargetStat { SuitMaxIntegrity, MagnetRadius } // Valores do jogador que podem melhorar
+    public enum TargetStat { SuitMaxIntegrity, MagnetRadius, FlashlightPower } // Valores do jogador que podem melhorar
     public enum BonusMode { Flat, Percent } // Como cada nível soma: valor fixo, ou porcentagem do valor-base
 
     [Export] public string Id = "";             // Chave estável usada no save (ex.: "suit_integrity"); não mudar depois

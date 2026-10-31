@@ -119,12 +119,13 @@ BlinkTarget = NodePath("../Sprite2D")
 [node name="RestartOnDeath" type="Node" parent="." unique_id=924423182]
 script = ExtResource("10_n7ghd")
 
-[node name="SuitUpgradeApplier" type="Node" parent="." unique_id=102462073 node_paths=PackedStringArray("Incursion", "Integrity", "Collector")]
+[node name="SuitUpgradeApplier" type="Node" parent="." unique_id=102462073 node_paths=PackedStringArray("Incursion", "Integrity", "Collector", "Flashlight")]
 script = ExtResource("11_ivps1")
 Catalog = ExtResource("12_urp6f")
 Incursion = NodePath("../IncursionUpgrades")
 Integrity = NodePath("../SuitIntegrity")
 Collector = NodePath("../BiomassCollector")
+Flashlight = NodePath("../FlashlightAnchor/LightDamageArea")
 
 [node name="ScreenFade" type="CanvasLayer" parent="." unique_id=1231953074]
 layer = 10
@@ -143,7 +144,7 @@ Experience = NodePath("../ExperienceTracker")
 layer = 2
 
 [node name="LevelUpPanel" type="PanelContainer" parent="LevelUpUi" unique_id=441159534 node_paths=PackedStringArray("Upgrades", "Applier", "PointsLabel", "CardList", "MaxedLabel", "CloseButton")]
-custom_maximum_size = Vector2(700, 300)
+custom_minimum_size = Vector2(700, 300)
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
