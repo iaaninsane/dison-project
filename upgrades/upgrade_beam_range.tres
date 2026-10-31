@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SuitUpgrade" format=3 uid="uid://bp81uwg0wdkgx"]
+
+[ext_resource type="Script" uid="uid://duqih0vanj7vr" path="res://SuitUpgrade.cs" id="1_k1v53"]
+
+[resource]
+script = ExtResource("1_k1v53")
+Id = "beam_range"
+DisplayName = "Alcance da lanterna"
+Description = "O feixe e a luz chegam mais longe: +15%"
+Target = 3
+ValueMode = 1
+ValuePerLevel = 15.0
+Costs = PackedInt32Array(1, 1, 1, 1)
+metadata/_custom_type_script = "uid://duqih0vanj7vr"

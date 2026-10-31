@@ -11,7 +11,7 @@ public partial class SuitUpgradeApplier : Node
     [Export] public IncursionUpgrades Incursion; // Níveis e catálogo do level up (ligado no Inspector)
     [Export] public SuitIntegrity Integrity;     // Alvo: integridade máxima
     [Export] public BiomassCollector Collector;  // Alvo: raio do ímã
-    [Export] public LightDamageArea Flashlight;  // Alvo: potência da lanterna
+    [Export] public LightDamageArea Flashlight;  // Alvo: potência e alcance da lanterna
 
     private int _baseMaxIntegrity;   // Valores da cena, antes das melhorias
     private float _baseMagnetRadius;
@@ -53,6 +53,7 @@ public partial class SuitUpgradeApplier : Node
         Integrity?.SetMaxIntegrity(Mathf.RoundToInt(bonuses.ApplyTo(SuitUpgrade.TargetStat.SuitMaxIntegrity, _baseMaxIntegrity)));
         if (Collector != null) Collector.MagnetRadius = bonuses.ApplyTo(SuitUpgrade.TargetStat.MagnetRadius, _baseMagnetRadius);
         Flashlight?.SetPowerMultiplier(bonuses.ApplyTo(SuitUpgrade.TargetStat.FlashlightPower, 1f));
+        Flashlight?.SetRangeMultiplier(bonuses.ApplyTo(SuitUpgrade.TargetStat.BeamRange, 1f));
     }
 
     // As duas fontes somadas por alvo
@@ -75,7 +76,8 @@ public partial class SuitUpgradeApplier : Node
     {
         SuitUpgrade.TargetStat.SuitMaxIntegrity => _baseMaxIntegrity,
         SuitUpgrade.TargetStat.MagnetRadius => _baseMagnetRadius,
-        SuitUpgrade.TargetStat.FlashlightPower => 1f, // A potência é um multiplicador: 1 = 100%
+        SuitUpgrade.TargetStat.FlashlightPower => 1f, // Potência e alcance são multiplicadores: 1 = 100%
+        SuitUpgrade.TargetStat.BeamRange => 1f,
         _ => 0f,
     };
 

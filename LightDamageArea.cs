@@ -6,9 +6,14 @@ public partial class LightDamageArea : Area2D
 {
     [Export] public float DamagePerSecond = 35f;       // Dano contínuo da luz básica
     [Export] public float WallIrritationPerSecond = 20f; // Quanto a luz "irrita" as paredes sensíveis por segundo
+    [Export] public PointLight2D BeamLight;            // A luz visível do feixe: cresce com o alcance (ligada no Inspector)
 
     private float _baseDamagePerSecond;          // Valores da cena, antes da potência da lanterna
     private float _baseWallIrritationPerSecond;
+    private Vector2[] _basePolygon = Array.Empty<Vector2>(); // Valores da cena, antes do alcance da lanterna
+    private Vector2 _baseLightPosition;
+    private Vector2 _baseLightScale;
+    private float _rangeMultiplier = 1f;
 
     // Listas dinâmicas para rastreamento de alvos: o que a luz fere (inimigos, spawners) e as paredes que ela irrita
     private readonly List<ILightDamageable> _targetsInLight = new();
@@ -26,6 +31,11 @@ public partial class LightDamageArea : Area2D
     {
         _baseDamagePerSecond = DamagePerSecond;
         _baseWallIrritationPerSecond = WallIrritationPerSecond;
+        if (BeamLight != null)
+        {
+            _baseLightPosition = BeamLight.Position;
+            _baseLightScale = BeamLight.Scale;
+        }
 
         // Conecta os sinais de colisão fisicamente de forma programática
         BodyEntered += OnBodyEntered;
@@ -73,6 +83,34 @@ public partial class LightDamageArea : Area2D
     {
         DamagePerSecond = _baseDamagePerSecond * multiplier;
         WallIrritationPerSecond = _baseWallIrritationPerSecond * multiplier;
+    }
+
+    // Alcance da lanterna (spec level-up.md): o cone e a luz crescem a partir do jogador, mantendo a abertura.
+    // Trocar a forma refaz a colisão: só quando o valor muda (o aplicador recalcula tudo a cada melhoria).
+    public void SetRangeMultiplier(float multiplier)
+    {
+        if (Mathf.IsEqualApprox(multiplier, _rangeMultiplier)) return;
+
+        _rangeMultiplier = multiplier;
+        ResizeBeam(multiplier);
+        ResizeLight(multiplier);
+    }
+
+    private void ResizeBeam(float multiplier)
+    {
+        if (_beamShape == null) return;
+
+        _beamPolygon = new Vector2[_basePolygon.Length];
+        for (int i = 0; i < _basePolygon.Length; i++) _beamPolygon[i] = _basePolygon[i] * multiplier;
+        _beamShape.Polygon = _beamPolygon;
+    }
+
+    private void ResizeLight(float multiplier)
+    {
+        if (BeamLight == null) return;
+
+        BeamLight.Position = _baseLightPosition * multiplier;
+        BeamLight.Scale = _baseLightScale * multiplier;
     }
 
     // Parede de fronteira (ILightIrritable): recebe a lanterna e pergunta o peso da luz em cada peça.
@@ -147,7 +185,8 @@ public partial class LightDamageArea : Area2D
             return;
         }
 
-        _beamPolygon = _beamShape.Polygon;
+        _basePolygon = _beamShape.Polygon;
+        _beamPolygon = _basePolygon;
         foreach (Vector2 vertex in _beamPolygon)
         {
             float angle = vertex.Angle();

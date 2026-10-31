@@ -5,8 +5,9 @@
 [ext_resource type="Resource" uid="uid://jmiutfd2jr5h" path="res://upgrades/upgrade_suit_integrity.tres" id="2_ffv85"]
 [ext_resource type="Resource" uid="uid://dhkh8d1nk7b1n" path="res://upgrades/upgrade_magnet.tres" id="3_bvkwk"]
 [ext_resource type="Resource" uid="uid://bwiecws00tl8m" path="res://upgrades/upgrade_flashlight_power.tres" id="4_bvkwk"]
+[ext_resource type="Resource" uid="uid://bp81uwg0wdkgx" path="res://upgrades/upgrade_beam_range.tres" id="5_cgqi2"]
 
 [resource]
 script = ExtResource("2_5mkub")
-Upgrades = Array[ExtResource("1_q1p2x")]([ExtResource("2_ffv85"), ExtResource("3_bvkwk"), ExtResource("4_bvkwk")])
+Upgrades = Array[ExtResource("1_q1p2x")]([ExtResource("2_ffv85"), ExtResource("3_bvkwk"), ExtResource("4_bvkwk"), ExtResource("5_cgqi2")])
 metadata/_custom_type_script = "uid://cac4txdxckosx"

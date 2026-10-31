@@ -48,9 +48,10 @@ position = Vector2(242.04297, 0)
 scale = Vector2(0.12867187, 0.18825)
 texture = ExtResource("3_i3pqv")
 
-[node name="LightDamageArea" type="Area2D" parent="FlashlightAnchor" unique_id=2125953411]
+[node name="LightDamageArea" type="Area2D" parent="FlashlightAnchor" unique_id=2125953411 node_paths=PackedStringArray("BeamLight")]
 collision_mask = 3
 script = ExtResource("4_hqtel")
+BeamLight = NodePath("../PointLight2D")
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="FlashlightAnchor/LightDamageArea" unique_id=592234802]
 polygon = PackedVector2Array(2, 0, 222, -72, 222, 62)
