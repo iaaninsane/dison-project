@@ -8,6 +8,7 @@
 [ext_resource type="Script" uid="uid://dat5ptckemyh8" path="res://PlayerHurtbox.cs" id="7_1jxqw"]
 [ext_resource type="Script" uid="uid://pvnjg7q7a2ug" path="res://IntegrityHud.cs" id="7_b26j0"]
 [ext_resource type="Script" uid="uid://d36wwpsklgvg2" path="res://ExperienceHud.cs" id="7_bwjto"]
+[ext_resource type="Script" uid="uid://dyqdiubpmugpn" path="res://ForceFieldHud.cs" id="8_pylmc"]
 [ext_resource type="Script" uid="uid://c0crd0ftaq7q5" path="res://SuitIntegrity.cs" id="9_n7ghd"]
 [ext_resource type="Script" uid="uid://4xxrewgc1csd" path="res://RestartOnDeath.cs" id="10_n7ghd"]
 [ext_resource type="Script" uid="uid://cvtu88k6g38w3" path="res://SuitUpgradeApplier.cs" id="11_ivps1"]
@@ -17,6 +18,7 @@
 [ext_resource type="Script" uid="uid://chwxb85fv8ond" path="res://IncursionUpgrades.cs" id="15_u1c27"]
 [ext_resource type="Resource" uid="uid://nwojbaj4my7d" path="res://upgrades/levelup_catalog.tres" id="16_op7ga"]
 [ext_resource type="Script" uid="uid://baglfpdr38hrh" path="res://LevelUpPanel.cs" id="17_op7ga"]
+[ext_resource type="Script" uid="uid://blxp2663134p7" path="res://ForceField.cs" id="19_pbfsw"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_i3pqv"]
 light_mode = 1
@@ -103,6 +105,13 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Pontos: 0"
 
+[node name="ForceFieldLabel" type="Label" parent="Hud" unique_id=1709606583]
+offset_left = 160.0
+offset_top = 48.0
+offset_right = 200.0
+offset_bottom = 71.0
+script = ExtResource("8_pylmc")
+
 [node name="HurtBox" type="Area2D" parent="." unique_id=1553812969]
 collision_layer = 0
 collision_mask = 2
@@ -112,9 +121,10 @@ script = ExtResource("7_1jxqw")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="HurtBox" unique_id=1079124647]
 shape = SubResource("CircleShape2D_1tabr")
 
-[node name="SuitIntegrity" type="Node" parent="." unique_id=6845224 node_paths=PackedStringArray("Hurtbox", "BlinkTarget")]
+[node name="SuitIntegrity" type="Node" parent="." unique_id=6845224 node_paths=PackedStringArray("Hurtbox", "ForceField", "BlinkTarget")]
 script = ExtResource("9_n7ghd")
 Hurtbox = NodePath("../HurtBox")
+ForceField = NodePath("../ForceField")
 BlinkTarget = NodePath("../Sprite2D")
 
 [node name="RestartOnDeath" type="Node" parent="." unique_id=924423182]
@@ -183,6 +193,9 @@ text = "Traje no máximo"
 layout_mode = 2
 text = "FECHAR"
 
+[node name="ForceField" type="Node2D" parent="." unique_id=499401024]
+script = ExtResource("19_pbfsw")
+
 [connection signal="BiomassCollected" from="BiomassCollector" to="ExperienceTracker" method="OnBiomassCollected"]
 [connection signal="Died" from="SuitIntegrity" to="." method="OnDied"]
 [connection signal="Died" from="SuitIntegrity" to="RestartOnDeath" method="OnPlayerDied"]
@@ -190,3 +203,4 @@ text = "FECHAR"
 [connection signal="IntegrityChanged" from="SuitIntegrity" to="Hud/IntegrityLabel" method="OnIntegrityChanged"]
 [connection signal="ExperienceChanged" from="ExperienceTracker" to="Hud/ExperienceHud" method="OnExperienceChanged"]
 [connection signal="UpgradePointsChanged" from="ExperienceTracker" to="Hud/ExperienceHud" method="OnUpgradePointsChanged"]
+[connection signal="ChargesChanged" from="ForceField" to="Hud/ForceFieldLabel" method="OnChargesChanged"]

@@ -1,7 +1,7 @@
 using Godot;
 using System;
 
-public partial class FractalEnemy : CharacterBody2D, ILightDamageable, IContactHazard // A luz fere; encostar fere o traje
+public partial class FractalEnemy : CharacterBody2D, ILightDamageable, IContactHazard, IRepellable // A luz fere; encostar fere o traje; o campo de força empurra
 {
     [Export] public float Speed = 80f;            // Velocidade de perseguição lenta e implacável
     [Export] public int RecursionDepth = 5;       // Profundidade da árvore fractal (complexidade)
@@ -53,7 +53,7 @@ public partial class FractalEnemy : CharacterBody2D, ILightDamageable, IContactH
     // --- SUCÇÃO (fendas da parede de fronteira; spec dyson-wall.md, 2.6 e seção 5) ---
     [Export] public float SuctionFactor = 1f;          // Quanto este inimigo sente a sucção (EnemySuctionFactor da spec)
     [Export] public float SuctionVelocityDecay = 300f; // Fora do campo, a velocidade ganha da sucção some neste ritmo (px/s²)
-    private Vector2 _suctionVelocity;                  // Velocidade própria ganha da sucção (o inimigo não tem inércia)
+    private Vector2 _suctionVelocity;                  // Velocidade própria ganha da sucção e do campo de força (o inimigo não tem inércia)
 
        // --- NOVOS ATRIBUTOS DE SISTEMA DE COMBATE ---
     [Export] public float MaxHealth = 100f;
@@ -170,6 +170,14 @@ public partial class FractalEnemy : CharacterBody2D, ILightDamageable, IContactH
             return;
         }
         _suctionVelocity += acceleration * dt;
+        _restTimer = 0f;
+    }
+
+    // Campo de força (spec force-field.md): o empurrão soma à velocidade que vem de fora, a mesma da sucção, e some aos
+    // poucos. Também acorda o inimigo: descansando encostado no jogador, ele ficaria parado no lugar
+    public void Repel(Vector2 fromPosition, float impulse)
+    {
+        _suctionVelocity += (GlobalPosition - fromPosition).Normalized() * impulse;
         _restTimer = 0f;
     }
 

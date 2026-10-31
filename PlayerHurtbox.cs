@@ -7,6 +7,8 @@ public partial class PlayerHurtbox : Area2D
 {
     private readonly List<IContactHazard> _touching = new();
 
+    public IReadOnlyList<IContactHazard> Touching => _touching; // O que está encostado agora (o campo de força repele)
+
     public override void _Ready()
     {
         BodyEntered += OnBodyEntered;
