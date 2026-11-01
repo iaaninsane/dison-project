@@ -1,7 +1,7 @@
 # Spec: Câmara de partida no nó inicial
 
 - **Status:** **validada** (ideia do dev, out/2026). Decisões D1 a D6 na seção 10; passos 2 a 7 feitos e testados pelo dev no editor, cada um verificado antes no descartável. Revê a decisão H5 da `hex-phase.md` (a câmara separada na `sala_entrada` virou bancada).
-- **Revista (out/2026, `level-up.md`; decidido, ainda não implementado):**
+- **Revista (out/2026, `level-up.md`; implementado no backlog 1.11):**
   - O depósito ao carregar a fase e o da extração passam a ser em créditos, ainda sem fonte; a biomassa vira experiência.
   - O terminal de evolução sai da câmara.
   - As melhorias passam a ser escolhidas durante a incursão (level up, num menu que o jogador abre). Isso revê a nota "não há compra de melhorias no meio da incursão" (seção 10).
@@ -30,11 +30,11 @@ O jogador começa a partida dentro da fase, no primeiro nó, que funciona como c
 ### Regras (aprovadas e implementadas, decisões D1 a D6)
 
 - Quando o jogo começa (cena principal: `hex_phase.tscn`) ou a fase recarrega, então o nó de entrada está em modo câmara: saídas fechadas por portões, terminais visíveis, paredes do nó inertes (D4), eclusa desligada e o jogador à frente da eclusa (`HexPhaseBuilder.PlacePlayerAtEntry`).
-- Quando a fase carrega, então a biomassa carregada é depositada no banco (`StartChamber`, como a `SalaEntrada` faz).
+- Quando a fase carrega, então os créditos carregados são depositados no banco (`StartChamber`, como a `SalaEntrada` faz).
 - Quando o jogador interage com o terminal "Liberar saídas", então os portões somem, as paredes do nó viram reativas, a eclusa liga, os terminais do nó somem e a câmara avisa que a incursão começou (sinal `IncursionStarted`).
 - Quando o jogador morre, então, depois de `DeathRestartDelay`, a tela escurece e a fase recarrega em modo câmara (o `RestartOnDeath`, com destino vazio, recarrega a cena atual).
 - Quando o jogador fica perdido no espaço (sinal `LostInSpace`), então o traje rompe (`SuitIntegrity.Breach`) e a incursão termina como na morte (D3).
-- Quando o jogador toca a eclusa depois de liberar as saídas, então a tela escurece e a fase recarrega em modo câmara, com 100% da biomassa carregada depositada (extração, D2). Com o nó travado, a eclusa não age.
+- Quando o jogador toca a eclusa depois de liberar as saídas, então a tela escurece e a fase recarrega em modo câmara, com 100% dos créditos carregados depositados (extração, D2). Com o nó travado, a eclusa não age.
 - A integridade começa cheia a cada recarga; banco, níveis das melhorias e modo da lanterna continuam no `GameState`.
 
 ## 3. Fora do escopo
@@ -77,7 +77,7 @@ O jogador começa a partida dentro da fase, no primeiro nó, que funciona como c
 - **Existentes, reaproveitados:** `ScreenFade.cs`, `DoorTrigger.cs`, `RestartOnDeath.cs` (troca de cena com escurecer e clarear), `StructureTracker.cs` (o sinal `LostInSpace`), `EvolutionTerminal.cs`, `UpgradePanel.cs`, `GameState.cs`, `SalaEntrada.cs` (o depósito ao entrar serviu de modelo).
 - **Novos** (criados com autorização do dev, out/2026):
   - `ExitReleaseTerminal.cs` (`Area2D`, passo 3): terminal "Liberar saídas"; com o jogador dentro, o `interact` (por `_UnhandledInput`) emite o sinal `Activated` uma vez.
-  - `StartChamber.cs` (`Node2D`, passo 3; `HasStarted`): contêiner montado no editor com os três terminais, posicionado pelo `HexPhaseBuilder` no nó de entrada (como a eclusa). Ao começar: deposita a biomassa carregada e desliga a eclusa. Ao liberar (ouvinte do `Activated`): pede à fase para abrir as saídas, liga a eclusa, apaga os terminais e emite `IncursionStarted`.
+  - `StartChamber.cs` (`Node2D`, passo 3; `HasStarted`): contêiner montado no editor com os terminais, posicionado pelo `HexPhaseBuilder` no nó de entrada (como a eclusa). Ao começar: deposita os créditos carregados e desliga a eclusa. Ao liberar (ouvinte do `Activated`): pede à fase para abrir as saídas, liga a eclusa, apaga os terminais e emite `IncursionStarted`.
   - `EjectionConsequence.cs` (`Node`, passo 5): a consequência da ejeção como componente trocável, ouvinte do `LostInSpace`; acha o `SuitIntegrity` do jogador pelo nome e chama `Breach()`, e a morte segue o caminho de sempre.
 - **Alterados:**
   - `HexPhaseLayout.cs` (passo 2): `HexWallSegment` guarda a estrutura dona (`Owner`; o `Kind` vem dela); `PeripheralNode(número)`; `ExitsOf(nó)` devolve as bocas, achadas pela interseção da borda do nó com cada corredor e alargadas uma espessura de parede de cada lado.
@@ -128,7 +128,7 @@ Todas seguiram a recomendação da análise:
 5. **D5, documentação:** esta spec; a `hex-phase.md` registra que a H5 foi revista.
 6. **D6, `TerminalModo` por `_UnhandledInput`:** com três terminais na mesma sala, cada aperto aciona um terminal só, e o terminal pausado não recebe o aperto que fecha o painel. Resolveu a dívida do backlog. O motivo registrado antes ("a interface consome o aperto") estava errado (verificado no motor, passo 4) e foi corrigido no `CLAUDE.md` e na `suit-evolution.md`.
 
-Da ideia do dev: depois de liberar, os terminais somem até o próximo reinício (não há compra de melhorias no meio da incursão).
+Da ideia do dev: depois de liberar, os terminais somem até o próximo reinício (não há compra de melhorias no meio da incursão). **Revista pela `level-up.md`:** o terminal de compra saiu da câmara, e as melhorias são escolhidas durante a incursão, no menu do level up.
 
 ### Análise (out/2026)
 

@@ -29,10 +29,10 @@ Fronteira de escopo enxuta para a demo.
 2. Lanterna: feixe que ilumina, causa dano aos inimigos e irrita as paredes.
 3. Combate por luz e divisão celular dos inimigos (fragmentação).
 4. Irritabilidade das paredes e ejeção do jogador para o espaço.
-5. Coleta de biomassa e evolução do traje. **Decidido em out/2026, em implementação** (`level-up.md`): a biomassa vira experiência, e o level up dá melhorias durante a incursão (3 sorteadas por ponto, num menu que pausa), zeradas a cada incursão. O banco da câmara fica reservado para melhorias permanentes futuras, com outra moeda. Hoje o código ainda usa o banco de biomassa (seção 3.7).
+5. Coleta de biomassa e evolução do traje (spec `level-up.md`, validada em out/2026): a biomassa vira experiência, e o level up dá melhorias durante a incursão (3 sorteadas por ponto, num menu que pausa), zeradas a cada incursão. O banco fica reservado para melhorias permanentes futuras, com outra moeda (seção 3.7).
 6. Troca entre modo manual e automático da lanterna.
 7. **Novo (out/2026):** objetivo da fase: destruir os spawners móveis (seção 4.3; spec `mobile-spawners.md`, validada em out/2026).
-8. **Novo (out/2026, decidido, em implementação):** campo de força do traje (`force-field.md`). Absorve golpes de contato e repele os inimigos enquanto tiver carga, e recarrega ao esgotar. É um dos atributos do level up.
+8. **Novo (out/2026):** campo de força do traje (seção 3.8; spec `force-field.md`, validada em out/2026). Absorve golpes de contato e repele os inimigos enquanto tiver carga, e recarrega ao esgotar. É um dos atributos do level up.
 
 ### Adiadas para depois da demo
 
@@ -41,7 +41,7 @@ Fronteira de escopo enxuta para a demo.
 
 ### Core loop
 
-`EXPLORAR` (navegação inercial pelas estruturas do hexágono) ➔ `ALERTAR` (luz e tiros estressam o organismo) ➔ `COMBATER` (dano por luz e fragmentação; destruir os spawners) ➔ `COLETAR` (biomassa neon) ➔ `EVOLUIR` (melhorias do traje; decidido em out/2026, em implementação: level up durante a incursão, com a biomassa como experiência, em vez da compra na câmara inicial; `level-up.md`) ou `MORRER`.
+`EXPLORAR` (navegação inercial pelas estruturas do hexágono) ➔ `ALERTAR` (luz e tiros estressam o organismo) ➔ `COMBATER` (dano por luz e fragmentação; destruir os spawners) ➔ `COLETAR` (biomassa neon) ➔ `EVOLUIR` (melhorias do traje: level up durante a incursão, com a biomassa como experiência; `level-up.md`) ou `MORRER`.
 
 Tiros ainda não existem: o "estresse por tiros" e os "modos de tiro" são decisões em aberto (backlog).
 
@@ -61,7 +61,7 @@ Resumo; as regras completas e os valores em teste estão nas specs.
 
 ### 3.2 Lanterna e visibilidade
 
-- `FlashlightAnchor` (`Marker2D`) com um `PointLight2D` e a `LightDamageArea` (`Area2D` em cone de ~220 px), que dá dano aos inimigos e aos spawners (`DamagePerSecond`; tudo o que cumpre `ILightDamageable`) e irrita as paredes do grupo `Walls` (`WallIrritationPerSecond`).
+- `FlashlightAnchor` (`Marker2D`) com um `PointLight2D` e a `LightDamageArea` (`Area2D` em cone de ~220 px), que dá dano aos inimigos e aos spawners (`DamagePerSecond`; tudo o que cumpre `ILightDamageable`) e irrita as paredes do grupo `Walls` (`WallIrritationPerSecond`). Potência e alcance são atributos do level up (seção 3.7).
 - **Modos:** manual (segue o mouse ou o analógico direito) e automático (segue a direção da velocidade). O modo fica no `RunData` e vale em todas as salas; muda só por `GameState.ToggleFlashlightMode()` (sinal `FlashlightModeChanged`, escutado pelo `Player`), pelo `TerminalModo` da câmara inicial. Hoje o modo é um `bool`; vira padrão Strategy se surgirem mais modos.
 - **Visibilidade (out/2026): não há mais blecaute total.** Cada sala ainda precisa de um `ColorRect` de fundo como primeiro filho (sem ele, a luz da lanterna não tem onde aparecer). A cor do `CanvasModulate` virou decisão de arte; as cenas atuais ainda estão no estado antigo até o ajuste do dev (backlog 1.6). Proposta de linguagem visual: o sol ao fundo deixa tudo em silhueta, e a lanterna é a única luz frontal, que revela cor e volume do que atinge.
 
@@ -70,7 +70,7 @@ Resumo; as regras completas e os valores em teste estão nas specs.
 - **Nas salas antigas (bancadas; `WallSensitive.cs`, spec `reactive-walls.md`):** as paredes do grupo `Walls` acumulam irritação sob a luz e se recuperam fora dela. No limite (`MaxIrritation`), puxam o jogador para o **centro real** da parede (calculado pela transformação global do `ColorRect`) com `EjectionForce`; durante a ejeção, ele atravessa só essa parede e as do grupo `Walls` no caminho até ela (exceção de colisão), e bate em todo o resto. Paredes de titânio (câmara inicial) e pilares ficam fora do grupo.
 - **Na fase hexagonal (decisão do dev, out/2026; spec `dyson-wall.md`, fases A e B concluídas):** só as **paredes de fronteira com o espaço** são reativas (`DysonWall`, uma por trecho reto). Elas são uma membrana de peças geométricas (triângulos de Sierpinski) que, irritada, se deforma, **abre uma fenda** e **suga** o jogador; ao cruzar a fenda, ele é ejetado para o espaço (sinal `PlayerEjected`). A sucção simula uma descompressão: é **gradual pela distância** (fraca longe, avassaladora perto, com um raio "sem retorno" em que ela empata com o empuxo do traje) e tem uma **rajada** no rompimento. O jogador mantém o controle e pode fugir com contra-empuxo. **Inimigos, orbes de biomassa e spawners também são sugados** (os spawners resistem mais e, ao sair, contam como destruídos, sem orbes), o que faz da fenda uma ferramenta tática e um risco. Paredes internas entre estruturas serão rígidas. O `WallSensitive.cs` ficou só nas salas antigas.
 - **Deformação:** o modo Esmaecer (as peças encolhem em cascata até sumir) é o padrão **provisório**; a forma final está em aberto (referências sugeridas na spec).
-- **Depois da ejeção (decidido em out/2026, `start-chamber.md` D3):** ficar perdido no espaço é igual à morte. O `StructureTracker` avisa (`LostInSpace`), o `EjectionConsequence` rompe o traje, e o fluxo da morte segue (taxa da biomassa, escurecer, recarga da fase em modo câmara). O espaço não é navegável.
+- **Depois da ejeção (decidido em out/2026, `start-chamber.md` D3):** ficar perdido no espaço é igual à morte. O `StructureTracker` avisa (`LostInSpace`), o `EjectionConsequence` rompe o traje, e o fluxo da morte segue (taxa dos créditos, escurecer, recarga da fase em modo câmara). O espaço não é navegável.
 
 ### 3.4 Inimigo fractal e horda (`FractalEnemy.cs`, `FractalSwarm.cs`)
 
@@ -81,17 +81,30 @@ Resumo; as regras completas e os valores em teste estão nas specs.
 
 ### 3.5 Biomassa (`BiomassOrb.cs`, `BiomassField.cs`, `BiomassCollector.cs`)
 
-- Quem morre sem se dividir solta um orbe (sem física, sempre visível). O registro estático `BiomassField` faz idade, ímã e coleta num único laço. A coleta vai para a biomassa carregada do `GameState`. Spec: `biomass-collection.md`.
+- Quem morre sem se dividir solta um orbe (sem física, sempre visível). O registro estático `BiomassField` faz idade, ímã e coleta num único laço. A coleta vira experiência (seção 3.7): o `BiomassCollector` emite `BiomassCollected`, e a biomassa não vai para o banco. Spec: `biomass-collection.md`.
 
 ### 3.6 Integridade e morte (componentes no `player.tscn`)
 
-- `PlayerHurtbox` (contato com inimigos e spawners, `IContactHazard`), `SuitIntegrity` (golpe, imunidade, piscar, empurrão; sinais `IntegrityChanged` e `Died`), `RestartOnDeath` (cobra a taxa da biomassa e, depois de um atraso, recarrega a cena atual: na fase, a própria fase em modo câmara). `SuitIntegrity.Breach()` rompe o traje de uma vez (usado pela ejeção). Specs: `player-health-death.md` e `start-chamber.md`.
+- `PlayerHurtbox` (contato com inimigos e spawners, `IContactHazard`), `SuitIntegrity` (golpe, imunidade, piscar, empurrão; sinais `IntegrityChanged` e `Died`), `RestartOnDeath` (cobra a taxa dos créditos e, depois de um atraso, recarrega a cena atual: na fase, a própria fase em modo câmara). `SuitIntegrity.Breach()` rompe o traje de uma vez (usado pela ejeção). Com carga, o campo de força absorve o golpe antes da integridade (seção 3.8). Specs: `player-health-death.md` e `start-chamber.md`.
 
-### 3.7 Estado da partida e evolução (`GameState.cs`, `RunData.cs`)
+### 3.7 Estado da partida, banco e level up (`GameState.cs`, `RunData.cs`)
 
-- Autoload `GameState` com um `RunData` (banco, biomassa carregada, níveis das melhorias por `Id`, modo da lanterna), separado do nó para facilitar salvar em disco no futuro.
-- Na **câmara de partida** (o nó de entrada da fase, `StartChamber`; spec `start-chamber.md`): deposita a biomassa carregada no banco ao carregar a fase; o `TerminalModo` troca o modo da lanterna; o `EvolutionTerminal` abre o `UpgradePanel`; o terminal "Liberar saídas" (`ExitReleaseTerminal`) abre o nó e começa a incursão. A eclusa extrai (recarrega a fase, depositando 100%). Melhorias como recursos `SuitUpgrade` (pasta `upgrades/`), aplicadas pelo `SuitUpgradeApplier`. Spec: `suit-evolution.md`.
-- A `sala_entrada` foi a câmara inicial até out/2026; hoje é bancada (os terminais e a `PortaSaida` → fase continuam lá).
+- Autoload `GameState` com um `RunData` (banco de créditos, créditos carregados, níveis das melhorias permanentes por `Id`, modo da lanterna), separado do nó para facilitar salvar em disco no futuro.
+- Na **câmara de partida** (o nó de entrada da fase, `StartChamber`; spec `start-chamber.md`): deposita os créditos carregados no banco ao carregar a fase; o `TerminalModo` troca o modo da lanterna; o terminal "Liberar saídas" (`ExitReleaseTerminal`) abre o nó e começa a incursão. A eclusa extrai (recarrega a fase, depositando 100%).
+- **Level up (spec `level-up.md`):** a progressão da incursão fica em componentes do `player.tscn`, então a recarga da cena zera tudo, sem código de reinício.
+  - `ExperienceTracker`: cada unidade de biomassa coletada vale 1 de XP; cada nível dá 1 ponto (HUD: `ExperienceHud`, com nível, barra e pontos).
+  - `LevelUpPanel` (`upgrade_menu`: Tab ou Y): com pontos, abre, pausa o jogo e mostra as cartas.
+  - `IncursionUpgrades`: sorteia até 3 cartas do `levelup_catalog.tres`, guarda-as até gastar o ponto e sobe o nível da melhoria escolhida.
+  - `SuitUpgradeApplier`: junta as duas fontes (banco e incursão) e recalcula cada alvo do zero: `base × (1 + soma das %) + soma fixa`. Os componentes não sabem que melhorias existem.
+  - 5 atributos, de nível 1 a 5, como recursos `SuitUpgrade` (pasta `upgrades/`): integridade (+20, com cura de 20), ímã (+25%), potência da lanterna (+25% no dano e na irritação das paredes), alcance da lanterna (+15%) e campo de força (+1 carga).
+- **Banco (reservado):** os créditos são a moeda futura das melhorias permanentes. Ainda não têm fonte, então o saldo fica em 0 e o catálogo do banco (`upgrade_catalog.tres`) está vazio; o fluxo (carregar, taxa da morte, depósito) já funciona. Spec: `suit-evolution.md`.
+- A `sala_entrada` foi a câmara inicial até out/2026; hoje é bancada, com o `TerminalModo`, a `PortaSaida` → fase e o único `EvolutionTerminal`, que abre o `UpgradePanel` ("Créditos: N").
+
+### 3.8 Campo de força (`ForceField.cs`)
+
+- Componente no `player.tscn`, ativo desde o início da incursão. O `SuitIntegrity` decide quando há golpe e pergunta ao campo se ele absorve.
+- Com carga: o golpe não tira integridade, gasta 1 carga e repele os inimigos encostados (`IRepellable`); a imunidade e o empurrão do jogador são os de um golpe normal. O spawner também gasta carga, mas não é repelido.
+- Esgotado, desliga e volta cheio depois de `RechargeTime` (20 s). Não age sobre a ruptura, a sucção nem a ejeção. Spec: `force-field.md`.
 
 ---
 
@@ -125,7 +138,7 @@ Spec `docs/specs/mobile-spawners.md` (validada em out/2026; decisões S1 a S9 do
 - **Objetivo da fase:** destruí-los com a luz (vida 300, ~8,6 s; iluminados, fogem em pânico); cada um solta 20 de biomassa. São sólidos: empurram o jogador e ferem ao encostar.
 - **Dificuldade:** um orçamento global de geração (1,5 inimigo/s, +10% por spawner morto) repartido entre os vivos: o intervalo de cada um cai de 6,7 s para 0,35 s, e a velocidade sobe 5% por morte. O último fica frenético.
 - **Rastreio:** contador no HUD e uma seta na borda da tela para cada spawner fora dela (a do mais próximo em destaque).
-- **Fim:** com todos mortos, "Fase limpa: volte à eclusa"; a extração encerra (100% da biomassa).
+- **Fim:** com todos mortos, "Fase limpa: volte à eclusa"; a extração encerra a incursão.
 - **Desempenho:** inimigos longe do jogador voltam ao estoque; pior caso medido de ~4 ms de física por passo; fragmentos tirados de um estoque, sem engasgo na divisão em massa (backlog 1.8); picos isolados de ~9 a 14 ms por pausas do coletor de lixo do .NET (backlog 1.10).
 
 ### 4.4 Decisões da spec da fase e sugestões em aberto
@@ -216,13 +229,13 @@ Nada disto entra na etapa 1, salvo o que uma spec pedir.
 
 ## 7. Arquitetura C# e diretrizes de código
 
-1. **Responsabilidade única:** o `_PhysicsProcess` só orquestra, chamando métodos pequenos; comportamentos do jogador como componentes no `player.tscn` (integridade, contato, coleta, aplicador de melhorias).
+1. **Responsabilidade única:** o `_PhysicsProcess` só orquestra, chamando métodos pequenos; comportamentos do jogador como componentes no `player.tscn` (integridade, contato, coleta, experiência, melhorias, campo de força).
 2. **Cláusulas de guarda** (early return) em vez de `if/else` aninhado.
 3. **Strategy** para comportamentos intercambiáveis (modos da lanterna quando houver mais de dois, alvos das melhorias quando crescerem).
-4. **Observer (sinais):** paredes, inimigos, HUD e jogador reagem sem referência direta (ex.: `BiomassChanged`, `IntegrityChanged`, `FlashlightModeChanged`).
+4. **Observer (sinais):** paredes, inimigos, HUD e jogador reagem sem referência direta (ex.: `BiomassCollected`, `IntegrityChanged`, `FlashlightModeChanged`).
 5. **Registros estáticos** para sistemas com centenas de elementos (`FractalSwarm`, `BiomassField`): um laço em C#, sem consultas à física.
 6. **Estado da partida separado do nó** (`RunData`), pronto para salvar em disco.
-7. **Interfaces pequenas** para o que vários tipos fazem: `ILightDamageable` (o que a luz fere) e `IContactHazard` (o que fere ao encostar). A lanterna e o traje não conhecem cada tipo.
+7. **Interfaces pequenas** para o que vários tipos fazem: `ILightDamageable` (o que a luz fere), `IContactHazard` (o que fere ao encostar) e `IRepellable` (o que o campo de força empurra). A lanterna, o traje e o campo não conhecem cada tipo.
 
 ---
 

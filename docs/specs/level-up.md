@@ -1,6 +1,6 @@
 # Spec: Level up na incursão (biomassa vira experiência)
 
-- **Status:** **aprovada** pelo dev (out/2026), com a arquitetura e o plano de implementação (seção 10). Decisões L1 a L21 na seção 10: as respostas do dev às perguntas da análise do documento de origem. Implementação a começar pelo passo 0 (commit das specs).
+- **Status:** **validada** (out/2026). Decisões L1 a L21 na seção 10: as respostas do dev às perguntas da análise do documento de origem. Plano de implementação (passos 0 a 7) feito e testado pelo dev no editor, cada passo verificado antes no descartável. Resultado na seção 10. Valores em teste.
 - **Etapa:** 1 (mecânica)
 - **Origem:** `docs/reference/documentacao_level_up_demo_atualizada.md` (documento de design do dev, independente de engine). Onde esta spec diverge dele, vale esta spec: as diferenças vêm das respostas do dev (seção 10).
 - **Depende de:** `docs/specs/biomass-collection.md` (orbes e ímã), `docs/specs/suit-evolution.md` (melhorias `SuitUpgrade`, aplicador e banco, que fica pronto para outra moeda), `docs/specs/player-health-death.md` (integridade e morte), `docs/specs/start-chamber.md` (início da incursão), `docs/specs/mobile-spawners.md` (biomassa do spawner), `docs/specs/force-field.md` (o campo de força, um dos atributos).
@@ -107,11 +107,12 @@ Durante a incursão, a biomassa coletada vira experiência, e cada nível novo d
 | `FirstIncrement` | 5 | `ExperienceTracker` | Acréscimo do 2 → 3 |
 | `IncrementGrowth` | 1 | `ExperienceTracker` | Quanto o acréscimo cresce por nível |
 | `OptionsPerChoice` | 3 | `IncursionUpgrades` | Cartas por escolha |
+| `ChoiceLockTime` | 0,3 s | `LevelUpPanel` | Depois de cada escolha, as cartas novas ignoram cliques por este tempo (seção 5, clique duplo) |
 | Integridade do traje | +20 fixo, 4 níveis | `upgrade_suit_integrity.tres` | |
 | Ímã de biomassa | +25% do valor-base, 4 níveis | `upgrade_magnet.tres` | |
-| Potência da lanterna | +25%, 4 níveis | `upgrade_flashlight_power.tres` (novo) | Dano e irritação |
-| Alcance da lanterna | +15%, 4 níveis | `upgrade_beam_range.tres` (novo) | Feixe e luz |
-| Campo de força | +1 carga, 4 níveis | `upgrade_force_field.tres` (novo) | Carga inicial e recarga na `force-field.md` |
+| Potência da lanterna | +25%, 4 níveis | `upgrade_flashlight_power.tres` | Dano e irritação |
+| Alcance da lanterna | +15%, 4 níveis | `upgrade_beam_range.tres` | Feixe e luz |
+| Campo de força | +1 carga, 4 níveis | `upgrade_force_field.tres` | Carga inicial e recarga na `force-field.md` |
 | Ação `upgrade_menu` | Tab; botão 3 do controle (Y) | Mapa de Entrada (`project.godot`) | O `interact` usa E e A |
 | XP por orbe | 1 | `BiomassPerKill` (`FractalEnemy`), `DeathBiomass` (`MobileSpawner`) | Sem mudança: 4 por ancestral, 20 por spawner |
 
@@ -126,15 +127,16 @@ Cada nível de melhoria custa 1 ponto: no catálogo do level up, `Costs` = [1, 1
 - **Coleta grande num passo só:** os 20 orbes de um spawner, por exemplo, com `FirstLevelXp` em 2, cruzam vários níveis. Todos os níveis e pontos entram de uma vez, a sobra é preservada e a barra mostra o resto.
 - **Menu aberto:** o jogo pausa. Enquanto o jogador escolhe, não há coleta, golpe, morte nem recarga do campo.
 - **Jogador morto** (no atraso antes da recarga): o menu não abre.
-- **Troca de cena em andamento** (o escurecer da extração, de 0,8 s): se a pausa parar o escurecer, a troca espera o menu fechar. Verificar no motor; se for o caso, bloquear a abertura durante a troca.
+- **Troca de cena em andamento** (o escurecer da extração, de 0,8 s): o `ScreenFade` é pausável, então a pausa pararia o escurecer, e a troca esperaria o menu fechar (verificado no motor, 4.7.2). Por isso o menu não abre durante a troca (`ScreenFade.IsChangingScene`).
 - **Outro painel pausando o jogo** (o terminal de evolução da bancada): o menu não abre por cima.
-- **Aperto mantido ou repetição do teclado (eco) depois de escolher:** não pode escolher uma carta do novo sorteio sem um aperto novo. Verificar no motor no passo do menu.
+- **Aperto mantido ou repetição do teclado (eco) depois de escolher:** não escolhe uma carta do novo sorteio sem um aperto novo (verificado no motor, 4.7.2). O `Button`, no modo padrão, age ao soltar: o A e o Enter só escolhem ao soltar, e os ecos não escolhem. O soltar que fecha o menu não aciona um terminal, porque o terminal reage a um aperto.
+- **Clique duplo do mouse:** são 2 cliques, e sem trava gastariam 2 pontos (verificado no motor, 4.7.2). Depois de cada escolha, as cartas novas ignoram cliques por `ChoiceLockTime`, medido no relógio real, que a pausa não para.
 - **Todas no máximo, com pontos sobrando:** o menu mostra "Traje no máximo", e os pontos continuam no HUD.
 - **Integridade em 1 de 100 ao escolher a integridade:** vai a 21/120.
 - **Escolher outra melhoria não mexe na integridade:** o aplicador recalcula tudo, mas o máximo não muda, então não cura.
-- **Alcance com o jogo rodando:** a forma do feixe muda na hora. Verificar no motor:
-  - que a área percebe os corpos dentro do cone novo (inimigos já iluminados, paredes), sem esperar o feixe se mexer;
-  - que o peso da luz nas paredes (`BeamWeightAt`) usa a forma nova.
+- **Alcance com o jogo rodando:** a forma do feixe muda na hora. Verificado no motor (4.7.2):
+  - com a `Area2D` parada, o motor percebe na hora quem entrou no cone novo (corpos `Character`, `Static` e `Animatable`), sem aviso de saída nem passo sem dano para quem já estava dentro; feita em pausa, a troca vale no primeiro passo depois de voltar;
+  - o peso da luz nas paredes (`BeamWeightAt`) usa a forma nova.
 - **Bancadas** (`sala_entrada`, `sala_ninho`, `arena`): o level up funciona em qualquer cena com o jogador, porque os componentes ficam no `player.tscn`, e zera a cada carga de cena. Passar da `sala_entrada` para a fase é uma incursão nova.
 - **Recargas seguidas:** sem erros no Output e com "Nós Órfãos" = 0. Os sinais ligados por código a nós globais são desligados no `_ExitTree`.
 
@@ -150,7 +152,7 @@ Mapa dos nomes conceituais do documento de origem para o projeto:
 | `PlayerStats` | `SuitUpgradeApplier` (existente, ampliado) |
 | `LevelUpUI` | `LevelUpPanel` (novo) e `ExperienceHud` (novo) |
 
-- **Novos** (criar com autorização, no passo do plano):
+- **Novos:**
   - `ExperienceTracker.cs` (`Node`, filho do `Player`):
     - guarda XP, nível e pontos;
     - métodos `AddExperience` e `TrySpendPoint`;
@@ -160,7 +162,7 @@ Mapa dos nomes conceituais do documento de origem para o projeto:
     - guarda os níveis dos atributos na incursão (por `Id`) e as cartas sorteadas;
     - faz a escolha, gastando o ponto no `ExperienceTracker`;
     - sinal `UpgradeLevelChanged(id, level)`.
-  - `LevelUpPanel.cs` (`PanelContainer`, num `CanvasLayer` do `player.tscn`): abre com `upgrade_menu`, pausa, monta as cartas, envia a escolha e fecha.
+  - `LevelUpPanel.cs` (`PanelContainer`, num `CanvasLayer` do `player.tscn`): abre com `upgrade_menu`, pausa, monta as cartas, envia a escolha e fecha. Lê a ação no `_Input`, e não no `_UnhandledInput`: com uma carta em foco, a Godot usa o Tab para trocar o foco e não o repassa (verificado no motor, 4.7.2).
   - Recursos:
     - `upgrades/levelup_catalog.tres` (catálogo do level up);
     - `upgrades/upgrade_flashlight_power.tres`;
@@ -175,21 +177,23 @@ Mapa dos nomes conceituais do documento de origem para o projeto:
     - junta, por alvo, as duas fontes: o banco no `GameState` e a incursão no `IncursionUpgrades`;
     - aplica `base × (1 + soma das %) + soma fixa`;
     - ganha os alvos novos.
-  - `LightDamageArea.cs`: potência (dano e irritação a partir dos valores da cena) e alcance (forma do feixe e luz a partir da cena).
+  - `LightDamageArea.cs`: potência (dano e irritação a partir dos valores da cena) e alcance (forma do feixe e luz a partir da cena). Ganha o campo `BeamLight`, a luz visível do feixe.
   - `RunData.cs` e `GameState.cs`: banco e biomassa carregada passam a ser créditos (`BankedCredits`, `CarriedCredits` e `AddCarriedCredits`, ainda sem chamador).
   - `UpgradePanel.cs`: "Créditos: N".
+  - `ScreenFade.cs`: `IsChangingScene`, para o menu não abrir durante a troca de cena.
+  - `SuitIntegrity.cs`, `PlayerHurtbox.cs` e `FractalEnemy.cs`: só pelo campo de força (`force-field.md`, seção 6).
   - Só comentários: `StartChamber.cs`, `SalaEntrada.cs` e `RestartOnDeath.cs` (depósito e taxa em créditos).
   - Recursos:
     - `upgrade_suit_integrity.tres` e `upgrade_magnet.tres`: valores novos, para o catálogo do level up;
     - `upgrade_catalog.tres`: o catálogo do banco, vazio.
-- **Removido** (com autorização): `BiomassHud.cs`. O rótulo "Biomassa: N" dá lugar ao `ExperienceHud`.
+- **Removido:** `BiomassHud.cs`. O rótulo "Biomassa: N" dá lugar ao `ExperienceHud`.
 - **Cenas e projeto (no editor):**
   - `player.tscn`: nós novos e ligações;
   - `hex_phase.tscn`: a `StartChamber` fica sem `EvolutionTerminal` e `EvolutionUi`;
   - `project.godot`: ação `upgrade_menu`.
 - **Somente leitura:**
-  - `SuitIntegrity.cs` (o `SetMaxIntegrity` já cura do jeito decidido);
-  - `BiomassField.cs`, `FractalEnemy.cs`, `MobileSpawner.cs` e `EvolutionTerminal.cs`.
+  - `BiomassField.cs`, `MobileSpawner.cs` e `EvolutionTerminal.cs`;
+  - no `SuitIntegrity.cs`, o `SetMaxIntegrity`, que já curava do jeito decidido.
 
 ## 7. Passos no editor (feitos pelo dev)
 
@@ -200,28 +204,28 @@ O roteiro numerado completo, com os nomes exatos, vem em cada passo do plano (se
 3. **`player.tscn`:**
    - `ExperienceTracker` e `IncursionUpgrades`, filhos do `Player`;
    - `Hud` > `ExperienceHud` no lugar do `BiomassLabel` (16, 16), com o rótulo do nível, a barra (`ProgressBar`) e o rótulo dos pontos;
-   - `LevelUpUi` (`CanvasLayer`) > `LevelUpPanel`;
+   - `LevelUpUi` (`CanvasLayer`, Layer 2) > `LevelUpPanel`, com **Custom Minimum Size** (700, 300), como o `UpgradePanel`;
    - sinais e campos do `SuitUpgradeApplier` ligados.
 4. **`hex_phase.tscn`:** apagar `StartChamber` > `EvolutionTerminal` e `EvolutionUi`.
 5. **Recursos:** criar os novos, ajustar os dois existentes e montar os catálogos (salvos pelo disquete do Inspector).
 
 ## 8. Pronto quando
 
-- [ ] `dotnet build` sem erros a cada passo
-- [ ] Coletar biomassa enche a barra de XP (1 por orbe)
-- [ ] Ao atingir o requisito, o nível sobe e ganha exatamente 1 ponto; o jogo não pausa nem abre o menu
-- [ ] A XP que sobra continua no nível seguinte; uma coleta que cruza vários requisitos dá todos os níveis e pontos
-- [ ] Os pontos acumulam; o HUD mostra nível, barra e pontos separados
-- [ ] O menu só abre com pontos; abrir pausa e fechar retoma
-- [ ] Fechar sem escolher guarda o ponto, e reabrir mostra as mesmas cartas
-- [ ] Cada escolha oferece até 3 cartas distintas, sem melhorias no máximo, e o sorteio se refaz a cada ponto gasto
-- [ ] Com tudo no máximo, o menu mostra "Traje no máximo" sem gastar ponto
-- [ ] Escolher aplica o efeito na hora e gasta exatamente 1 ponto; cliques repetidos ou aperto mantido não gastam a mais
-- [ ] Os valores efetivos dos 5 atributos ficam certos em cada nível: integridade e cura, raio do ímã, dano e irritação, alcance e luz, cargas
-- [ ] A integridade nunca passa do máximo
-- [ ] Morte, ejeção e extração começam uma incursão do zero; o modo da lanterna continua
-- [ ] Na câmara não há terminal de evolução; na `sala_entrada`, o painel do banco mostra "Créditos: 0"
-- [ ] Bancadas (`sala_ninho`, `arena`) funcionando; recargas seguidas sem erros e com "Nós Órfãos" = 0
+- [x] `dotnet build` sem erros a cada passo
+- [x] Coletar biomassa enche a barra de XP (1 por orbe)
+- [x] Ao atingir o requisito, o nível sobe e ganha exatamente 1 ponto; o jogo não pausa nem abre o menu
+- [x] A XP que sobra continua no nível seguinte; uma coleta que cruza vários requisitos dá todos os níveis e pontos
+- [x] Os pontos acumulam; o HUD mostra nível, barra e pontos separados
+- [x] O menu só abre com pontos; abrir pausa e fechar retoma
+- [x] Fechar sem escolher guarda o ponto, e reabrir mostra as mesmas cartas
+- [x] Cada escolha oferece até 3 cartas distintas, sem melhorias no máximo, e o sorteio se refaz a cada ponto gasto
+- [x] Com tudo no máximo, o menu mostra "Traje no máximo" sem gastar ponto
+- [x] Escolher aplica o efeito na hora e gasta exatamente 1 ponto; cliques repetidos ou aperto mantido não gastam a mais
+- [x] Os valores efetivos dos 5 atributos ficam certos em cada nível: integridade e cura, raio do ímã, dano e irritação, alcance e luz, cargas
+- [x] A integridade nunca passa do máximo
+- [x] Morte, ejeção e extração começam uma incursão do zero; o modo da lanterna continua
+- [x] Na câmara não há terminal de evolução; na `sala_entrada`, o painel do banco mostra "Créditos: 0"
+- [x] Bancadas (`sala_ninho`, `arena`) funcionando; recargas seguidas sem erros e com "Nós Órfãos" = 0
 
 ## 9. Como testar (roteiro manual no editor)
 
@@ -302,7 +306,7 @@ Na análise do documento de origem, o dev aceitou as recomendações, com duas e
 - **Sorteio:** embaralha as melhorias elegíveis e pega as primeiras (Fisher–Yates), guardando as cartas até a escolha.
 - **Pausa:** o mesmo mecanismo do `UpgradePanel`: `GetTree().Paused`, e o painel com `ProcessMode = Always`.
 
-### Plano de implementação (aprovado pelo dev, out/2026)
+### Plano de implementação (aprovado pelo dev e feito, out/2026)
 
 Cada passo segue o ritual dos anteriores:
 1. verificação antes no descartável (Godot headless);
@@ -338,7 +342,22 @@ Os passos:
    - documentos: esta spec, a `force-field.md`, as specs revistas, `BACKLOG.md`, `HANDOFF.md` e `CLAUDE.md`;
    - a mensagem de commit.
 
+### Resultado (out/2026)
+
+- **Commits:** passo 0, `abc94e1` e `ca8c8e3`; passo 1, `ec41082`; passo 2, `0b4ed5f`; passo 3, `21dd4c8`; passo 4, `e0e9a17`; passo 5, `d619fe9`; passo 6, `442111a` e `170faa5`.
+  - O `ec41082` levou junto `RunData.cs`, `GameState.cs` e `UpgradePanel.cs`, que são do passo 2. A história não foi reescrita, e o `0b4ed5f` levou o resto do passo 2.
+- **Aprovado pelo dev durante o passo 3, fora do texto original:** a trava `ChoiceLockTime` e o `ScreenFade.IsChangingScene` (seção 5).
+- **Ciclo completo (seção 9, itens 8 a 10):**
+  - no descartável, numa cópia do projeto com as cenas reais: 166 checagens, 0 falhas e Output sem erros nem avisos. Morte, ejeção e extração com os 5 atributos no máximo voltaram ao início; em 5 recargas seguidas, 2389 nós estáveis e "Nós Órfãos" = 0; `sala_entrada`, `sala_ninho`, `arena` e `sala_desfiladeiro` carregaram sem erro;
+  - no editor, pelo dev: morte por golpes, ejeção real pela fenda, extração, bancadas e as 5 recargas.
+- **Consequência do catálogo com 5 melhorias:** com 3 cartas por sorteio, cada melhoria aparece em 60% dos sorteios enquanto todas estiverem elegíveis.
+
 ### Notas
 
+- **Para o descartável (Godot headless):**
+  - a janela tem 64 × 64 px, e o mouse só funciona com o controle dentro dela e um `InputEventMouseMotion` antes do clique;
+  - `Engine.GetPhysicsFrames()` anda durante a pausa, mas o `_PhysicsProcess` pausável não;
+  - `IncursionUpgrades.TryChoose` só aceita carta da oferta atual: chame `GetOffers()` antes, como o painel faz;
+  - `PackedScene.Pack` com ligação para um nó tirado da árvore não salva a ligação, mas escreve `ERROR: !common_parent`.
 - O documento de origem traz uma arquitetura "independente de engine". Os valores-base dele eram exemplos (dano de 10/s); os reais são os da seção 2.
 - O Vampire Survivors tem as duas progressões: gemas de XP na partida e ouro para melhorias permanentes. O banco reservado (L1) deixa essa porta aberta.

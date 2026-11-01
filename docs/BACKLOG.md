@@ -1,6 +1,6 @@
 # Backlog do projeto
 
-Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atualizada em 2026-10-29.
+Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atualizada em 2026-10-31.
 
 > **Como usar:** cada item aponta para a spec relacionada e traz um "ponto de partida" técnico. O ponto de partida é uma **leitura inicial do código, não uma solução aprovada**: antes de implementar, seguir o fluxo do CLAUDE.md (ler spec e código, propor plano, esperar aprovação). Ao concluir um item, removê-lo daqui e registrar o resultado na spec.
 
@@ -18,22 +18,13 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
 
 > **1.8 concluído (out/2026):** engasgo de um quadro na divisão em massa (`fractal-enemy.md`, seções 5 e 10; medições na `mobile-spawners.md`, seção 10). Na fase, os fragmentos saem de um segundo estoque do `EnemyPool` (`FragmentPoolSize` 360, criado ao carregar a fase; se faltar, cria mais um, que fica), pelo contrato `IFragmentSource`. Fora da fase, continuam instanciados. Os estoques são filas com descanso de um passo, contra o "golpe fantasma" achado no motor (nó reaproveitado no mesmo passo em que voltou). No descartável, dividir 120 de uma vez caiu de 31–35 para 7–8 ms. No editor, num massacre de propósito, as divisões não se juntaram (no máximo uma por passo), e os picos que restam são pausas do GC (1.10). Contato e regressão (`sala_ninho`, `arena`) testados pelo dev. **Risco residual:** 240 orbes no mesmo passo custam 16 a 20 ms no descartável; no jogo, as rajadas foram de até 20 (morte de spawner, 3,4 a 4,1 ms).
 
+> **1.11 concluído (out/2026):** level up na incursão e campo de força, validados pelo dev (`docs/specs/level-up.md`, decisões L1 a L21; `docs/specs/force-field.md`, F1 a F5 e P1 a P3). A biomassa vira experiência, e cada nível dá um ponto de melhoria. Num menu que pausa o jogo (`upgrade_menu`, Tab ou Y), cada ponto compra 1 de até 3 cartas sorteadas entre 5 atributos de nível 1 a 5: integridade, ímã, potência e alcance da lanterna, e campo de força. O campo absorve golpes de contato e repele os inimigos, com cargas e recarga. A progressão fica em componentes do `player.tscn`, então morte, ejeção e extração zeram tudo com a recarga da cena. O banco ficou em créditos, sem fonte e com o catálogo vazio, e o terminal de evolução saiu da câmara (só na `sala_entrada`). Ciclo completo: 166 checagens sem falha numa cópia do projeto (morte, ejeção e extração com tudo no máximo; 5 recargas com "Nós Órfãos" = 0; bancadas), e o teste do dev no editor. O balanceamento da curva e dos atributos fica no 1.9.
+
 ### 1.6 Visibilidade sem blecaute nas cenas atuais (pequeno, no editor)
 
 - **Contexto:** o rascunho de out/2026 retirou o blecaute total (inimigos em silhueta). Estado das cenas em 2026-10-21: `CanvasModulate` preto na `sala_entrada`, `sala_desfiladeiro` e `arena`; oculto (`visible = false`) na `sala_ninho`, que estava em teste pelo dev. Na `sala_desfiladeiro`, o `Background` também está oculto, o que contraria a regra do fundo obrigatório: conferir se é de propósito.
 - **O que fazer:** o dev escolhe uma cor provisória de `CanvasModulate` para testar as mecânicas sem blecaute. O `ColorRect` de fundo continua obrigatório (sem ele a luz da lanterna não aparece). Arte final na etapa 2.
 - **Spec:** nenhuma (ajuste de cena). Conferir depois se a lanterna continua legível sobre fundos claros.
-
-### 1.11 Level up na incursão e campo de força (novo; antes do 1.9)
-
-- **Contexto:** pedido do dev (out/2026), antes do balanceamento. Origem: o documento de design `docs/reference/documentacao_level_up_demo_atualizada.md`.
-  - A biomassa vira experiência, e cada nível dá um ponto de melhoria.
-  - Num menu aberto pelo jogador, que pausa o jogo, cada ponto compra 1 de 3 melhorias sorteadas, com 5 atributos de nível 1 a 5: integridade, ímã, potência e alcance da lanterna, e campo de força.
-  - Tudo zera a cada incursão.
-  - O banco fica pronto para melhorias permanentes futuras, com outra moeda (créditos, provisório), e o terminal de evolução sai da câmara.
-  - O campo de força é uma mecânica nova: absorve golpes de contato e repele os inimigos, com cargas e recarga.
-- **Specs:** `docs/specs/level-up.md` (decisões L1 a L21) e `docs/specs/force-field.md` (F1 a F5 e P1 a P3), aprovadas pelo dev (out/2026), com a arquitetura e o plano. As specs afetadas têm uma linha "Revista" no topo: `suit-evolution.md`, `biomass-collection.md`, `player-health-death.md`, `start-chamber.md` e `mobile-spawners.md`.
-- **Ponto de partida:** o plano em passos da `level-up.md`, seção 10.
 
 ### 1.9 Fase de balanceamento (novo)
 
@@ -45,7 +36,7 @@ Lista única de tarefas pendentes, decisões em aberto e dívidas técnicas. Atu
   - golpe e integridade (`player-health-death.md`): dano 10, empurrão 200, imunidade 0,8 s;
   - paredes por tipo (o `MaxIrritation` da `DysonWall`: 100, 40 e 30; `hex-phase.md`, seção 4, e `dyson-wall.md`, B2), a sucção das fendas (`dyson-wall.md`, seção 4: raio sem retorno, rajada, fatores de inimigos, orbes e spawners) e zooms da câmera;
   - level up (`level-up.md`, seção 4): curva de XP (10, +5, +1) e ganho por nível dos atributos (integridade +20; ímã +25%; potência +25% no dano e na irritação; alcance +15%);
-  - campo de força (`force-field.md`, seção 4): recarga de 5 s, impulso de 300 px/s, 1 carga no nível 1;
+  - campo de força (`force-field.md`, seção 4): recarga de 20 s, impulso de 300 px/s, 1 carga no nível 1;
   - biomassa (`biomass-collection.md`): coleta; o banco e a taxa da morte só quando os créditos existirem;
   - jogador (`Player.cs`): empuxo 450, velocidade máxima 600, atrito.
 - **Pendente do 1.5 (passo 7 da fase B):** medir a fase hexagonal com a horda (200+ inimigos), paredes acordadas e uma fenda aberta, e confirmar no editor as 10 fendas seguidas com troca de cena (roteiro na `dyson-wall.md`, seção 9, item 7). No descartável passou. Se o primeiro rompimento da sessão engasgar (pico de ~7,5 ms: a primeira compilação do código da abertura), aquecer esse código ao carregar a fase, debaixo do escurecer.

@@ -2,7 +2,8 @@
 
 - **Status:** validada (out/2026). Valores em teste. A melhoria da lanterna está adiada (seção 10).
 - **Atualizado (out/2026, `start-chamber.md`):** a câmara (terminais do traje e depósito no banco) passou para o nó de entrada da fase hexagonal, a **câmara de partida**: o jogo começa nela, e morte, ejeção e extração recarregam a fase nela. A `sala_entrada` virou bancada. As regras de banco, taxa e melhorias não mudaram; os trechos abaixo que citam a `sala_entrada` descrevem como a mecânica foi validada.
-- **Revista (out/2026, `level-up.md`; decidido, ainda não implementado):**
+- **Revista (out/2026, `level-up.md`; implementado no backlog 1.11):**
+  - Os trechos abaixo descrevem como a mecânica foi validada, com biomassa e na câmara; onde divergirem, valem esta lista e a `level-up.md`.
   - A biomassa deixa de ser moeda e vira experiência do level up, que zera a cada incursão.
   - O banco fica pronto para melhorias permanentes futuras, com outra moeda ("créditos", provisório, ainda sem fonte). O fluxo continua, em créditos: a carregada vai para o banco, a morte cobra a taxa, e a câmara e a extração depositam.
   - As duas melhorias deste catálogo (integridade e ímã) passam para o level up, e o catálogo do banco fica vazio.

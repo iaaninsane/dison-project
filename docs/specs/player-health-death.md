@@ -1,7 +1,7 @@
 # Spec: Integridade do traje e morte do jogador
 
 - **Status:** validada (out/2026). Valores em teste. O fluxo depois da morte foi definido pela spec `suit-evolution.md`: voltar à câmara inicial. **Atualizado (out/2026, `start-chamber.md`):** a câmara passou para o nó de entrada da fase; a morte recarrega a fase em modo câmara (`RestartOnDeath` com destino vazio), e ser ejetado para o espaço tem a mesma consequência (`SuitIntegrity.Breach`).
-- **Revista (out/2026, `level-up.md` e `force-field.md`; decidido, ainda não implementado):**
+- **Revista (out/2026, `level-up.md` e `force-field.md`; implementado no backlog 1.11):**
   - A taxa da morte passa a valer para os créditos do banco (ainda sem fonte). A biomassa vira experiência e zera com a incursão.
   - A melhoria de integridade do level up sobe o máximo em 20 e cura 20: é uma exceção a "a integridade não regenera".
   - O campo de força absorve os golpes de contato enquanto tiver carga.
@@ -25,12 +25,12 @@ O anticorpo fractal passa a ser uma ameaça: encostar na horda danifica o traje 
 - Ao tomar dano, o jogador recebe um pequeno empurrão (`KnockbackImpulse`) para longe do inimigo, aproveitando a inércia da gravidade zero, sem perder o controle (diferente da ejeção).
 - Ao tomar dano, o sprite do jogador pisca durante a imunidade, para o jogador perceber o golpe (feedback mínimo de mecânica; arte e som ficam para a etapa 2).
 - Quando a integridade muda, então o componente de integridade avisa por sinal (`IntegrityChanged`), sem conhecer quem escuta. Um HUD de texto de teste mostra o valor, como o de biomassa.
-- A integridade não regenera.
+- A integridade não regenera. Exceção: a melhoria de integridade do level up (`level-up.md`).
 
 ### Morte
 
 - Quando a integridade chega a zero, então o jogador morre: emite o sinal `Died`, perde o controle do movimento e da lanterna e para de receber dano.
-- Na morte, a biomassa carregada perde a parte que não é guardada (`DeathKeepFraction`, 0,5: guarda metade, arredondado para baixo).
+- Na morte, os créditos carregados perdem a parte que não é guardada (`DeathKeepFraction`, 0,5: guarda metade, arredondado para baixo).
 - Depois de `DeathRestartDelay` segundos, o jogo vai para a cena `ReturnScenePath` do `RestartOnDeath` (na validação, a câmara inicial `sala_entrada.tscn`), que deposita no banco o que sobrou. Com `ReturnScenePath` vazio, a sala atual é recarregada. **Hoje (out/2026):** vazio, a fase recarrega em modo câmara e a `StartChamber` deposita o que sobrou (`start-chamber.md`). A troca de cena passa pelo `ScreenFade` (escurecer e clarear).
 - A sala de destino recomeça do zero: integridade cheia, inimigos e orbes novos. Banco e níveis das melhorias ficam no `GameState` (spec `suit-evolution.md`).
 
@@ -75,7 +75,7 @@ O anticorpo fractal passa a ser uma ameaça: encostar na horda danifica o traje 
 - Novos:
   - `PlayerHurtbox.cs` (`Area2D`, filha do `Player`): lista os inimigos encostados (entrou/saiu), limpa a cada passo os mortos e liberados, e responde qual é o inimigo encostado mais próximo. Desde os spawners móveis (out/2026), lista qualquer `IContactHazard` (inimigos e spawners, com o mesmo golpe; `mobile-spawners.md`).
   - `SuitIntegrity.cs` (`Node`, filho do `Player`): integridade, golpe com imunidade, piscar, empurrão; sinais `IntegrityChanged(int)` e `Died()`. Recebe a área de contato e o sprite por `[Export]`; o estado inicial é emitido de forma adiada.
-  - `RestartOnDeath.cs` (`Node`, filho do `Player`): ouvinte do `Died`; cobra a taxa da biomassa e, depois de `DeathRestartDelay` (`SceneTreeTimer`), troca para `ReturnScenePath` ou recarrega a sala se o campo estiver vazio. Alterado pela spec `suit-evolution.md`.
+  - `RestartOnDeath.cs` (`Node`, filho do `Player`): ouvinte do `Died`; cobra a taxa dos créditos e, depois de `DeathRestartDelay` (`SceneTreeTimer`), troca para `ReturnScenePath` ou recarrega a sala se o campo estiver vazio. Alterado pela spec `suit-evolution.md`.
   - `IntegrityHud.cs` (`Label`): HUD de teste "Traje: N".
 - Somente leitura: `FractalSwarm.cs`, `BiomassField.cs`, `WallSensitive.cs`, `LightDamageArea.cs`.
 

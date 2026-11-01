@@ -1,18 +1,19 @@
 # Spec: Coleta de biomassa neon
 
 - **Status:** validada (out/2026). Valores em teste.
-- **Revista (out/2026, `level-up.md`; decidido, ainda não implementado):**
+- **Revista (out/2026, `level-up.md`; implementado no backlog 1.11):**
   - A biomassa coletada vira experiência do level up (1 orbe = 1 XP), que zera a cada incursão, e deixa de ir para o banco.
   - O rótulo "Biomassa: N" dá lugar à barra de XP.
   - O ímã (`MagnetRadius`) passa a ser um atributo do level up (+25% do raio-base por nível).
+  - O coletor não guarda mais o total: a cada coleta, emite `BiomassCollected(amount)`, conectado ao `ExperienceTracker`. O `BiomassChanged`, o `BiomassHud.cs` e o `Hud/BiomassLabel` saíram do jogo; as seções 7 e 8 registram como a mecânica foi validada.
 - **Etapa:** 1 (mecânica)
-- **Depende de:** `docs/specs/fractal-enemy.md` (morte do inimigo e divisão celular). A spec de evolução (gastar a biomassa) ainda não existe.
+- **Depende de:** `docs/specs/fractal-enemy.md` (morte do inimigo e divisão celular). A experiência que a biomassa rende está na `level-up.md`.
 
 > **Valores em teste:** como nas demais specs da demo, os `[Export]` e os números desta spec são pontos de partida, não valores definitivos.
 
 ## 1. Objetivo
 
-Todo anticorpo destruído pela luz libera biomassa neon, que o jogador recolhe navegando até ela. É a recompensa do combate e o recurso que, numa spec futura, será gasto em melhorias do traje na câmara inicial. Serve ao trecho COLETAR do core loop e liga o COMBATER ao EVOLUIR.
+Todo anticorpo destruído pela luz libera biomassa neon, que o jogador recolhe navegando até ela. É a recompensa do combate e a experiência do level up (`level-up.md`). Serve ao trecho COLETAR do core loop e liga o COMBATER ao EVOLUIR.
 
 ## 2. Comportamento esperado
 
@@ -28,8 +29,8 @@ Todo anticorpo destruído pela luz libera biomassa neon, que o jogador recolhe n
 - O orbe não usa física: um sistema central mede a distância de cada orbe ao jogador num único laço em C#.
 - O orbe é sempre visível, mesmo no escuro (material "unshaded", que ignora o `CanvasModulate`).
 - Quando o jogador está a menos de `MagnetRadius` de um orbe, então o orbe é atraído em direção ao jogador a `MagnetSpeed`, atravessando paredes se houver alguma no caminho.
-- Quando o jogador está a menos de `PickupRadius` de um orbe, então a biomassa é somada ao contador do jogador e o orbe desaparece.
-- Quando o contador muda, então ele avisa quem estiver interessado (sinal `BiomassChanged`), sem conhecer quem escuta (padrão Observer). O primeiro ouvinte é um HUD mínimo de texto para teste.
+- Quando o jogador está a menos de `PickupRadius` de um orbe, então a biomassa é recolhida e o orbe desaparece.
+- Quando o jogador recolhe biomassa, então o coletor avisa quem estiver interessado (sinal `BiomassCollected`), sem conhecer quem escuta (padrão Observer). O ouvinte é o `ExperienceTracker` (`level-up.md`).
 
 ### Limites
 
@@ -75,8 +76,8 @@ Os pontos de partida foram aceitos pelo dev. A configuração de **quem produz**
 - Novos:
   - `BiomassOrb.cs` (`Node2D`, criado por código, sem cena): só existe e se desenha (círculo, material unshaded compartilhado). Guarda quantidade, tempo de vida, idade e a cópia da posição em C#.
   - `BiomassField.cs` (classe estática): registra os orbes, aplica o teto e faz, num único laço por passo, a idade, o ímã e a coleta (mesma ideia do `FractalSwarm`).
-  - `BiomassCollector.cs` (`Node2D`, filho do `Player`): chama o laço do `BiomassField` na posição do jogador, guarda o `Total` e emite o sinal `BiomassChanged(int total)`.
-  - `BiomassHud.cs` (`Label`): HUD de teste "Biomassa: N", que só escuta o sinal.
+  - `BiomassCollector.cs` (`Node2D`, filho do `Player`): chama o laço do `BiomassField` na posição do jogador e emite o sinal `BiomassCollected(int amount)`. Até a `level-up.md`, guardava o `Total` e emitia `BiomassChanged(int total)`.
+  - `BiomassHud.cs` (`Label`): HUD de teste "Biomassa: N", que só escutava o sinal. Removido pela `level-up.md`.
 - Somente leitura: `NinhoSpawnerPooled.cs`, `FractalSwarm.cs`.
 
 ## 7. Passos no editor (feitos pelo dev)
@@ -120,7 +121,7 @@ Como o coletor e o HUD estão no `player.tscn`, funcionam em toda sala que tiver
 3. **Visibilidade:** sempre visível, com material "unshaded" (opção a). Mesma técnica já usada no `Sprite2D` do jogador.
 4. **Ímã:** sim, com `MagnetRadius`.
 5. **Paredes:** o orbe atraído atravessa paredes.
-6. **Contador:** componente no jogador. Atualizado pela spec `suit-evolution.md`: o `BiomassCollector` continua recolhendo e emitindo `BiomassChanged`, mas o total passou a ser a **biomassa carregada** do `GameState`, que sobrevive à troca de sala.
+6. **Contador:** componente no jogador. Atualizado pela spec `suit-evolution.md`: o `BiomassCollector` continua recolhendo e emitindo `BiomassChanged`, mas o total passou a ser a **biomassa carregada** do `GameState`, que sobrevive à troca de sala. **Revista pela `level-up.md` (L1):** a biomassa coletada vira experiência, e o sinal é o `BiomassCollected`.
 7. **Valores:** os pontos de partida da seção 4 foram aceitos.
 
 ### A testar no futuro

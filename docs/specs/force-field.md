@@ -1,6 +1,6 @@
 # Spec: Campo de força do traje
 
-- **Status:** **aprovada** pelo dev (out/2026), com a arquitetura e o plano de implementação (seção 10). Decisões F1 a F5 (respostas 14 a 18 da análise do documento de origem) e propostas P1 a P3, aprovadas com a spec. É o passo 6 do plano da `level-up.md`.
+- **Status:** **validada** (out/2026). Decisões F1 a F5 (respostas 14 a 18 da análise do documento de origem) e propostas P1 a P3, aprovadas com a spec. Feita no passo 6 do plano da `level-up.md` (commits `442111a` e `170faa5`) e testada pelo dev no editor, com a verificação antes no descartável. Valores em teste.
 - **Etapa:** 1 (mecânica)
 - **Origem:** `docs/reference/documentacao_level_up_demo_atualizada.md`, seção 5.3.
 - **Depende de:**
@@ -48,7 +48,7 @@ Um campo em volta do traje absorve os golpes de contato enquanto tiver carga: pr
 |---|---|---|---|
 | `BaseCharges` | 1 | `ForceField` | Cargas no nível 1 |
 | Cargas por nível | +1, 4 níveis | `upgrade_force_field.tres` | 1 → 5 cargas (`level-up.md`) |
-| `RechargeTime` | 5 s | `ForceField` | Do desligar ao voltar cheio |
+| `RechargeTime` | 20 s (decidido pelo dev, out/2026) | `ForceField` | Do desligar ao voltar cheio. Fica no `player.tscn`: o padrão do script é 5, então o ↺ do Inspector volta a 5 |
 | `RepelImpulse` | 300 px/s | `ForceField` | Velocidade dada ao inimigo. Some no ritmo do `SuctionVelocityDecay` do inimigo (300 px/s²): dura ~1 s e afasta ~150 px |
 | `VisualRadius` | 16 px | `ForceField` | Visual provisório. O corpo do jogador tem 10 × 10 px, e a área de contato, raio 8 |
 | `FieldColor` | provisória | `ForceField` | Grupo "Visual provisório" |
@@ -67,7 +67,7 @@ Um campo em volta do traje absorve os golpes de contato enquanto tiver carga: pr
 
 ## 6. Arquivos e cenas
 
-- **Novos** (com autorização):
+- **Novos:**
   - `ForceField.cs` (`Node2D`, filho do `Player`): cargas, recarga e desenho do círculo; métodos `TryAbsorbHit(...)` e `SetBonusCharges(int)`; sinal `ChargesChanged(current, max)`.
   - `ForceFieldHud.cs` (`Label`): "Campo: N/M"; só escuta o sinal.
   - `IRepellable.cs` (interface C#): "o que o campo empurra". Fica separada do `IContactHazard` (segregação de interfaces), porque o spawner fere ao encostar, mas não é empurrado.
@@ -86,29 +86,31 @@ O roteiro completo, com os nomes exatos, vem em cada passo do plano. Resumo:
 1. **Build** depois dos scripts novos.
 2. `player.tscn` > `Player` > **Node2D** chamado **`ForceField`** (script `ForceField.cs`), na posição (0, 0).
 3. `SuitIntegrity` > **Force Field** = nó `ForceField`.
-4. `Hud` > **Label** chamado **`ForceFieldLabel`** (script `ForceFieldHud.cs`), ao lado do `IntegrityLabel` (posição a combinar no passo).
+4. `Hud` > **Label** chamado **`ForceFieldLabel`** (script `ForceFieldHud.cs`), em (160, 48), ao lado do `IntegrityLabel`.
 5. Sinal: `ForceField` > `ChargesChanged` → `ForceFieldLabel.OnChargesChanged`.
 6. Recurso `upgrade_force_field.tres` no catálogo do level up (passo 2).
+7. `SuitUpgradeApplier` > **Force Field** = nó `ForceField` (passo 2).
+8. `ForceField` > **Recharge Time** = 20 (seção 4).
 
 ## 8. Pronto quando
 
-- [ ] `dotnet build` sem erros
-- [ ] O jogador nasce com o campo ativo: círculo visível e "Campo: 1/1"
-- [ ] Com carga, encostar num inimigo não tira integridade, gasta 1 carga e afasta os inimigos encostados; o jogador é empurrado e fica imune como num golpe
-- [ ] A horda encostada gasta no máximo 1 carga por janela de imunidade
-- [ ] O golpe do spawner também é absorvido, e o spawner não é repelido
-- [ ] Sem carga, o campo desliga, os golpes ferem e, depois de `RechargeTime`, ele volta cheio
-- [ ] Subir o nível do campo dá +1 carga (na hora, se ele estiver ativo)
-- [ ] A ruptura no espaço, a sucção e a ejeção não são afetadas
-- [ ] Bancadas funcionando; recargas seguidas sem erros e com "Nós Órfãos" = 0
-- [ ] Valores da seção 4 ajustáveis no Inspector
+- [x] `dotnet build` sem erros
+- [x] O jogador nasce com o campo ativo: círculo visível e "Campo: 1/1"
+- [x] Com carga, encostar num inimigo não tira integridade, gasta 1 carga e afasta os inimigos encostados; o jogador é empurrado e fica imune como num golpe
+- [x] A horda encostada gasta no máximo 1 carga por janela de imunidade
+- [x] O golpe do spawner também é absorvido, e o spawner não é repelido
+- [x] Sem carga, o campo desliga, os golpes ferem e, depois de `RechargeTime`, ele volta cheio
+- [x] Subir o nível do campo dá +1 carga (na hora, se ele estiver ativo)
+- [x] A ruptura no espaço, a sucção e a ejeção não são afetadas
+- [x] Bancadas funcionando; recargas seguidas sem erros e com "Nós Órfãos" = 0
+- [x] Valores da seção 4 ajustáveis no Inspector
 
 ## 9. Como testar (roteiro manual no editor)
 
 1. `arena.tscn` (bancada com inimigos), F6: deixe um inimigo encostar.
-   - Confira: integridade igual, "Campo: 0/1", o inimigo afastado e o círculo apagado.
+   - Confira: integridade igual, "Campo: recarregando", o inimigo afastado e o círculo apagado.
    - Encoste de novo: golpe normal.
-2. Espere `RechargeTime` (5 s): o campo volta ("Campo: 1/1").
+2. Espere `RechargeTime` (20 s): o campo volta ("Campo: 1/1").
 3. Deixe a horda encostar com o campo ativo: só 1 carga por janela de imunidade, e os inimigos encostados se afastam.
 4. Na fase, encoste num spawner com o campo ativo: o campo absorve, e o spawner segue a rota.
 5. Com o level up (passo 2), suba o nível do campo e confira as cargas: a nova entra na hora com ele ativo e, depois de esgotar, ele volta com o máximo novo.
@@ -122,7 +124,7 @@ O roteiro completo, com os nomes exatos, vem em cada passo do plano. Resumo:
 - **F2 (pergunta 15):** o campo age no momento do golpe de contato (área de contato e integridade): com carga, absorve o golpe, repele e gasta 1 carga. A imunidade também vale.
   - Descartada: uma bolha maior que o corpo, que repele antes de encostar. A horda esvaziaria o campo na hora.
 - **F3 (pergunta 16):** o golpe do spawner também é absorvido. O spawner não é repelido, e o jogador continua sendo empurrado.
-- **F4 (pergunta 17):** o campo só recarrega ao zerar e volta cheio depois de `RechargeTime` (5 s, valor em teste).
+- **F4 (pergunta 17):** o campo só recarrega ao zerar e volta cheio depois de `RechargeTime` (valor em teste: começou em 5 s; o dev definiu 20 s no passo 6.2).
   - Descartada: uma carga por vez.
 - **F5 (pergunta 18):** aviso mínimo: o círculo enquanto ativo e "Campo: N/M" no HUD.
 
@@ -138,6 +140,7 @@ O roteiro completo, com os nomes exatos, vem em cada passo do plano. Resumo:
 - **Uma responsabilidade cada:** o `SuitIntegrity` continua decidindo **quando** há golpe (contato fora da imunidade), e o `ForceField` decide se o golpe é **absorvido**, e repele.
 - **Contrato `IRepellable`:** o campo empurra pelo contrato, sem conhecer o tipo do inimigo, como a lanterna fere pelo `ILightDamageable`.
 - **O campo não sabe do level up:** recebe o bônus de cargas pelo `SuitUpgradeApplier`, como os outros atributos.
+  - O aplicador recalcula tudo a cada melhoria, então o `SetBonusCharges` é idempotente: sem mudança no máximo, não faz nada. Assim, escolher outra melhoria não dá carga de graça.
 - **Processar só o que importa** (lição do `CLAUDE.md`): o `ForceField` só conta tempo enquanto recarrega, e o círculo só é redesenhado quando o estado muda.
 
 ### Plano de implementação (passo 6 da `level-up.md`)
